@@ -1,7 +1,7 @@
 package mosse;
 
-import beast.core.Distribution;
-import beast.core.State;
+import beast.base.inference.Distribution;
+import beast.base.inference.State;
 
 import java.util.List;
 import java.util.Random;

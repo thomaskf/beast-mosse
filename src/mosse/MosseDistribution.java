@@ -1,9 +1,9 @@
 package mosse;
 
-import beast.core.Description;
-import beast.core.State;
-import beast.evolution.tree.TreeDistribution;
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
+import beast.base.core.Description;
+import beast.base.inference.State;
+import beast.base.evolution.tree.TreeDistribution;
+import jdk.jshell.spi.ExecutionControl.NotImplementedException;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -163,7 +163,6 @@ public class MosseDistribution extends TreeDistribution {
 
     @Override
     public void sample(State state, Random random) {
-        throw new NotImplementedException();
     }
 
 }
