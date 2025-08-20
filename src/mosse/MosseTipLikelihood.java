@@ -7,14 +7,24 @@ import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
 import org.apache.commons.math3.distribution.NormalDistribution;
 
+/**
+ * @author Kylie Chen
+ */
+
 @Description("Mosse tip likelihood using regression model of tip rate given traits and parameters beta and epsilon")
 public class MosseTipLikelihood extends CalculationNode {
 
-	final public Input<RealParameter> betaInput = new Input<>("beta", "beta coefficients for each trait", Input.Validate.REQUIRED);
-	final public Input<RealParameter> epsilonInput = new Input<>("epsilon", "error term of regression model", Input.Validate.REQUIRED);
-	final public Input<BooleanParameter> logScaleInput = new Input<>("logscale", "whether to use log scale for substitution rate (defaults to true)", Input.Validate.OPTIONAL);
+	final public Input<RealParameter> betaInput = new Input<>("beta", "beta coefficients for each trait",
+			Input.Validate.REQUIRED);
+	final public Input<RealParameter> meanSubstitutionInput = new Input<>("subst", "mean substitution value",
+			Input.Validate.REQUIRED);
+	final public Input<RealParameter> epsilonInput = new Input<>("epsilon", "error term of regression model",
+			Input.Validate.REQUIRED);
+	final public Input<BooleanParameter> logScaleInput = new Input<>("logscale",
+			"whether to use log scale for substitution rate (defaults to true)", Input.Validate.OPTIONAL);
 
 	private RealParameter beta;
+	private RealParameter meanSubstitution;
 	private RealParameter epsilon;
 	private boolean logScale;
 
@@ -23,16 +33,17 @@ public class MosseTipLikelihood extends CalculationNode {
 	}
 
 	/**
-	 * Returns P(tip rate | beta0, beta1, epsilon, trait0, trait1) ~
-	 * Gaussian(mean = beta0 * trait0 + beta1 * trait1 + ... + epsilon, sd = epsilon)
-	 * within the tip rate interval (a,b)
-	 * @param a start value of tip rate interval
-	 * @param b end value of tip rate interval
+	 * Returns P(tip rate | beta0, beta1, epsilon, trait0, trait1) ~ Gaussian(mean =
+	 * beta0 * trait0 + beta1 * trait1 + ... + mean, sd = epsilon) within the tip
+	 * rate interval (a,b)
+	 * 
+	 * @param a      start value of tip rate interval
+	 * @param b      end value of tip rate interval
 	 * @param traits trait values
-	 * @return
+	 * @return tip likelihood between intervals a and b
 	 */
 	public double getTipLikelihood(double a, double b, double[] traits) {
-		double mean = epsilon.getValue();
+		double mean = meanSubstitution.getValue();
 		for (int i = 0; i < traits.length; i++) {
 			int numBetas = beta.getDimension();
 			if (numBetas != traits.length) {
@@ -50,11 +61,30 @@ public class MosseTipLikelihood extends CalculationNode {
 
 	/**
 	 *
-	 * @param traits array of trait values
-	 * @param numBins number of bins for substitution rate discretization
+	 * @param traits        array of trait values
+	 * @param numBins       number of bins for substitution rate discretization
+	 * @param startSubsRate substitution rate lower bound and interval for rate bins
+	 * @return array of tip likelihoods
+	 */
+	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate) {
+		double subsInterval = startSubsRate;
+		double[] tipLikelihoods = new double[numBins];
+		for (int i = 0; i < numBins; i++) {
+			double a = startSubsRate + i * subsInterval;
+			double b = startSubsRate + (i + 1) * subsInterval;
+			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
+		}
+		// TODO make logscale consistent with TreeLikelihood
+		return tipLikelihoods;
+	}
+
+	/**
+	 *
+	 * @param traits        array of trait values
+	 * @param numBins       number of bins for substitution rate discretization
 	 * @param startSubsRate substitution rate lower bound
-	 * @param endSubsRate substitution rate upper bound
-	 * @return
+	 * @param endSubsRate   substitution rate upper bound
+	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
 		double subsInterval = (endSubsRate - startSubsRate) / numBins;
@@ -62,10 +92,6 @@ public class MosseTipLikelihood extends CalculationNode {
 		for (int i = 0; i < numBins; i++) {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
-			if (logScale) {
-				a = Math.log(a);
-				b = Math.log(b);
-			}
 			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
 		}
 		return tipLikelihoods;
@@ -74,6 +100,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	@Override
 	public void initAndValidate() {
 		beta = betaInput.get();
+		meanSubstitution = meanSubstitutionInput.get();
 		epsilon = epsilonInput.get();
 		if (logScaleInput.get() == null) {
 			logScale = true;

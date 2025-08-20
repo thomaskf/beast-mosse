@@ -1,104 +1,175 @@
 package mosse;
 
 import beast.base.core.Description;
+import beast.base.core.Input;
 import beast.base.inference.State;
+import beast.base.inference.parameter.IntegerParameter;
+import beast.base.inference.parameter.Parameter;
+import beast.base.inference.parameter.RealParameter;
+import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeDistribution;
-import jdk.jshell.spi.ExecutionControl.NotImplementedException;
 
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.lang.UnsupportedOperationException;
 
-import static org.junit.Assert.assertEquals;
+
+/**
+ * @author Kylie Chen
+ */
 
 @Description("Mosse tree model")
 public class MosseDistribution extends TreeDistribution {
 
-    final static double DELTA = 1E-8;
+    final public Input<IntegerParameter> nxInput = new Input<>("nx", "number of bins for substitution rate", new IntegerParameter("1024"));
+    final public Input<RealParameter> dxInput = new Input<>("dx", "distance between xs", new RealParameter("0.0001"));
+    final public Input<RealParameter> driftInput = new Input<>("drift", "drift parameter", new RealParameter("0.0"));
+    final public Input<RealParameter> diffusionInput = new Input<>("diffusion", "diffusion parameter", new RealParameter("0.001"));
+    final public Input<RealParameter> dtInput = new Input<>("dt", "time interval dt", new RealParameter("0.01"));
+    final public Input<IntegerParameter> widthInput = new Input<>("width", "width of the kernel for convolution", new IntegerParameter("10"));
+    final public Input<IntegerParameter> resolutionInput = new Input<>("resolution", "scale factor for resolution of bins", new IntegerParameter("1"));
+
+
+    final public int FLAG_FFTW3_DEFAULT = 0;
+
 
     static {
         System.loadLibrary("test");
     }
 
+    /**
+     * initialize mosse C object
+     * @param nx number of bins for substitution rate
+     * @param dx distance between xs
+     * @param array_nd plan dimensions for FFTW3 integration
+     * @param flags flags for FFTW3 integration
+     * @return mosse object pointer
+     */
     private native long makeMosseFFT(int nx, double dx, int[] array_nd, int flags);
 
+    /**
+     * destroy mosse C object
+     * @param obj_ptr mosse object pointer
+     */
     private native void mosseFinalize(long obj_ptr);
 
     private native double[] doIntegrateMosse(long obj_ptr, double[] vars, double[] lambda, double[] mu,
             double drift, double diffusion, double[] Q, int nt, double dt, int pad_left, int pad_right);
 
-    public static void main(String[] args) throws IOException {
-        MosseDistribution d = new MosseDistribution();
-
-        int[] nd = {5}; // number of dimensions for each fft plan
-        int nx = 1024; // number of bins
-        double dx_input = 0.0001;
-        int r = 4;
-        double dx = dx_input * r;
-
-        // reading in test case input
-        double[] vars = d.readArray("testcase/integrate_vars.txt");
-        double[] lambda = d.readArray("testcase/integrate_lambda.txt");
-        double[] mu = d.readArray("testcase/integrate_mu.txt");
-        double[] Q = d.readArray("testcase/integrate_Q.txt");
-
-        assertEquals(5120, vars.length);
-        assertEquals(943, lambda.length);
-        assertEquals(943, mu.length);
-        assertEquals(15088, Q.length);
-
-        // diffusion parameters
-        double drift = 0.0;
-        double diffusion = 0.001;
-
-        // time step parameters
-        double dt_max = 0.01;
-        double len = 2; // total branch time
-        int nt = (int) Math.ceil(len / dt_max); // number of time steps (200 for low res)
-        System.out.println("nt: " + nt);
-
-        int pad_left = 40;
-        int pad_right = pad_left;
-
-        double[][] ans = new double[nx][vars.length / nx];
-        double logP = d.doIntegration(
-                nx, dx, nd, 0,
-                vars, lambda, mu, drift, diffusion, Q, nt, dt_max,
-                pad_left, pad_right, ans);
-
-        // print results
-        System.out.println("logP: " + logP);
-
-        double expected_ans_r = -0.2653163;
-        assertEquals(expected_ans_r, logP, DELTA);
-    }
-
-    private double[][] eProbs;
-    private double[][] dProbs;
-
     public void initAndValidate() {
 
     }
 
-    public double doIntegration(int nx, double dx, int[] nd, int flags,
+    public int getPadLeft(boolean lowResolution) {
+        double mean = driftInput.get().getValue() * dtInput.get().getValue();
+        double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
+        double dx = dxInput.get().getValue();
+        int width = widthInput.get().getValue();
+        int resolution = resolutionInput.get().getValue();
+        int padLeft = 0;
+        if (lowResolution) {
+            padLeft = (int) Math.ceil(-(mean - width * sd) / dx);
+        } else {
+            padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution);
+        }
+        return Math.abs(padLeft);
+    }
+
+    public int getPadRight(boolean lowResolution) {
+        double mean = driftInput.get().getValue() * dtInput.get().getValue();
+        double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
+        double dx = dxInput.get().getValue();
+        int width = widthInput.get().getValue();
+        int resolution = resolutionInput.get().getValue();
+        int padRight = 0;
+        if (lowResolution) {
+            padRight = (int) Math.ceil((mean + width * sd) / dx);
+        } else {
+            padRight = (int) Math.ceil((mean + width * sd) / dx / resolution);
+        }
+        return Math.abs(padRight);
+    }
+
+    public double calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q, double[] result) {
+        double logP = 0.0;
+        // getting parameter values
+        int nx = nxInput.get().getValue();
+        double dx = dxInput.get().getValue();
+        int[] nd = {5};
+        double drift = driftInput.get().getValue();
+        double diffusion = diffusionInput.get().getValue();
+        double dt = dtInput.get().getValue();
+        int nt = (int) Math.ceil(branchTime / dt);
+
+        int padLeft = getPadLeft(true); // using low resolution
+        int padRight = getPadRight(true);
+
+        result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
+            vars, lambda, mu,
+            drift, diffusion,
+            Q, nt, dt,
+            padLeft, padRight);
+        int ncol = vars.length / nx; // 5 dimensions
+        double[][] ans = new double[nx][ncol];
+        logP = calculateBranchLogP(result, nx, ncol, dx, ans);
+        return logP;
+    }
+
+    /**
+     * calculate the log probability on a single branch
+     * @param array input non logged partials from doIntegration()
+     * @param nx number of bins for substitution rate
+     * @param ncol number of columns
+     * @param dx distance between xs
+     * @param ans array for storing logged result
+     * @return log probability
+     */
+    public double calculateBranchLogP(double[] array, int nx, int ncol, double dx, double[][] ans) {
+        double logP = logCompensation(nx, ncol, dx, array, ans);
+        return logP; // return log compensated result
+    }
+
+    /**
+     * perform integration along a single branch
+     * @param nx number of bins for substitution rate
+     * @param dx distance between xs
+     * @param nd plan dimensions for FFT3 integration
+     * @param flags flags for FFTW3 integration
+     * @param vars array of tips or partials
+     * @param lambda array of birth-rates
+     * @param mu array of death-rates
+     * @param drift drift parameter
+     * @param diffusion diffusion parameter
+     * @param Q exponentiated form of the Q matrix
+     * @param nt number of time steps
+     * @param dt_max maximum time step
+     * @param pad_left padding size left of the kernel (zero padding)
+     * @param pad_right padding size right of the kernel (zero padding)
+     * @return partial probabilities
+     */
+    public double[] doIntegration(int nx, double dx, int[] nd, int flags,
                               double[] vars, double[] lambda, double[] mu,
                               double drift, double diffusion,
                               double[] Q, int nt, double dt_max,
-                              int pad_left, int pad_right, double[][] ans) {
+                              int pad_left, int pad_right) {
         // make mosse fft object pointer
         long ptr = makeMosseFFT(nx, dx, nd, flags);
         // integrate using C propagate x and propagate t
         double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
-        // log compensation
-        int ncol = vars.length / nx;
-        double logP = logCompensation(nx, ncol, dx, result, ans);
         mosseFinalize(ptr); // destroy obj pointer
-        return logP;
+        return result; // return non logged results
     }
 
+    /**
+     *
+     * @param nrow number of rows
+     * @param ncol number of columns
+     * @param dx distance between xs
+     * @param result non-logged partial probabilities
+     * @param ans logged partial probabilities
+     * @return logged partial probabilities
+     */
     public double logCompensation(int nrow, int ncol, double dx, double[] result, double[][] ans) {
         double logP = 0.0;
         int count = 0;
@@ -130,27 +201,6 @@ public class MosseDistribution extends TreeDistribution {
         return logP;
     }
 
-    private double[] readArray(String filename) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(filename));
-        String line = reader.readLine();
-        List<Double> list = new ArrayList<Double>();
-        while (line != null) {
-            String[] elements = line.trim().split(", ");
-            for (String i: elements) {
-                if (i != "") {
-                    list.add(Double.parseDouble(i.trim()));
-                }
-            }
-            line = reader.readLine();
-        }
-        reader.close();
-        double[] arr = new double[list.size()];
-        for (int i = 0; i < arr.length; i++) {
-            arr[i] = list.get(i);
-        }
-        return arr;
-    }
-
     @Override
     public List<String> getArguments() {
         return null;
@@ -163,6 +213,7 @@ public class MosseDistribution extends TreeDistribution {
 
     @Override
     public void sample(State state, Random random) {
+        throw new UnsupportedOperationException();
     }
 
 }
