@@ -1,4 +1,5 @@
 <package name='beast-mosse' version='0.0.2'>
-  <depends on='beast2' atleast='2.7.0'/>
-  <depends on='BEASTLabs' atleast='2.0.0'/>
+  <depends on='Beast2' atleast='2.7.8'/>
+  <depends on='BeastFX' atleast='2.7.8'/>
+  <depends on='BEASTLabs' atleast='2.0.3'/>
 </package>
