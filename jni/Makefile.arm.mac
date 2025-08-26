@@ -1,0 +1,18 @@
+CC=gcc
+JAVA_HOME := $(shell /usr/libexec/java_home)
+CFLAGS=-I. -g -O2 -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/darwin/ -Werror -I/opt/homebrew/include
+DEPS = mosse-eqs-fftC.h quasse_eqs-fftC.h rfftw.h
+OBJ = main.o
+LFLAGS =-L/opt/homebrew/lib -shared -fPIC
+
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
+
+libtest.dylib: $(OBJ)
+	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) -lfftw3 -lm
+
+
+.PHONY: clean
+
+clean:
+	rm -f *.o main

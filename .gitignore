@@ -1,0 +1,7 @@
+/bin/
+.classpath
+.project
+jni/*.o
+jni/*.dylib
+jni/*.so
+jni/Makefile
