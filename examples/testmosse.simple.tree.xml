@@ -1,0 +1,106 @@
+<beast version='2.0'
+    namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood'>
+
+    <!-- The sequence alignment                                                  -->
+    <!-- ntax=20 nchar=2000                                                      -->
+    <!-- npatterns=360                                                           -->
+    <data
+        id="alignment" dataType="nucleotide">
+        <sequence taxon="t0">
+            A
+        </sequence>
+        <sequence taxon="t1">
+            C
+        </sequence>
+    </data>
+
+    <taxonset
+        id="taxonset" spec="beast.base.evolution.alignment.TaxonSet">
+        <taxon id="t0" spec="Taxon" />
+        <taxon id="t1" spec="Taxon" />
+    </taxonset>
+
+    <tree
+        id='tree' spec='beast.base.evolution.tree.TreeParser'
+        IsLabelledNewick='true'
+        newick='(t0: 0.5, t1: 0.5);'
+        taxa='@alignment' />
+
+    <MosseTipLikelihood id="mossetiplikelihood"
+        spec="mosse.MosseTipLikelihood"
+        subst="0.01" logscale="true">
+        <epsilon id="epsilon" spec="parameter.RealParameter">0.01</epsilon>
+        <beta id="beta" dimension="2" spec="parameter.RealParameter">0.1 0.2</beta>
+    </MosseTipLikelihood>
+
+    <JukesCantor
+        id="JC" spec="beast.base.evolution.substitutionmodel.JukesCantor" />
+
+    <SiteModel
+        id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
+        mutationRate="1.0" substModel="@JC"
+        gammaCategoryCount="1.0" />
+
+    <MosseDistribution id="treemodel"
+        spec="mosse.MosseDistribution" tree="@tree" />
+
+    <LogisticFunction
+        id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
+        curveMaxY="0.2" sigmoidMidpoint="0.0" logisticGrowthRate="2.5" />
+
+    <ConstantLinkFn
+        id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
+
+    <run
+        chainLength="500" id="mcmc" spec="MCMC">
+
+        <state id="state" storeEvery="10000">
+            <stateNode idref="epsilon" />
+            <stateNode idref="beta" />
+        </state>
+
+        <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
+
+            <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
+                <distribution id="mossetreelikelihood"
+                    spec="mosse.MosseTreeLikelihood" 
+                    data="@alignment" tree="@tree" siteModel="@sitemodel"
+                    tipModel="@mossetiplikelihood" treeModel="@treemodel"
+                    startSubsRate="0.01" numRateBins="1024"
+                    lambdaFunc="@logfunc" muFunc="@constfunc">
+                    <traits id="trait0"
+                        spec="beast.base.evolution.tree.TraitSet"
+                        traitname="trait0" taxa="@taxonset"
+                        value="t0=0.3, t1=0.3" />
+                    <traits id="trait1"
+                        spec="beast.base.evolution.tree.TraitSet"
+                        traitname="trait1" taxa="@taxonset"
+                        value="t0=0.15, t1=0.1" />
+                </distribution>
+            </distribution>
+
+            <!-- START prior-->
+            <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
+                <distribution id="EpsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
+                    <distr id="LogNormal.Epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" offset="0.0" meanInRealSpace="false">
+                        <parameter name="M" value="1.0" estimate="false" />
+                        <parameter name="S" value="1.0" estimate="false" />
+                    </distr>
+                </distribution>
+            </distribution>
+            <!-- END prior-->
+        </distribution>
+
+        <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
+            scaleFactor="0.75" weight="3.0" />
+
+        <logger logEvery="10" fileName="/Users/thomaswong/Project_msi/workplace/beast-mosse/examples/test.log" model="@likelihood">
+            <log idref='posterior' />
+            <log idref='likelihood' />
+            <log idref="mossetreelikelihood" />
+            <log idref="beta" />
+            <log idref="epsilon" />
+        </logger>
+    </run>
+
+</beast>

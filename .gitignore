@@ -5,3 +5,7 @@ jni/*.o
 jni/*.dylib
 jni/*.so
 jni/Makefile
+.DS_Store
+src/.DS_Store
+test/.DS_Store
+*.log

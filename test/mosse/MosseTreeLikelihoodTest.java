@@ -81,7 +81,7 @@ public class MosseTreeLikelihoodTest {
                 "beta", new RealParameter(betasArray),
                 "subst", Double.toString(meanSubst),
                 "epsilon", Double.toString(epsilon),
-                "logscale", "false"
+                "logscale", "true"
         );
         tipModel.initAndValidate();
 
