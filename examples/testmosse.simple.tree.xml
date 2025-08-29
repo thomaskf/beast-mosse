@@ -94,7 +94,7 @@
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
             scaleFactor="0.75" weight="3.0" />
 
-        <logger logEvery="10" fileName="/Users/thomaswong/Project_msi/workplace/beast-mosse/examples/test.log" model="@likelihood">
+        <logger logEvery="10" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
             <log idref='likelihood' />
             <log idref="mossetreelikelihood" />
