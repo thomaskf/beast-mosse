@@ -9,3 +9,4 @@ jni/Makefile
 src/.DS_Store
 test/.DS_Store
 *.log
+*.xml.state
