@@ -105,11 +105,14 @@ public class MosseDistribution extends TreeDistribution {
         int padLeft = getPadLeft(true); // using low resolution
         int padRight = getPadRight(true);
 
-        result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
+        double[] the_result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
             vars, lambda, mu,
             drift, diffusion,
             Q, nt, dt,
             padLeft, padRight);
+
+        System.arraycopy(the_result, 0, result, 0, the_result.length);
+        
         int ncol = vars.length / nx; // 5 dimensions
         double[][] ans = new double[nx][ncol];
         logP = calculateBranchLogP(result, nx, ncol, dx, ans);

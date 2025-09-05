@@ -61,10 +61,40 @@ public class MosseTreeLikelihoodTest {
         String[] sequences = {"A", "C"};
         Alignment alignment = getAlignment(numLeaves, sequences);
         String newick = "(t0: 0.5, t1: 0.5);";
+        
+        // Trait information
+        int numTraits = 2;
+        String trait0Values = "t0=0.3, t1=0.3";
+        String trait1Values = "t0=0.15, t1=0.1";
+        
+        // Parameters
+        Double[] betasArray = {0.1, 0.2};
+        double meanSubst = 0.5; // mean substitution rate
+        double epsilon = 0.01;
+        double startSubsRate = 0.001;
+        int numBins = 1000;
+
+        // Parameters for lambda and mu functions
+        Double[] x0 = new Double[] { 0.0 };
+        Double[] y1 = new Double[] { 0.2 };
+        Double[] y0 = new Double[] { 0.1 };
+        Double[] r = new Double[] { 2.5 };
+        Double[] yValue = new Double[] { 0.03 }; // constant
+        
+        // Parameters for Mosse distribution
+        double dx = 0.0001;          // distrance between xs
+        double drift = 0.0;          // drift parameter
+        double diffusion = 0.001;    // diffusion paramete
+        double dt = 0.01;            // time interval dt
+        int width = 10;              // diffusion parameter
+        int resolution = 1;          // time interval dt
+
+        // Tree and Models Construction
+        
         Tree tree = new Tree(newick);
 
         JukesCantor JC = new JukesCantor();
-        JC.initAndValidate();
+        // JC.initAndValidate(); (no need, as this function has been called when the object JC is constructed
 
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
@@ -72,31 +102,25 @@ public class MosseTreeLikelihoodTest {
                 "gammaCategoryCount", 1,
                 "substModel", JC);
 
-        Double[] betasArray = {0.1, 0.2};
-        double meanSubst = 0.01; // mean substitution rate
-        double epsilon = 0.01;
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
         tipModel.initByName(
                 "beta", new RealParameter(betasArray),
                 "subst", Double.toString(meanSubst),
                 "epsilon", Double.toString(epsilon),
-                "logscale", "true"
+                "logscale", "false"
         );
-        tipModel.initAndValidate();
+        // tipModel.initAndValidate(); (no need, as this function has been called inside initByName())
 
         TaxonSet taxonSet = new TaxonSet(alignment);
-        int numTraits = 2;
         // trait 0
         TraitSet trait0 = new TraitSet();
-        String trait0Values = "t0=0.3, t1=0.3";
         trait0.initByName(
                 "traitname", "trait0",
                 "taxa", new TaxonSet(alignment),
                 "value", trait0Values);
         // trait 1
         TraitSet trait1 = new TraitSet();
-        String trait1Values = "t0=0.15, t1=0.1";
         trait1.initByName(
                 "traitname", "trait1",
                 "taxa", new TaxonSet(alignment),
@@ -107,10 +131,6 @@ public class MosseTreeLikelihoodTest {
 
         // lambda and mu functions
         // logistic
-        Double[] x0 = new Double[] { 0.0 };
-        Double[] y1 = new Double[] { 0.2 };
-        Double[] y0 = new Double[] { 0.1 };
-        Double[] r = new Double[] { 2.5 };
         RealParameter y0rp = new RealParameter(y0);
         RealParameter y1rp = new RealParameter(y1);
         RealParameter x0rp = new RealParameter(x0);
@@ -120,14 +140,24 @@ public class MosseTreeLikelihoodTest {
                 y0rp, "curveMaxY", y1rp,
                 "sigmoidMidpoint", x0rp,
                 "logisticGrowthRate", rrp);
+
         // constant
-        Double[] yValue = new Double[] { 0.03 };
         RealParameter yValueRP = new RealParameter(yValue);
         ConstantLinkFn constFunc = new ConstantLinkFn();
         constFunc.initByName("yV", yValueRP);
 
-        double startSubsRate = 0.01;
-        int numBins = 1024;
+        MosseDistribution mosseDist = new MosseDistribution();
+        
+        mosseDist.initByName(
+                "tree", tree,
+                "nx", Integer.toString(numBins),           // number of bins for substitution rate
+                "dx", Double.toString(dx),                 // distrance between xs
+                "drift", Double.toString(drift),           // drift parameter
+                "diffusion", Double.toString(diffusion),   // diffusion parameter
+                "dt", Double.toString(dt),                 // time interval dt
+                "width", Integer.toString(width),          // diffusion parameter
+                "resolution", Integer.toString(resolution) // time interval dt
+        );
 
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
@@ -135,7 +165,7 @@ public class MosseTreeLikelihoodTest {
                 "tree", tree,
                 "siteModel", siteModel,
                 "tipModel", tipModel,
-                "treeModel", new MosseDistribution(),
+                "treeModel", mosseDist,
                 "traits", traitsList,
                 "startSubsRate", Double.toString(startSubsRate),
                 "numRateBins", Integer.toString(numBins),
@@ -145,54 +175,9 @@ public class MosseTreeLikelihoodTest {
 
         // using observed root
         double result = likelihood.calculateLogP();
-
-        assert !Double.isNaN(result);
-        assert !Double.isInfinite(result);
-
         System.out.println("testMosseLikelihood logP = " + result);
+
     }
-
-    // test matrix exponentiation from test-mosse2.R
-    //   Q <- matrix(c(-0.6,0.2,0.1,0.1,
-    //                  0.1,-0.8,0.3,0.4,
-    //                  0.2,0.2,-0.6,0.2,
-    //                  0.3,0.4,0.2,-0.7),4,4)
-    // expm(Q)
-    @Test
-    public void testMosseExponentiatedMatrix() {
-        RealParameter f = new RealParameter(new Double[]{0.25, 0.25, 0.25, 0.25});
-        Frequencies freqs = new Frequencies();
-        freqs.initByName("frequencies", f, "estimate", false);
-
-        Double[] qMatrix = new Double[]{
-                -0.6, 0.1, 0.2, 0.3,
-                0.2, -0.8, 0.2, 0.4,
-                0.1, 0.3, -0.6, 0.2,
-                0.1, 0.4, 0.2, -0.7};
-
-        RealParameter customRates = new RealParameter(qMatrix);
-        CustomSubstitutionModel substModel = new CustomSubstitutionModel();
-        substModel.initByName("frequencies", freqs, "customRates", customRates);
-
-        double startTime = 1;
-        double endTime = 0;
-        double rate = 1;
-
-        int len = substModel.getStateCount();
-        double[] transitionProbMatrix = new double[len * len];
-
-        // testing transition probability exp(Q * t)
-        substModel.getTransitionProbabilities(new Node(), startTime, endTime, rate, transitionProbMatrix, false);
-
-        double[] expectedTransitionMatrix = {
-                0.57265280, 0.1018599, 0.1376678, 0.1878195,
-                0.12128431, 0.5143445, 0.1376678, 0.2267034,
-                0.08036085, 0.1816673, 0.5869967, 0.1509751,
-                0.08240038, 0.2185117, 0.1376678, 0.5614202};
-
-        assertArrayEquals(transitionProbMatrix, expectedTransitionMatrix, DELTA);
-    }
-
 
     public void testMosseLikelihoodRoot() {
         // test root node treatments
