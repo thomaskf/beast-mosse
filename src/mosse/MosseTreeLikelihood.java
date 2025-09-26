@@ -74,6 +74,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     protected double startSubsRate;
     protected int numRateBins;
     protected int numEntries; // number of non-zero elements in lambdas
+    protected int padLeft;
+    protected int padRight;
+    protected boolean lowResolution;
 
     protected double[] lambdas;
 
@@ -137,8 +140,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         int patterns = dataInput.get().getPatternCount();
 
         // set likelihood core number of states and number of rate bins
-        int padLeft = treeModel.getPadLeft(true); // using low resolution
-        int padRight = treeModel.getPadRight(true);
+        lowResolution = false; 
+        padLeft = treeModel.getPadLeft(lowResolution); // using low resolution
+        padRight = treeModel.getPadRight(lowResolution);
         mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins, padLeft, padRight);
 
         // num non-zero entries (length of lambda and mu)
@@ -260,25 +264,66 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
     private void traverseFull(Node node) {
         int numPlan = 5; // dimensions
-        double deltaT = 0.001; // dt
-        double rate = startSubsRate; // dx
+        double deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
+        double rate = treeModel.dxInput.get().getValue(); // dx
         int numStates = dataInput.get().getDataType().getStateCount();
         int numPattern = dataInput.get().getPatternCount();
 
         double[] transitionMatrix = new double[numStates * numStates];
         double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
         // P(0) = exp(dx * Q * dt)
+        
+        System.out.println("deltaT=" + deltaT + "; rate=" + rate + "; numEntries=" + numEntries);
+    
+        
         substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater than endTime
-        transitionMatrices[0] = transitionMatrix;
-        // update transitionMatrices
-        for (int i = 1; i < numEntries; i++) {
-            double[] prevMatrix = transitionMatrices[i - 1];
+        
+        System.out.print("**transitionMatrix:");
+        for (int i = 0; i < transitionMatrix.length; i++)
+        	System.out.print(" " + transitionMatrix[i]);
+        System.out.println();
+        
+        double[] prevMatrix = new double[numStates * numStates];
+        prevMatrix = transitionMatrix;
+
+        // skip the first padLeft entries
+        for (int i = 0; i < padLeft; i++) {
             // multiplication of matrix
-            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrices[0]);
+            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrix);
             DoubleMatrix matrixTwo = new DoubleMatrix(numStates, numStates, prevMatrix);
             DoubleMatrix result = matrixOne.mmul(matrixTwo);
-            transitionMatrices[i] = result.toArray();
+            prevMatrix = result.toArray();
         }
+        int l = 0;
+        // update transitionMatrices
+        transitionMatrices[l] = prevMatrix;
+        for (int i = padLeft; i < numEntries + padLeft - 1; i++) {
+            // multiplication of matrix
+            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrix);
+            DoubleMatrix matrixTwo = new DoubleMatrix(numStates, numStates, transitionMatrices[l]);
+            DoubleMatrix result = matrixOne.mmul(matrixTwo);
+            l++;
+            transitionMatrices[l] = result.toArray();
+        }
+        
+        // show the first entry of transitionMatrices
+        System.out.println("First entry of transitionMatrices:");
+        for (int i = 0; i < numStates; i++) {
+        	for (int j = 0; j < numStates; j++) {
+        		System.out.printf(" " + transitionMatrices[0][i * numStates + j]);
+        	}
+        	System.out.println();
+        }
+        
+        // show the last entry of transitionMatrices
+        System.out.println("Last entry of transitionMatrices -- " + (numEntries - 1) + "'s entry");
+        for (int i = 0; i < numStates; i++) {
+        	for (int j = 0; j < numStates; j++) {
+        		System.out.printf(" " + transitionMatrices[(numEntries - 1)][i * numStates + j]);
+        	}
+        	System.out.println();
+        }
+        
         flatTransitionMatrices = Arrays.stream(transitionMatrices)
                 .flatMapToDouble(Arrays::stream)
                 .toArray();
@@ -457,6 +502,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 vals[i][j] = result[count];
                 count++;
             }
+        }
+        // show the values of vals
+        System.out.println("vals:");
+        for (int j = 0; j < ntypes + 1; j++) { // nucleotide types columns
+            for (int i = 0; i < nx; i++) { // nx rows
+            	System.out.print(" " + vals[i][j]);
+            }
+            System.out.println();
         }
 
         double[][] dRoot = getDValues(vals); // get root D values in last column
