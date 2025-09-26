@@ -71,8 +71,9 @@ public class MosseDistribution extends TreeDistribution {
         if (lowResolution) {
             padLeft = (int) Math.ceil(-(mean - width * sd) / dx);
         } else {
-            padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution);
+            padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution) * resolution;
         }
+        System.out.println("mean = " + mean + "; width = " + width + "; sd = " + sd + "; dx = " + dx + "; resolution = " + resolution + ";padleft = " + padLeft);
         return Math.abs(padLeft);
     }
 
@@ -86,7 +87,7 @@ public class MosseDistribution extends TreeDistribution {
         if (lowResolution) {
             padRight = (int) Math.ceil((mean + width * sd) / dx);
         } else {
-            padRight = (int) Math.ceil((mean + width * sd) / dx / resolution);
+            padRight = (int) Math.ceil((mean + width * sd) / dx / resolution) * resolution;
         }
         return Math.abs(padRight);
     }
@@ -105,11 +106,50 @@ public class MosseDistribution extends TreeDistribution {
         int padLeft = getPadLeft(true); // using low resolution
         int padRight = getPadRight(true);
 
+        System.out.print("Q:");
+        for (int i = 0; i < Q.length; i++)
+        	System.out.print(" " + Q[i]);
+        System.out.println();
+        
+        System.out.print("nx=" + nx + "; dx=" + dx + "; ");
+        System.out.print("nd={");
+        for (int i = 0; i < nd.length; i++)
+        	System.out.print(" " + nd[i]);
+        System.out.print("}; ");
+        System.out.print("vars={");
+        for (int i = 0; i < 2; i++)
+        	System.out.print(" " + vars[i]);
+        System.out.print("...}; ");
+        System.out.print("mu={");
+        for (int i = 0; i < 2; i++)
+        	System.out.print(" " + mu[i]);
+        System.out.print("...}; ");
+        System.out.print("drift=" + drift + "; diffusion=" + diffusion + "; nt=" + nt + "; dt=" + dt + "; padLeft = " + padLeft + "; padRight = " + padRight);
+        System.out.println();
+
+        System.out.print("lambda={");
+        for (int i = 0; i < 5; i++) {
+        	System.out.print(" " + lambda[i]);
+        }
+        System.out.println("...}");
+        
+        
         double[] the_result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
             vars, lambda, mu,
             drift, diffusion,
             Q, nt, dt,
             padLeft, padRight);
+        
+        System.out.print("the_result:");
+        int kk = 0;
+        for (int i = 0; i < 5; i++) {
+        	for (int j = 0; j < nx; j++) {
+        		System.out.print(" " + the_result[kk]);
+        		kk++;
+        	}
+        	System.out.println();
+        }
+        System.out.println();
 
         System.arraycopy(the_result, 0, result, 0, the_result.length);
         
@@ -129,6 +169,18 @@ public class MosseDistribution extends TreeDistribution {
      * @return log probability
      */
     public double calculateBranchLogP(double[] array, int nx, int ncol, double dx, double[][] ans) {
+    	
+    	/*
+    	System.out.println("The ans from intergation:");
+    	for (int i = 0; i < nx; i++) {
+    		for (int j = 0; j < ncol; j++) {
+    			int index = j * nx + i;
+    			System.out.print(" " + array[index]);
+    		}
+    		System.out.println();
+    	}
+    	*/
+    	
         double logP = logCompensation(nx, ncol, dx, array, ans);
         return logP; // return log compensated result
     }
@@ -157,9 +209,22 @@ public class MosseDistribution extends TreeDistribution {
                               double[] Q, int nt, double dt_max,
                               int pad_left, int pad_right) {
         // make mosse fft object pointer
+    	
+    	System.out.print("Before calling makeMosseFFT, nx = " + nx + "; dx = " + dx + "; flags = " + flags + "; nd = {");
+    	for (int i = 0; i < nd.length; i++)
+    		System.out.print(" " + nd[i]);
+    	System.out.println("}");
+    	System.out.println("Q's length = " + Q.length);
+        System.out.println("Q[1] = " + Q[1] );
+    	
         long ptr = makeMosseFFT(nx, dx, nd, flags);
         // integrate using C propagate x and propagate t
         double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
+        System.out.println("result's length = " + result.length);
+        System.out.print("***Result: ");
+        for (int i = 0; i < result.length; i++)
+        	System.out.print(" " + result[i]);
+        System.out.println();
         mosseFinalize(ptr); // destroy obj pointer
         return result; // return non logged results
     }

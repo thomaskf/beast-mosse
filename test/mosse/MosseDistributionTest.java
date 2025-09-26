@@ -55,7 +55,7 @@ public class MosseDistributionTest {
         int[] nd = {5}; // number of dimensions for each fft plan
         int nx = 1024; // number of bins
         double dx_input = 0.0001;
-        int r = 4;
+        int r = 1;
         double dx = dx_input * r;
 
         // reading in test case input
