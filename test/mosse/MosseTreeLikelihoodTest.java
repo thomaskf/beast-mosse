@@ -72,7 +72,7 @@ public class MosseTreeLikelihoodTest {
         // Double[] betasArray = {0.1, 0.2};
         double meanSubst = 0.0; // mean substitution rate
         double epsilon = 0.01;
-        double startSubsRate = 0.001;
+        double startSubsRate = 0.0001;
         int numBins = 1024 * 4;
 
         // Parameters for lambda and mu functions
@@ -83,12 +83,13 @@ public class MosseTreeLikelihoodTest {
         Double[] yValue = new Double[] { 0.03 }; // constant
         
         // Parameters for Mosse distribution
-        double dx = 0.0001;          // distance between xs (should be the same as startSubsRate)
+        double dx = 0.0001;          // distance between xs
         double drift = 0.0;          // drift parameter
         double diffusion = 0.001;    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;              
-        int resolution = 4;          
+        int resolution = 4;
+        boolean lowresolution = false;   // using high resolution 
 
         // Tree and Models Construction
         
@@ -157,7 +158,8 @@ public class MosseTreeLikelihoodTest {
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),          
-                "resolution", Integer.toString(resolution)
+                "resolution", Integer.toString(resolution), 
+                "lowresolution", Boolean.toString(lowresolution)
         );
 
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
@@ -172,7 +174,7 @@ public class MosseTreeLikelihoodTest {
                 "numRateBins", Integer.toString(numBins),
                 "lambdaFunc", logFunc,
                 "muFunc", constFunc
-                );
+        );
 
         // using observed root
         double result = likelihood.calculateLogP();

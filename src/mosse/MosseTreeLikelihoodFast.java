@@ -135,8 +135,8 @@ public class MosseTreeLikelihoodFast extends TreeLikelihood {
         int patterns = dataInput.get().getPatternCount();
 
         // set likelihood core number of states and number of rate bins
-        int padLeft = treeModel.getPadLeft(true);
-        int padRight = treeModel.getPadRight(true);
+        int padLeft = treeModel.getPadLeft();
+        int padRight = treeModel.getPadRight();
         mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins, padLeft, padRight);
 
         String className = getClass().getSimpleName();
@@ -179,7 +179,7 @@ public class MosseTreeLikelihoodFast extends TreeLikelihood {
             int k = 0;
             int taxonIndex = data.getTaxonIndex(node.getID());
             for (int patternIndex = 0; patternIndex < patternCount; patternIndex++) {
-                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numRateBins, startSubsRate, endSubsRate);
+                double[] tipLikelihoods = tipModel.getTipLikelihoods2(traitValues, numRateBins, startSubsRate, endSubsRate);
                 int stateCount = data.getPattern(taxonIndex, patternIndex);
                 boolean[] stateSet = data.getStateSet(stateCount);
                 // E initial values are zero

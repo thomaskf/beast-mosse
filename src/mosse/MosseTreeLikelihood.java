@@ -140,9 +140,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         int patterns = dataInput.get().getPatternCount();
 
         // set likelihood core number of states and number of rate bins
-        lowResolution = false; 
-        padLeft = treeModel.getPadLeft(lowResolution); // using low resolution
-        padRight = treeModel.getPadRight(lowResolution);
+        padLeft = treeModel.getPadLeft(); // using low resolution
+        padRight = treeModel.getPadRight();
         mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins, padLeft, padRight);
 
         // num non-zero entries (length of lambda and mu)
@@ -188,7 +187,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             int k = 0;
             int taxonIndex = data.getTaxonIndex(node.getID());
             for (int patternIndex = 0; patternIndex < patternCount; patternIndex++) {
-                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries, startSubsRate);
+            	System.out.println("[setPartials] startSubsRate = " + startSubsRate);
+            	double subsInterval = startSubsRate;
+                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries, startSubsRate + padLeft * subsInterval, subsInterval);
                 int stateCount = data.getPattern(taxonIndex, patternIndex);
                     boolean[] stateSet = data.getStateSet(stateCount);
                     // E initial values are zero
@@ -278,11 +279,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         
         substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater than endTime
         
-        System.out.print("**transitionMatrix:");
-        for (int i = 0; i < transitionMatrix.length; i++)
-        	System.out.print(" " + transitionMatrix[i]);
-        System.out.println();
-        
         double[] prevMatrix = new double[numStates * numStates];
         prevMatrix = transitionMatrix;
 
@@ -305,37 +301,35 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             l++;
             transitionMatrices[l] = result.toArray();
         }
-        
-        // show the first entry of transitionMatrices
-        System.out.println("First entry of transitionMatrices:");
-        for (int i = 0; i < numStates; i++) {
-        	for (int j = 0; j < numStates; j++) {
-        		System.out.printf(" " + transitionMatrices[0][i * numStates + j]);
-        	}
-        	System.out.println();
-        }
-        
-        // show the last entry of transitionMatrices
-        System.out.println("Last entry of transitionMatrices -- " + (numEntries - 1) + "'s entry");
-        for (int i = 0; i < numStates; i++) {
-        	for (int j = 0; j < numStates; j++) {
-        		System.out.printf(" " + transitionMatrices[(numEntries - 1)][i * numStates + j]);
-        	}
-        	System.out.println();
-        }
-        
+
         flatTransitionMatrices = Arrays.stream(transitionMatrices)
                 .flatMapToDouble(Arrays::stream)
                 .toArray();
 
         // get lambdas and mus
         double[] x = getSubstitutionRates(numEntries); // substitution rates
+        
+        System.out.print("substitution rates: x[1..." + x.length + "] =");
+        for (int i = 0; i < x.length; i++)
+        	System.out.print(" " + x[i]);
+        System.out.println();
+        
         lambdas = new double[numEntries];
         mus = new double[numEntries];
-        // System.out.println("numEntries: " + numEntries);
         lambdas = lambdaFunc.getY(x, lambdas, true);
+        
+        System.out.print("lambdas =");
+        for (int i = 0; i < lambdas.length; i++)
+        	System.out.print(" " + lambdas[i]);
+        System.out.println();
+        
         mus = muFunc.getY(x, mus, true);
 
+        System.out.print("mus =");
+        for (int i = 0; i < mus.length; i++)
+        	System.out.print(" " + mus[i]);
+        System.out.println();
+        
         if (node.isLeaf()) {
             // leaf node
             // leaf partials size = nrPatterns * (nrStates + 1) * numBins
@@ -653,8 +647,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
     private double[] getSubstitutionRates(int numElements) {
         double[] res = new double[numElements];
-        res[0] = startSubsRate;
-        double interval = startSubsRate; // use start rate as interval
+        double start = treeModel.dxInput.get().getValue(); 
+        double interval = start; // use start rate as interval
+        res[0] = start + interval * padLeft;
         for(int i = 1; i < numElements; i++) {
             res[i] = res[i - 1] + interval;
         }

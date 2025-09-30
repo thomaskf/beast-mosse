@@ -63,18 +63,28 @@ public class MosseTipLikelihood extends CalculationNode {
 	 *
 	 * @param traits        array of trait values
 	 * @param numBins       number of bins for substitution rate discretization
-	 * @param startSubsRate substitution rate lower bound and interval for rate bins
+	 * @param startSubsRate substitution rate lower bound for rate bins
+	 * @param subsInterval substitution rate interval for rate bins
 	 * @return array of tip likelihoods
 	 */
-	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate) {
-		double subsInterval = startSubsRate;
+	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double subsInterval) {
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
 			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
+			System.out.println("a=" + a + ";b=" + b + ";tipLikelihood=" + tipLikelihoods[i]);
 		}
 		// TODO make logscale consistent with TreeLikelihood
+		
+		/*
+		// show the values of tipLikelihoods
+		System.out.println("numBins = " + numBins);
+		for (int i = 0; i < numBins; i++)
+			if (tipLikelihoods[i] > 0.0)
+				System.out.println("[" + i + "]" + tipLikelihoods[i]);
+		System.out.println();
+		*/
 		return tipLikelihoods;
 	}
 
@@ -86,7 +96,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @param endSubsRate   substitution rate upper bound
 	 * @return array of tip likelihoods
 	 */
-	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
+	public double[] getTipLikelihoods2(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
 		double subsInterval = (endSubsRate - startSubsRate) / numBins;
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
