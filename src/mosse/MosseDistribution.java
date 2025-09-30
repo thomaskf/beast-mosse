@@ -6,6 +6,7 @@ import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.inference.parameter.BooleanParameter;
 import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeDistribution;
 
@@ -28,7 +29,8 @@ public class MosseDistribution extends TreeDistribution {
     final public Input<RealParameter> diffusionInput = new Input<>("diffusion", "diffusion parameter", new RealParameter("0.001"));
     final public Input<RealParameter> dtInput = new Input<>("dt", "time interval dt", new RealParameter("0.01"));
     final public Input<IntegerParameter> widthInput = new Input<>("width", "width of the kernel for convolution", new IntegerParameter("10"));
-    final public Input<IntegerParameter> resolutionInput = new Input<>("resolution", "scale factor for resolution of bins", new IntegerParameter("1"));
+    final public Input<IntegerParameter> resolutionInput = new Input<>("resolution", "scale factor for resolution of bins", new IntegerParameter("4"));
+    final public Input<BooleanParameter> lowresolutionInput = new Input<>("lowresolution", "whether using low resolution", new BooleanParameter("false"));
 
 
     final public int FLAG_FFTW3_DEFAULT = 0;
@@ -61,12 +63,13 @@ public class MosseDistribution extends TreeDistribution {
 
     }
 
-    public int getPadLeft(boolean lowResolution) {
+    public int getPadLeft() {
         double mean = driftInput.get().getValue() * dtInput.get().getValue();
         double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
         double dx = dxInput.get().getValue();
         int width = widthInput.get().getValue();
         int resolution = resolutionInput.get().getValue();
+        boolean lowResolution = lowresolutionInput.get().getValue();
         int padLeft = 0;
         if (lowResolution) {
             padLeft = (int) Math.ceil(-(mean - width * sd) / dx);
@@ -77,12 +80,13 @@ public class MosseDistribution extends TreeDistribution {
         return Math.abs(padLeft);
     }
 
-    public int getPadRight(boolean lowResolution) {
+    public int getPadRight() {
         double mean = driftInput.get().getValue() * dtInput.get().getValue();
         double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
         double dx = dxInput.get().getValue();
         int width = widthInput.get().getValue();
         int resolution = resolutionInput.get().getValue();
+        boolean lowResolution = lowresolutionInput.get().getValue();
         int padRight = 0;
         if (lowResolution) {
             padRight = (int) Math.ceil((mean + width * sd) / dx);
@@ -103,54 +107,15 @@ public class MosseDistribution extends TreeDistribution {
         double dt = dtInput.get().getValue();
         int nt = (int) Math.ceil(branchTime / dt);
 
-        int padLeft = getPadLeft(true); // using low resolution
-        int padRight = getPadRight(true);
+        int padLeft = getPadLeft();
+        int padRight = getPadRight();
 
-        System.out.print("Q:");
-        for (int i = 0; i < Q.length; i++)
-        	System.out.print(" " + Q[i]);
-        System.out.println();
-        
-        System.out.print("nx=" + nx + "; dx=" + dx + "; ");
-        System.out.print("nd={");
-        for (int i = 0; i < nd.length; i++)
-        	System.out.print(" " + nd[i]);
-        System.out.print("}; ");
-        System.out.print("vars={");
-        for (int i = 0; i < 2; i++)
-        	System.out.print(" " + vars[i]);
-        System.out.print("...}; ");
-        System.out.print("mu={");
-        for (int i = 0; i < 2; i++)
-        	System.out.print(" " + mu[i]);
-        System.out.print("...}; ");
-        System.out.print("drift=" + drift + "; diffusion=" + diffusion + "; nt=" + nt + "; dt=" + dt + "; padLeft = " + padLeft + "; padRight = " + padRight);
-        System.out.println();
-
-        System.out.print("lambda={");
-        for (int i = 0; i < 5; i++) {
-        	System.out.print(" " + lambda[i]);
-        }
-        System.out.println("...}");
-        
-        
         double[] the_result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
             vars, lambda, mu,
             drift, diffusion,
             Q, nt, dt,
             padLeft, padRight);
         
-        System.out.print("the_result:");
-        int kk = 0;
-        for (int i = 0; i < 5; i++) {
-        	for (int j = 0; j < nx; j++) {
-        		System.out.print(" " + the_result[kk]);
-        		kk++;
-        	}
-        	System.out.println();
-        }
-        System.out.println();
-
         System.arraycopy(the_result, 0, result, 0, the_result.length);
         
         int ncol = vars.length / nx; // 5 dimensions
@@ -214,17 +179,56 @@ public class MosseDistribution extends TreeDistribution {
     	for (int i = 0; i < nd.length; i++)
     		System.out.print(" " + nd[i]);
     	System.out.println("}");
-    	System.out.println("Q's length = " + Q.length);
-        System.out.println("Q[1] = " + Q[1] );
     	
         long ptr = makeMosseFFT(nx, dx, nd, flags);
         // integrate using C propagate x and propagate t
+        
+        System.out.println("vars.length = " + vars.length);
+        for (int i = 0; i < vars.length; i++)
+        	if (vars[i] > 0.0)
+        		System.out.println("vars[" + i + "] = " + vars[i]);
+        
+        System.out.println("lambda.length = " + lambda.length);
+        System.out.print("lambda =");
+        for (int i = 0; i < 3; i++)
+        	System.out.print(" " + lambda[i]);
+        System.out.println();
+
+        System.out.println("mu.length = " + mu.length);
+        System.out.print("mu =");
+        for (int i = 0; i < 3; i++)
+        	System.out.print(" " + mu[i]);
+        System.out.println();
+
+        System.out.println("drift = " + drift);
+        
+        System.out.println("diffusion = " + diffusion);
+
+        System.out.println("Q.length = " + Q.length);
+        System.out.print("Q =");
+        for (int i = 0; i < 3; i++)
+        	System.out.print(" " + Q[i]);
+        System.out.println();
+
+        System.out.println("nt = " + nt);
+        System.out.println("dt_max = " + dt_max);
+        System.out.println("pad_left = " + pad_left);
+        System.out.println("pad_right = " + pad_right);
+
         double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
         System.out.println("result's length = " + result.length);
-        System.out.print("***Result: ");
-        for (int i = 0; i < result.length; i++)
-        	System.out.print(" " + result[i]);
+        
+        System.out.print("result:");
+        int kk = 0;
+        for (int i = 0; i < 5; i++) {
+        	for (int j = 0; j < nx; j++) {
+        		System.out.print(" " + result[kk]);
+        		kk++;
+        	}
+        	System.out.println();
+        }
         System.out.println();
+
         mosseFinalize(ptr); // destroy obj pointer
         return result; // return non logged results
     }
