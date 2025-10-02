@@ -263,12 +263,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         return logP;
     }
 
-    private void traverseFull(Node node) {
+    /**
+     * traverse the subtree rooted at node
+     * @param node
+     * @return log P
+     */
+    private double traverseFull(Node node) {
         int numPlan = 5; // dimensions
         double deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
         double rate = treeModel.dxInput.get().getValue(); // dx
         int numStates = dataInput.get().getDataType().getStateCount();
         int numPattern = dataInput.get().getPatternCount();
+        double logPNode = 0.0;
 
         double[] transitionMatrix = new double[numStates * numStates];
         double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
@@ -338,8 +344,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
         } else if (!node.isRoot()) {
             // internal node
-            traverseFull(node.getChild(0)); // left child
-            traverseFull(node.getChild(1)); // right child
+        	double logPChild0, logPChild1;
+            logPChild0 = traverseFull(node.getChild(0)); // left child
+            logPChild1 = traverseFull(node.getChild(1)); // right child
+            logPNode += logPChild0;
+            logPNode += logPChild1;
 
             // propagate child branches
             double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
@@ -366,6 +375,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 // propagate each child branch
                 double leftP = treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
                 double rightP = treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+                logPNode += leftP;
+                logPNode += rightP;
 
 //                System.out.println("leftP " + leftP);
 //                System.out.println("rightP " + rightP);
@@ -428,8 +439,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 double[] partialsCombined = new double[partialsLeft.length];
 
                 // propagate each child branch
-                treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+                double leftP = treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
+                double rightP = treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+                logPNode += leftP;
+                logPNode += rightP;
 
                 // assumes t less than tc threshold
                 int leftBound = mosseLikelihoodCore.padLeft + 1;
@@ -462,7 +475,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             // set root node partials
             mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
-            logP = 0.0;
             for (int pattern = 0; pattern < numPattern; pattern++) {
                 int partialSize = numPlan * numRateBins;
                 int startPos = pattern * partialSize;
@@ -472,9 +484,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 boolean conditionSurv = false;
                 
                 double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
-                logP += patternLogLikelihood + dataInput.get().getPatternWeight(pattern);
+                logPNode += patternLogLikelihood + dataInput.get().getPatternWeight(pattern);
             }
         }
+        logP = logPNode;
+        return logPNode;
     }
 
     /**
