@@ -77,7 +77,6 @@ public class MosseDistributionTest {
         double dt_max = 0.01;
         double len = 2; // total branch time
         int nt = (int) Math.ceil(len / dt_max); // number of time steps (200 for low res)
-        double[] lq = {0.0};
 
         int pad_left = 40;
         int pad_right = pad_left;
@@ -87,8 +86,8 @@ public class MosseDistributionTest {
         double[] result = d.doIntegration(
                 nx, dx, nd, 0,
                 vars, lambda, mu, drift, diffusion, Q, nt, dt_max,
-                pad_left, pad_right, lq);
-        double logP = d.calculateBranchLogP(result, nx, ncol, dx, ans, lq);
+                pad_left, pad_right);
+        double logP = d.calculateBranchLogP(result, nx, ncol, dx, ans);
         
         double expected_ans_r = -0.2653163;
         assertEquals(5120, result.length);
