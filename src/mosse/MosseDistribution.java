@@ -97,7 +97,7 @@ public class MosseDistribution extends TreeDistribution {
     }
 
     public double calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q, double[] result) {
-        double logP = 0.0;
+        // double logP = 0.0;
         // getting parameter values
         int nx = nxInput.get().getValue();
         double dx = dxInput.get().getValue();
@@ -109,19 +109,36 @@ public class MosseDistribution extends TreeDistribution {
 
         int padLeft = getPadLeft();
         int padRight = getPadRight();
+        double[] lq = {0.0}; // log scaling for vars
 
         double[] the_result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
             vars, lambda, mu,
             drift, diffusion,
             Q, nt, dt,
-            padLeft, padRight);
+            padLeft, padRight, lq);
         
         System.arraycopy(the_result, 0, result, 0, the_result.length);
         
+        /*
         int ncol = vars.length / nx; // 5 dimensions
         double[][] ans = new double[nx][ncol];
-        logP = calculateBranchLogP(result, nx, ncol, dx, ans);
-        return logP;
+        logP = calculateBranchLogP(result, nx, ncol, dx, ans, lq);
+        
+        System.out.println("logP = " + logP);
+        System.out.println("After log compensation");
+        System.out.println("*result's length = " + result.length);
+        System.out.print("*result:");
+        int kk = 0;
+        for (int i = 0; i < 5; i++) {
+        	for (int j = 0; j < nx; j++) {
+        		System.out.print(" " + result[kk]);
+        		kk++;
+        	}
+        	System.out.println();
+        }
+        System.out.println();
+        */
+        return lq[0];
     }
 
     /**
@@ -131,9 +148,10 @@ public class MosseDistribution extends TreeDistribution {
      * @param ncol number of columns
      * @param dx distance between xs
      * @param ans array for storing logged result
+     * @param lq log-scaling for vars
      * @return log probability
      */
-    public double calculateBranchLogP(double[] array, int nx, int ncol, double dx, double[][] ans) {
+    public double calculateBranchLogP(double[] array, int nx, int ncol, double dx, double[][] ans, double[] lq) {
     	
     	/*
     	System.out.println("The ans from intergation:");
@@ -146,7 +164,9 @@ public class MosseDistribution extends TreeDistribution {
     	}
     	*/
     	
-        double logP = logCompensation(nx, ncol, dx, array, ans);
+    	System.out.println("[calculateBranchLogP] lq = " + lq[0]);
+    	
+        double logP = logCompensation(nx, ncol, dx, array, ans) + lq[0];
         return logP; // return log compensated result
     }
 
@@ -166,13 +186,14 @@ public class MosseDistribution extends TreeDistribution {
      * @param dt_max maximum time step
      * @param pad_left padding size left of the kernel (zero padding)
      * @param pad_right padding size right of the kernel (zero padding)
+     * @param lq log-scaling
      * @return partial probabilities
      */
     public double[] doIntegration(int nx, double dx, int[] nd, int flags,
                               double[] vars, double[] lambda, double[] mu,
                               double drift, double diffusion,
                               double[] Q, int nt, double dt_max,
-                              int pad_left, int pad_right) {
+                              int pad_left, int pad_right, double[] lq) {
         // make mosse fft object pointer
     	
     	System.out.print("Before calling makeMosseFFT, nx = " + nx + "; dx = " + dx + "; flags = " + flags + "; nd = {");
@@ -183,11 +204,21 @@ public class MosseDistribution extends TreeDistribution {
         long ptr = makeMosseFFT(nx, dx, nd, flags);
         // integrate using C propagate x and propagate t
         
+        // normalize the values of vars
+        // ignore the first nx entries (i.e. first row)
+        double vsum = 0.0;
+        for (int i = nx; i < vars.length; i++)
+        	vsum += (vars[i] * dx);
+        for (int i = nx; i < vars.length; i++)
+        	vars[i] /= vsum;
+        // lq[0] = Math.log(vsum); // log scaling
+        System.out.println("[doIntegration] vsum = " + vsum + "; lq = " + lq[0]);
         System.out.println("vars.length = " + vars.length);
+        /*
         for (int i = 0; i < vars.length; i++)
         	if (vars[i] > 0.0)
         		System.out.println("vars[" + i + "] = " + vars[i]);
-        
+        */
         System.out.println("lambda.length = " + lambda.length);
         System.out.print("lambda =");
         for (int i = 0; i < 3; i++)
@@ -216,6 +247,16 @@ public class MosseDistribution extends TreeDistribution {
         System.out.println("pad_right = " + pad_right);
 
         double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
+        
+        // log compensation
+        // ignore the first nx entries (i.e. first row)
+        vsum = 0.0;
+        for (int i = nx; i < result.length; i++)
+        	vsum += (result[i] * dx);
+        for (int i = nx; i < result.length; i++)
+        	result[i] /= vsum;
+        lq[0] = Math.log(vsum); // log scaling
+        
         System.out.println("result's length = " + result.length);
         
         System.out.print("result:");
@@ -245,6 +286,7 @@ public class MosseDistribution extends TreeDistribution {
     public double logCompensation(int nrow, int ncol, double dx, double[] result, double[][] ans) {
         double logP = 0.0;
         int count = 0;
+        System.out.println("[logCompensation] ncol = " + ncol + "; nrow = " + nrow);
         for (int j = 0; j < ncol; j++) {
             for (int i = 0; i < nrow; i++) {
                 ans[i][j] = result[count];
@@ -270,6 +312,7 @@ public class MosseDistribution extends TreeDistribution {
         } else {
             logP = 0.0;
         }
+        System.out.println("[logCompensation] logP = " + logP);
         return logP;
     }
 
