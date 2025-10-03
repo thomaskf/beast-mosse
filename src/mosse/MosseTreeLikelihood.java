@@ -262,6 +262,24 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         traverseFull(tree.getRoot());
         return logP;
     }
+    
+    /**
+     * Compute the normalization (or log compensation)
+     * @param vars -- array to be normalized
+     * @param nx -- number of entries for each row
+     * @param dx
+     * @return log of scaling (i.e. lq)
+     */
+    public double normalization(double[] vars, int nx, double dx) {
+        // normalize the values of vars
+        // ignore the first nx entries (i.e. first row)
+        double vsum = 0.0;
+        for (int i = nx; i < vars.length; i++)
+        	vsum += (vars[i] * dx);
+        for (int i = nx; i < vars.length; i++)
+        	vars[i] /= vsum;
+        return Math.log(vsum);
+    }
 
     /**
      * traverse the subtree rooted at node
@@ -372,11 +390,20 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
                 double[] partialsCombined = new double[partialsLeft.length];
 
+                // normalization on the input partials if the child node is a leaf
+                double dx = treeModel.dxInput.get().getValue();
+                if (node.getLeft().isLeaf())
+                	normalization(partialsLeft, numRateBins, dx);
+                if (node.getRight().isLeaf())
+                	normalization(partialsRight, numRateBins, dx);
+
                 // propagate each child branch
-                double leftP = treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                double rightP = treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
-                logPNode += leftP;
-                logPNode += rightP;
+                treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
+                treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+
+                // log compensation
+                logPNode += normalization(partialsLeft, numRateBins, dx);
+                logPNode += normalization(partialsRight, numRateBins, dx);
 
                 // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
@@ -432,12 +459,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 double[] partialsRight = new double[numPlan * numRateBins];
                 System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
                 double[] partialsCombined = new double[partialsLeft.length];
+                
+                // normalization on the input partials if the child node is a leaf
+                double dx = treeModel.dxInput.get().getValue();
+                if (node.getLeft().isLeaf())
+                	normalization(partialsLeft, numRateBins, dx);
+                if (node.getRight().isLeaf())
+                	normalization(partialsRight, numRateBins, dx);
 
                 // propagate each child branch
-                double leftP = treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                double rightP = treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
-                logPNode += leftP;
-                logPNode += rightP;
+                treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
+                treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+                
+                // log compensation
+                logPNode += normalization(partialsLeft, numRateBins, dx);
+                logPNode += normalization(partialsRight, numRateBins, dx);
 
                 // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
