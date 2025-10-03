@@ -366,7 +366,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 // partial for single pattern
                 int partialSize = numPlan * numRateBins;
                 int startPos = pattern * partialSize;
-                double[] partialsLeft =  new double[numPlan * numRateBins];
+                double[] partialsLeft = new double[numPlan * numRateBins];
                 System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSize);
                 double[] partialsRight = new double[numPlan * numRateBins];
                 System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
@@ -378,11 +378,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 logPNode += leftP;
                 logPNode += rightP;
 
-//                System.out.println("leftP " + leftP);
-//                System.out.println("rightP " + rightP);
-
-                int leftBound = mosseLikelihoodCore.padLeft + 1;
-                int rightBound = numEntries + leftBound;
                 // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
                     for (int j = 0; j < numRateBins; j++) {
@@ -392,10 +387,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                             partialsCombined[index] = partialsLeft[index]; // for testing
                             partialsAllPatterns[k] = partialsLeft[index];
                         } else {
-                            if (j >= leftBound && j < rightBound) {
+                            if (j < numEntries) {
                                 // non padded elements
                                 // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas[j - leftBound]; // birth rate at substitution rate x
+                                double lambdaX = lambdas[j]; // birth rate at substitution rate x
                                 partialsCombined[index] = partialsLeft[index] * partialsRight[index] * lambdaX; // for testing
                                 partialsAllPatterns[k] = partialsLeft[index] * partialsRight[index] * lambdaX;
                             } else {
@@ -445,9 +440,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 logPNode += rightP;
 
                 // assumes t less than tc threshold
-                int leftBound = mosseLikelihoodCore.padLeft + 1;
-                int rightBound = numEntries + leftBound;
-                // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
                     for (int j = 0; j < numRateBins; j++) {
                         int index = i * numRateBins + j;
@@ -456,10 +448,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                             partialsCombined[index] = partialsLeft[index]; // for testing
                             partialsAllPatterns[k] = partialsLeft[index];
                         } else {
-                            if (j >= leftBound && j < rightBound) {
+                            if (j < numEntries) {
                                 // non padded elements
                                 // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas[j - leftBound]; // birth rate at substitution rate x
+                                double lambdaX = lambdas[j]; // birth rate at substitution rate x
                                 partialsCombined[index] = partialsLeft[index] * partialsRight[index] * lambdaX; // for testing
                                 partialsAllPatterns[k] = partialsLeft[index] * partialsRight[index] * lambdaX;
                             } else {
@@ -513,12 +505,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         }
         // show the values of vals
         System.out.println("vals:");
+        /*
         for (int j = 0; j < ntypes + 1; j++) { // nucleotide types columns
             for (int i = 0; i < nx; i++) { // nx rows
             	System.out.print(" " + vals[i][j]);
             }
             System.out.println();
-        }
+        }*/
 
         double[][] dRoot = getDValues(vals); // get root D values in last column
         double[] eRoot = null;

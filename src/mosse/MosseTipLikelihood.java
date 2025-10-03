@@ -73,7 +73,7 @@ public class MosseTipLikelihood extends CalculationNode {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
 			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
-			System.out.println("a=" + a + ";b=" + b + ";tipLikelihood=" + tipLikelihoods[i]);
+			// System.out.println("a=" + a + ";b=" + b + ";tipLikelihood=" + tipLikelihoods[i]);
 		}
 		// TODO make logscale consistent with TreeLikelihood
 		
