@@ -275,7 +275,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         // ignore the first nx entries (i.e. first row)
         double vsum = 0.0;
         for (int i = nx; i < vars.length; i++)
-        	vsum += (vars[i] * dx);
+        	vsum += vars[i];
+        vsum *= dx;
         for (int i = nx; i < vars.length; i++)
         	vars[i] /= vsum;
         return Math.log(vsum);
@@ -460,20 +461,83 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
                 double[] partialsCombined = new double[partialsLeft.length];
                 
-                // normalization on the input partials if the child node is a leaf
+                // normalization (log compensation) on the input partials
                 double dx = treeModel.dxInput.get().getValue();
-                if (node.getLeft().isLeaf())
-                	normalization(partialsLeft, numRateBins, dx);
-                if (node.getRight().isLeaf())
-                	normalization(partialsRight, numRateBins, dx);
+                // if (node.getLeft().isLeaf())
+                double lc0_left = normalization(partialsLeft, numRateBins, dx);
+                // if (node.getRight().isLeaf())
+                double lc0_right = normalization(partialsRight, numRateBins, dx);
+                System.out.println("lc0_left: " + lc0_left);
+                System.out.println("lc0_right: " + lc0_right);
 
                 // propagate each child branch
                 treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
                 treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
+
+                System.out.println("partialsLeft (before log compensation):");
+                for (int kk = 0; kk < 6; kk++) {
+                	int startidx = kk * 4096;
+                	int numitem = 5;
+                	int endidx = startidx + numitem - 1;
+                	if (endidx >= partialsLeft.length)
+                		endidx = partialsLeft.length-1;
+                	if (startidx - 5 >= 0)
+                		startidx = startidx - 5;
+                	System.out.print("[" + startidx + "..." + endidx + ":");
+                	for (int kkk = startidx; kkk <= endidx; kkk++) {
+                		System.out.print(" " + partialsLeft[kkk]);
+                	}
+                	System.out.println();
+                }
+
+                System.out.println("partialsRight (before log compensation):");
+                for (int kk = 0; kk < 6; kk++) {
+                	int startidx = kk * 4096;
+                	int numitem = 5;
+                	int endidx = startidx + numitem - 1;
+                	if (endidx >= partialsRight.length)
+                		endidx = partialsRight.length-1;
+                	if (startidx - 5 >= 0)
+                		startidx = startidx - 5;
+                	System.out.print("[" + startidx + "..." + endidx + ":");
+                	for (int kkk = startidx; kkk <= endidx; kkk++) {
+                		System.out.print(" " + partialsRight[kkk]);
+                	}
+                	System.out.println();
+                }
+                
+                System.out.println("numRateBins = " + numRateBins);
+                System.out.println("dx = " + dx);
                 
                 // log compensation
-                logPNode += normalization(partialsLeft, numRateBins, dx);
-                logPNode += normalization(partialsRight, numRateBins, dx);
+                double lc_left = normalization(partialsLeft, numRateBins, dx);
+                System.out.println("partialsLeft (after log compensation):");
+                for (int kk = 0; kk < 5; kk++) {
+                	int startidx = kk * 4096;
+                	int numitem = 3;
+                	System.out.print("[" + startidx + "..." + (startidx+numitem-1) + ":");
+                	for (int kkk = 0; kkk < numitem; kkk++) {
+                		System.out.print(" " + partialsLeft[startidx + kkk]);
+                	}
+                	System.out.println();
+                }
+                double lc_right = normalization(partialsRight, numRateBins, dx); 
+                System.out.println("partialsRight (after log compensation):");
+                for (int kk = 0; kk < 5; kk++) {
+                	int startidx = kk * 4096;
+                	int numitem = 3;
+                	System.out.print("[" + startidx + "..." + (startidx+numitem-1) + ":");
+                	for (int kkk = 0; kkk < numitem; kkk++) {
+                		System.out.print(" " + partialsRight[startidx + kkk]);
+                	}
+                	System.out.println();
+                }
+                System.out.println("lc_left = " + lc_left);
+                System.out.println("lc_right = " + lc_right);
+                System.out.println("lc_left_combine = " + (lc_left + lc0_left));
+                System.out.println("lc_right_combine = " + (lc_right + lc0_right));
+                logPNode += lc_left + lc0_left;
+                logPNode += lc_right + lc0_right;
 
                 // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
