@@ -63,7 +63,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
     protected int resolution;
 
-    protected int rootOption = 2; // default to ROOT_OBS
+    protected int rootOption = 3; // default to ROOT_EQUI
+    // protected int rootOption = 2; // default to ROOT_OBS
 
     protected LinkFn rootFunc;
     protected LinkFn lambdaFunc;
@@ -77,6 +78,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     protected int padLeft;
     protected int padRight;
     protected boolean lowResolution;
+    protected double tc; // time below tc for high resolution, while time above tc for low resolution  
 
     protected double[] lambdas;
 
@@ -125,6 +127,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
         beagle = null;
 
+        tc = getTreeLength(treeInput.get());
         int nodeCount = treeInput.get().getNodeCount();
         m_siteModel = (SiteModel.Base) siteModelInput.get();
         m_siteModel.setDataType(dataInput.get().getDataType());
@@ -231,6 +234,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         throw new UnsupportedOperationException();
     }
 
+    protected double getTreeLength(TreeInterface tree) {
+        double total = 0.0;
+        int nNodes = tree.getNodeCount();
+
+        for (int i = 0; i < nNodes; i++) {
+            Node node = tree.getNode(i);
+            if (!node.isRoot()) {
+                double parentHeight = node.getParent().getHeight();
+                double nodeHeight = node.getHeight();
+                total += parentHeight - nodeHeight;
+            }
+        }
+        return total;
+    }
+    
     protected void initCore() {
         final int nodeCount = treeInput.get().getNodeCount();
         mosseLikelihoodCore.initialize(
@@ -564,6 +582,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                     }
                 }
             }
+            
             // set root node partials
             mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
@@ -572,14 +591,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 int startPos = pattern * partialSize;
                 double[] partials =  new double[numPlan * numRateBins];
                 System.arraycopy(partialsAllPatterns, startPos, partials, 0, partialSize);
+
+                boolean conditionSurv = true;
                 // root calc for a single pattern
-                boolean conditionSurv = false;
+                // boolean conditionSurv = false;
                 
                 double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
                 logPNode += patternLogLikelihood + dataInput.get().getPatternWeight(pattern);
             }
         }
         logP = logPNode;
+        System.out.println("p = " + logP);
+
         return logPNode;
     }
 
@@ -595,6 +618,22 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     private double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
         double dxScaled = dx * r;
         int ntypes = 4;
+
+        // show the values of result
+        System.out.println("(just enter makeRootFuncMosse) result:");
+        for (int kk = 0; kk < 6; kk++) {
+        	int startidx = kk * 4096;
+        	int numitem = 5;
+        	int endidx = startidx + numitem - 1;
+        	if (endidx >= result.length)
+        		endidx = result.length-1;
+        	System.out.print("[" + startidx + "..." + endidx + ":");
+        	for (int kkk = startidx; kkk <= endidx; kkk++) {
+        		System.out.print(" " + result[kkk]);
+        	}
+        	System.out.println();
+        }
+        
         double[][] vals = new double[nx][ntypes+1];
         int count = 0;
         for (int j = 0; j < ntypes + 1; j++) { // nucleotide types columns
@@ -603,25 +642,30 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 count++;
             }
         }
-        // show the values of vals
-        System.out.println("vals:");
-        /*
-        for (int j = 0; j < ntypes + 1; j++) { // nucleotide types columns
-            for (int i = 0; i < nx; i++) { // nx rows
-            	System.out.print(" " + vals[i][j]);
-            }
-            System.out.println();
-        }*/
 
         double[][] dRoot = getDValues(vals); // get root D values in last column
+        
+        System.out.println("dRoot:");
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < ntypes; j++) {
+                System.out.print(" " + dRoot[i][j]);
+            }
+            System.out.println();
+        }
+        
         double[] eRoot = null;
 
         double[] x = getSubstitutionRates(nx);
         // root options
         double[][] rootP = getRootProb(dRoot, x, nx, rootOption, rootFunc);
 
+    	System.out.println("conditionSurv = " + conditionSurv);
         if (conditionSurv) {
             eRoot = getColumn(vals, 1); // get root E values as a column
+            System.out.print("eRoot:");
+            for (int i = 0; i < 6; i++)
+            	System.out.print(" " + eRoot[i]);
+            System.out.println();
             // apply function on dRoot
             for (int i = 0; i < ntypes; i++) {
                 for (int j = 0; j < numEntries; j++) {
@@ -632,11 +676,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             }
         }
 
+        System.out.println("2 dRoot:");
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < ntypes; j++) {
+                System.out.print(" " + dRoot[i][j]);
+            }
+            System.out.println();
+        }
+
         double[][] rootProduct = getProduct(rootP, dRoot);
         double lq = getSum(dRoot); // lq value is sum(D vector) for numerical underflow
 
         double logProb = Math.log(getSum(rootProduct) * dxScaled) + lq; // log for numerical underflow
-        System.out.println("p = " + getSum(rootProduct) * dxScaled);
 
         return logProb;
     }
@@ -670,20 +721,32 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         int ntypes = dRoot[0].length;
         double[][] p = new double[numSubstBins][ntypes];
         
+        System.out.println("nx = " + nx + "; ntypes = " + ntypes + "; dx = " + dx);
+        System.out.println("1 / ((nx - 1) * ntypes * dx) = " + (1 / ((nx - 1) * ntypes * dx)));
+        
         if (rootOption == ROOT_FLAT) {
+        	System.out.println("rootOption == ROOT_FLAT");
             for (int i = 0; i < numSubstBins; i++) {
                 for (int j = 0; j < ntypes; j++) {
                     p[i][j] = 1 / ((nx - 1) * ntypes * dx);
                 }
             }
         } else if (rootOption == ROOT_OBS)  {
+        	System.out.println("rootOption == ROOT_OBS");
             for (int i = 0; i < numSubstBins; i++) {
                 for (int j = 0; j < ntypes; j++) {
                     p[i][j] = dRoot[i][j] / (getSum(dRoot) * dx);
                 }
             }
         } else {
+        	System.out.println("else");
             double[] rootI = substitutionModel.getFrequencies(); // equilibrium freqs
+            
+            System.out.println("rootI");
+            for (int i = 0; i < rootI.length; i++)
+            	System.out.print(" " + rootI[i]);
+            System.out.println();
+            
             if (rootOption == ROOT_EQUI) { // check this
                 for (int i = 0; i < numSubstBins; i++) {
                     for (int j = 0; j < ntypes; j++) {
@@ -701,6 +764,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                     }
                 }
             }
+        }
+        
+        System.out.println("[getRootProb] the value of p:");
+        for (int i = 0; i < 6; i++) {
+            for (int j = 0; j < ntypes; j++) {
+                System.out.print(" " + p[i][j]);
+            }
+            System.out.println();
         }
 
         return p;
