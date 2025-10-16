@@ -597,7 +597,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 // boolean conditionSurv = false;
                 
                 double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
-                logPNode += patternLogLikelihood + dataInput.get().getPatternWeight(pattern);
+                logPNode += patternLogLikelihood; //  + dataInput.get().getPatternWeight(pattern);
             }
         }
         logP = logPNode;
@@ -661,17 +661,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
     	System.out.println("conditionSurv = " + conditionSurv);
         if (conditionSurv) {
-            eRoot = getColumn(vals, 1); // get root E values as a column
+            eRoot = getColumn(vals, 0); // get root E values as a column
             System.out.print("eRoot:");
             for (int i = 0; i < 6; i++)
             	System.out.print(" " + eRoot[i]);
             System.out.println();
+            System.out.println("eRoot.length = " + eRoot.length);
+            System.out.println("lambda.length = " + lambdas.length);
             // apply function on dRoot
-            for (int i = 0; i < ntypes; i++) {
-                for (int j = 0; j < numEntries; j++) {
-                    double lambdaX = lambdas[j];
+            for (int j = 0; j < ntypes; j++) {
+            	for (int i = 0; i < lambdas.length; i++) {
+                    double lambdaX = lambdas[i];
                     // element-wise division of d column
-                    dRoot[i][j] = dRoot[i][j] / (lambdaX * (1 - eRoot[j]) * (1 - eRoot[j]));
+                    dRoot[i][j] = dRoot[i][j] / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
                 }
             }
         }
@@ -683,11 +685,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             }
             System.out.println();
         }
+        for (int i = dRoot.length-6; i < dRoot.length; i++) {
+            for (int j = 0; j < ntypes; j++) {
+                System.out.print(" " + dRoot[i][j]);
+            }
+            System.out.println();
+        }
+        System.out.println("dx = " + dx);
 
         double[][] rootProduct = getProduct(rootP, dRoot);
-        double lq = getSum(dRoot); // lq value is sum(D vector) for numerical underflow
+        // double lq = getSum(dRoot); // lq value is sum(D vector) for numerical underflow
 
-        double logProb = Math.log(getSum(rootProduct) * dxScaled) + lq; // log for numerical underflow
+        double logProb = Math.log(getSum(rootProduct) * dx); // + lq; // log for numerical underflow
+        System.out.println("logProb = " + logProb);
 
         return logProb;
     }
