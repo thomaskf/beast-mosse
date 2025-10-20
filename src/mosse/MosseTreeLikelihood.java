@@ -597,7 +597,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 // boolean conditionSurv = false;
                 
                 double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
-                logPNode += patternLogLikelihood; //  + dataInput.get().getPatternWeight(pattern);
+                logPNode += patternLogLikelihood * dataInput.get().getPatternWeight(pattern);
             }
         }
         logP = logPNode;
