@@ -379,85 +379,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             // columns = (4x D's for each nucleotide, 1x E), rows = bins for substitution rate
             setPartials(node, numPattern); // all site patterns
 
-        } else if (!node.isRoot()) {
-            // internal node
-        	double logPChild0, logPChild1;
-            logPChild0 = traverseFull(node.getChild(0)); // left child
-            logPChild1 = traverseFull(node.getChild(1)); // right child
-            logPNode += logPChild0;
-            logPNode += logPChild1;
-
-            // propagate child branches
-            double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
-            double branchTimeRight = node.getHeight() - node.getRight().getHeight();
-
-            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins];
-            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins];
-            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins];
-
-            // get child node partials all patterns
-            mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
-            mosseLikelihoodCore.getNodePartials(node.getRight().getNr(), patternPartialsRight);
-            int k = 0;
-            for (int pattern = 0; pattern < numPattern; pattern++) {
-                // partial for single pattern
-                int partialSize = numPlan * numRateBins;
-                int startPos = pattern * partialSize;
-                double[] partialsLeft = new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSize);
-                double[] partialsRight = new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
-                double[] partialsCombined = new double[partialsLeft.length];
-
-                // normalization on the input partials if the child node is a leaf
-                double dx = treeModel.dxInput.get().getValue();
-                // if (node.getLeft().isLeaf())
-                double lc0_left = normalization(partialsLeft, numRateBins, dx);
-                // if (node.getRight().isLeaf())
-                double lc0_right = normalization(partialsRight, numRateBins, dx);
-                System.out.println("lc0_left: " + lc0_left);
-                System.out.println("lc0_right: " + lc0_right);
-
-                // propagate each child branch
-                treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
-
-                // log compensation
-                double lc_left = normalization(partialsLeft, numRateBins, dx);
-                double lc_right = normalization(partialsRight, numRateBins, dx);
-                logPNode += lc_left + lc0_left;
-                logPNode += lc_right + lc0_right;
-
-                // assumes t less than tc threshold
-                for (int i = 0; i < numPlan; i++) {
-                    for (int j = 0; j < numRateBins; j++) {
-                        int index = i * numRateBins + j;
-                        if (i == 0) {
-                            // E is topology independent
-                            partialsCombined[index] = partialsLeft[index]; // for testing
-                            partialsAllPatterns[k] = partialsLeft[index];
-                        } else {
-                            if (j < numEntries) {
-                                // non padded elements
-                                // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas[j]; // birth rate at substitution rate x
-                                partialsCombined[index] = partialsLeft[index] * partialsRight[index] * lambdaX; // for testing
-                                partialsAllPatterns[k] = partialsLeft[index] * partialsRight[index] * lambdaX;
-                            } else {
-                                // padded elements
-                                partialsCombined[index] = 0.0; // set to zero
-                                partialsAllPatterns[k] = 0.0;
-                            }
-                        }
-                        k++;
-                    }
-                }
-            }
-            // set internal node partials for all patterns
-            mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
-
         } else {
-            // root node
+            // internal node or the root node
         	double logPChild0, logPChild1;
             logPChild0 = traverseFull(node.getChild(0)); // left child
             logPChild1 = traverseFull(node.getChild(1)); // right child
@@ -590,21 +513,23 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 }
             }
             
-            // set root node partials
-            mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
-
-            for (int pattern = 0; pattern < numPattern; pattern++) {
-                int partialSize = numPlan * numRateBins;
-                int startPos = pattern * partialSize;
-                double[] partials =  new double[numPlan * numRateBins];
-                System.arraycopy(partialsAllPatterns, startPos, partials, 0, partialSize);
-
-                boolean conditionSurv = true;
-                // root calc for a single pattern
-                // boolean conditionSurv = false;
-                
-                double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
-                logPNode += patternLogLikelihood * dataInput.get().getPatternWeight(pattern);
+	        // set node partials
+	        mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
+	
+	        if (node.isRoot()) {
+	            for (int pattern = 0; pattern < numPattern; pattern++) {
+	                int partialSize = numPlan * numRateBins;
+	                int startPos = pattern * partialSize;
+	                double[] partials =  new double[numPlan * numRateBins];
+	                System.arraycopy(partialsAllPatterns, startPos, partials, 0, partialSize);
+	
+	                boolean conditionSurv = true;
+	                // root calc for a single pattern
+	                // boolean conditionSurv = false;
+	                
+	                double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
+	                logPNode += patternLogLikelihood * dataInput.get().getPatternWeight(pattern);
+	            }
             }
         }
         logP = logPNode;
