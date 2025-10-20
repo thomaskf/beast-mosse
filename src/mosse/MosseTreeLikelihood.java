@@ -411,18 +411,22 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
                 // normalization on the input partials if the child node is a leaf
                 double dx = treeModel.dxInput.get().getValue();
-                if (node.getLeft().isLeaf())
-                	normalization(partialsLeft, numRateBins, dx);
-                if (node.getRight().isLeaf())
-                	normalization(partialsRight, numRateBins, dx);
+                // if (node.getLeft().isLeaf())
+                double lc0_left = normalization(partialsLeft, numRateBins, dx);
+                // if (node.getRight().isLeaf())
+                double lc0_right = normalization(partialsRight, numRateBins, dx);
+                System.out.println("lc0_left: " + lc0_left);
+                System.out.println("lc0_right: " + lc0_right);
 
                 // propagate each child branch
                 treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
                 treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
 
                 // log compensation
-                logPNode += normalization(partialsLeft, numRateBins, dx);
-                logPNode += normalization(partialsRight, numRateBins, dx);
+                double lc_left = normalization(partialsLeft, numRateBins, dx);
+                double lc_right = normalization(partialsRight, numRateBins, dx);
+                logPNode += lc_left + lc0_left;
+                logPNode += lc_right + lc0_right;
 
                 // assumes t less than tc threshold
                 for (int i = 0; i < numPlan; i++) {
@@ -454,8 +458,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
         } else {
             // root node
-            traverseFull(node.getLeft());
-            traverseFull(node.getRight());
+        	double logPChild0, logPChild1;
+            logPChild0 = traverseFull(node.getChild(0)); // left child
+            logPChild1 = traverseFull(node.getChild(1)); // right child
+            logPNode += logPChild0;
+            logPNode += logPChild1;
 
             // propagate child branches of root
             double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
