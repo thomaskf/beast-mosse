@@ -57,15 +57,25 @@ public class MosseTreeLikelihoodTest {
      */
     @Test
     public void testMosseLikelihood() {
-        int numLeaves = 2;
-        String[] sequences = {"A", "C"};
-        Alignment alignment = getAlignment(numLeaves, sequences);
-        String newick = "(t0: 0.4, t1: 0.4);";
+//        int numLeaves = 2;
+//        String[] sequences = {"A", "C"};
+//        String newick = "(t0: 0.4, t1: 0.4);";
+//        int numTraits = 1;
+//        String trait1Values = "t0=0.15, t1=0.1";
+
+//        int numLeaves = 4;
+//        String[] sequences = {"A", "C", "G", "T"};
+//        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
+//        int numTraits = 1;
+//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
         
-        // Trait information
+        int numLeaves = 3;
+        String[] sequences = {"A", "C", "G"};
+        String newick = "((t0:0.2,t1:0.2):0.2,t2:0.4);";
         int numTraits = 1;
-        // String trait0Values = "t0=0.3, t1=0.3";
-        String trait1Values = "t0=0.15, t1=0.1";
+        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
+
+        Alignment alignment = getAlignment(numLeaves, sequences);
         
         // Parameters
         Double[] betasArray = {1.0};
