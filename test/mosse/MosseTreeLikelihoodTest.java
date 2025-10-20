@@ -58,7 +58,7 @@ public class MosseTreeLikelihoodTest {
     @Test
     public void testMosseLikelihood() {
 //        int numLeaves = 2;
-//        String[] sequences = {"A", "C"};
+//        String[] sequences = {"AG", "CT"};
 //        String newick = "(t0: 0.4, t1: 0.4);";
 //        int numTraits = 1;
 //        String trait1Values = "t0=0.15, t1=0.1";
