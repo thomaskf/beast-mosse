@@ -392,35 +392,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 
                 // normalization (log compensation) on the input partials
                 double dx = treeModel.dxInput.get().getValue();
-                // if (node.getLeft().isLeaf())
                 double lc0_left = normalization(partialsLeft, numRateBins, dx);
-                // if (node.getRight().isLeaf())
                 double lc0_right = normalization(partialsRight, numRateBins, dx);
 
                 // propagate each child branch
                 treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
                 treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
 
-                for (int kk = 0; kk < 6; kk++) {
-                	int startidx = kk * 4096;
-                	int numitem = 5;
-                	int endidx = startidx + numitem - 1;
-                	if (endidx >= partialsLeft.length)
-                		endidx = partialsLeft.length-1;
-                	if (startidx - 5 >= 0)
-                		startidx = startidx - 5;
-                }
-
-                for (int kk = 0; kk < 6; kk++) {
-                	int startidx = kk * 4096;
-                	int numitem = 5;
-                	int endidx = startidx + numitem - 1;
-                	if (endidx >= partialsRight.length)
-                		endidx = partialsRight.length-1;
-                	if (startidx - 5 >= 0)
-                		startidx = startidx - 5;
-                }
-                
                 // log compensation
                 double lc_left = normalization(partialsLeft, numRateBins, dx);
                 double lc_right = normalization(partialsRight, numRateBins, dx); 
@@ -473,7 +451,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             }
         }
         logP = logPNode;
-        System.out.println("p = " + logP);
 
         return logPNode;
     }

@@ -104,7 +104,13 @@ public class MosseDistribution extends TreeDistribution {
         double drift = driftInput.get().getValue();
         double diffusion = diffusionInput.get().getValue();
         double dt = dtInput.get().getValue();
-        int nt = (int) Math.ceil(branchTime / dt);
+        // consider this special case: 
+        // Consider branchTime = 0.3000001; dt = 0.01;
+        // let x = branchTime/dt 
+        // then x = 30.00001, and Math.ceil(x) would be 31
+        // x need to be greater than say 30 + delta so that nt would be 31
+        double delta = 0.1;
+        int nt = (int) Math.ceil(branchTime / dt - delta);
 
         int padLeft = getPadLeft();
         int padRight = getPadRight();
