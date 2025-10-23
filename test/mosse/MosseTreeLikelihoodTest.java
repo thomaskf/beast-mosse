@@ -35,15 +35,17 @@ public class MosseTreeLikelihoodTest {
     /**
      * returns an Alignment of nucleotide sequences
      * @param numLeaves number of taxa (or leaves in tree)
+     * @param names name of each taxa
      * @param sequences nucleotide sequences for each taxa
      * @return an Alignment of nucleotide sequences
      */
-    public Alignment getAlignment(int numLeaves, String[] sequences) {
+    public Alignment getAlignment(int numLeaves, String[] names, String[] sequences) {
         List<Sequence> seqList = new ArrayList<>();
+        
+        assert(names.length == sequences.length);
 
         for (int i = 0; i < numLeaves; i++) {
-            String taxonID = "t" + i;
-            seqList.add(new Sequence(taxonID, sequences[i]));
+            seqList.add(new Sequence(names[i], sequences[i]));
         }
 
         Alignment alignment = new Alignment(seqList, "nucleotide");
@@ -63,19 +65,21 @@ public class MosseTreeLikelihoodTest {
 //        int numTraits = 1;
 //        String trait1Values = "t0=0.15, t1=0.1";
 
-//        int numLeaves = 4;
-//        String[] sequences = {"A", "C", "G", "T"};
-//        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
-        
-        int numLeaves = 3;
-        String[] sequences = {"A", "C", "G"};
-        String newick = "((t0:0.2,t1:0.2):0.2,t2:0.4);";
+        int numLeaves = 4;
+        String[] names = {"t0", "t1", "t2", "t3"};
+        String[] sequences = {"A", "C", "G", "T"};
+//        String[] sequences = {"AG", "CT", "GG", "TC"};
+        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
         int numTraits = 1;
-        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
+        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
+        
+//        int numLeaves = 3;
+//        String[] sequences = {"AG", "CT", "GG"};
+//        String newick = "((t0:0.2,t1:0.2):0.2,t2:0.4);";
+//        int numTraits = 1;
+//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
 
-        Alignment alignment = getAlignment(numLeaves, sequences);
+        Alignment alignment = getAlignment(numLeaves, names, sequences);
         
         // Parameters
         Double[] betasArray = {1.0};
