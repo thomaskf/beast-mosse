@@ -59,19 +59,20 @@ public class MosseTreeLikelihoodTest {
      */
     @Test
     public void testMosseLikelihood() {
-//        int numLeaves = 2;
-//        String[] sequences = {"AG", "CT"};
-//        String newick = "(t0: 0.4, t1: 0.4);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1";
-
-        int numLeaves = 4;
-        String[] names = {"t0", "t1", "t2", "t3"};
-        String[] sequences = {"A", "C", "G", "T"};
-//        String[] sequences = {"AG", "CT", "GG", "TC"};
-        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
+        int numLeaves = 2;
+        String[] names = {"t0", "t1"};
+        String[] sequences = {"A", "C"};
+        String newick = "(t0: 0.4, t1: 0.4);";
         int numTraits = 1;
-        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
+        String trait1Values = "t0=0.15, t1=0.1";
+
+//        int numLeaves = 4;
+//        String[] names = {"t0", "t1", "t2", "t3"};
+//        String[] sequences = {"A", "C", "G", "T"};
+////        String[] sequences = {"AG", "CT", "GG", "TC"};
+//        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
+//        int numTraits = 1;
+//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
         
 //        int numLeaves = 3;
 //        String[] sequences = {"AG", "CT", "GG"};
@@ -103,7 +104,7 @@ public class MosseTreeLikelihoodTest {
         double dt = 0.01;            // time interval dt
         int width = 5;              
         int resolution = 4;
-        boolean lowresolution = false;   // using high resolution 
+        boolean lowresolution = false;
 
         // Tree and Models Construction
         
@@ -126,7 +127,6 @@ public class MosseTreeLikelihoodTest {
                 "epsilon", Double.toString(epsilon),
                 "logscale", "false"
         );
-        // tipModel.initAndValidate(); (no need, as this function has been called inside initByName())
 
         // trait 0
 //        TraitSet trait0 = new TraitSet();

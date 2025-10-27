@@ -12,16 +12,12 @@ import beast.base.evolution.likelihood.BeerLikelihoodCore;
 public class MosseLikelihoodCore extends BeerLikelihoodCore {
 
     protected int numRateBins;
-    protected int padLeft;
-    protected int padRight;
 
     protected int lambdaSize;
 
-    public MosseLikelihoodCore(int nrOfStates, int numRateBins, int padLeft, int padRight) {
+    public MosseLikelihoodCore(int nrOfStates, int numRateBins) {
         super(nrOfStates);
         this.numRateBins = numRateBins;
-        this.padLeft = padLeft;
-        this.padRight = padRight;
     }
 
     /**

@@ -72,19 +72,29 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     protected List<TraitSet> traits;
     protected MosseTipLikelihood tipModel;
     protected MosseDistribution treeModel;
-    protected double startSubsRate;
-    protected int numRateBins;
-    protected int numEntries; // number of non-zero elements in lambdas
-    protected int padLeft;
-    protected int padRight;
-    protected boolean lowResolution;
-    protected double tc; // time below tc for high resolution, while time above tc for low resolution  
+    protected double tc; // time < tc for high resolution, while time >= tc for low resolution  
 
-    protected double[] lambdas;
-
-    protected double[] mus;
-
-    double[] flatTransitionMatrices;
+    // variables for high resolution
+    protected double startSubsRate_h;
+    protected int numRateBins_h;
+    protected int numEntries_h; // number of non-zero elements in lambdas
+    protected int padLeft_h;
+    protected int padRight_h;
+    protected double[] lambdas_h;
+    protected double[] mus_h;
+    double[] flatTransitionMatrices_h;
+    
+    // variables for low resolution
+    protected double startSubsRate_l;
+    protected int numRateBins_l;
+    protected int numEntries_l; // number of non-zero elements in lambdas
+    protected int padLeft_l;
+    protected int padRight_l;
+    protected double[] lambdas_l;
+    protected double[] mus_l;
+    double[] flatTransitionMatrices_l;
+    
+    protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
     @Override
     public void initAndValidate() {
@@ -92,9 +102,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         tipModel = tipModelInput.get();
         treeModel = (MosseDistribution) treeModelInput.get();
 
-        startSubsRate = startSubsRateInput.get().getValue();
-        numRateBins = numRateBinsInput.get().getValue();
+        if (resolutionOptionInput.get() != null) {
+            resolution = resolutionOptionInput.get().getValue();
+        } else {
+            resolution = resolutionOptionInput.defaultValue.getValue();
+        }
 
+        // high resolution
+        startSubsRate_h = startSubsRateInput.get().getValue();
+        numRateBins_h = numRateBinsInput.get().getValue() * resolution;
+
+        // low resolution
+        startSubsRate_l = startSubsRateInput.get().getValue() * resolution;
+        numRateBins_l = numRateBinsInput.get().getValue();
+
+        // compute the maximum value of numRateBins
+        if (numRateBins_h > numRateBins_l)
+            numRateBins_max = numRateBins_h;
+        else
+            numRateBins_max = numRateBins_l;
+        
         lambdaFunc = lambdaFuncInput.get();
         muFunc = muFuncInput.get();
 
@@ -104,11 +131,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         if (rootFuncInput.get() != null) {
             rootFunc = rootFuncInput.get();
         }
-        if (resolutionOptionInput.get() != null) {
-            resolution = resolutionOptionInput.get().getValue();
-        } else {
-            resolution = resolutionOptionInput.defaultValue.getValue();
-        }
 
         // input checking
         if (dataInput.get().getTaxonCount() != treeInput.get().getLeafNodeCount()) {
@@ -117,7 +139,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                     treeInput.get().getLeafNodeCount(),
                     dataInput.get().getTaxonCount());
             throw new IllegalArgumentException(message);
-        } else if (numRateBins <= 0) {
+        } else if (numRateBinsInput.get().getValue() <= 0) {
             throw new IllegalArgumentException("numRateBins input must be a positive integer");
         } else if (!(siteModelInput.get() instanceof SiteModel.Base)) {
             throw new IllegalArgumentException("siteModel input should be of type SiteModel.Base");
@@ -127,7 +149,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
         beagle = null;
 
-        tc = getTreeLength(treeInput.get());
+        tc = treeInput.get().getRoot().getHeight() / 2.0; // getTreeLength(treeInput.get());
         int nodeCount = treeInput.get().getNodeCount();
         m_siteModel = (SiteModel.Base) siteModelInput.get();
         m_siteModel.setDataType(dataInput.get().getDataType());
@@ -143,12 +165,29 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         int patterns = dataInput.get().getPatternCount();
 
         // set likelihood core number of states and number of rate bins
-        padLeft = treeModel.getPadLeft(); // using low resolution
-        padRight = treeModel.getPadRight();
-        mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins, padLeft, padRight);
+        mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins_max);
+        
+        boolean lowResolution = true;
+        padLeft_l = treeModel.getPadLeft(lowResolution);
+        padRight_l = treeModel.getPadRight(lowResolution);
+        numEntries_l = numRateBins_l - padLeft_l - padRight_l - 1;
+        lowResolution = false;
+        padLeft_h = treeModel.getPadLeft(lowResolution);
+        padRight_h = treeModel.getPadRight(lowResolution);
+        numEntries_h = numRateBins_h - padLeft_h - padRight_h - 1;
 
-        // num non-zero entries (length of lambda and mu)
-        this.numEntries = numRateBins - padLeft - padRight - 1;
+        // show some parameter values
+        System.out.println("startSubsRate_l = " + startSubsRate_l);
+        System.out.println("numRateBins_l = " + numRateBins_l);
+        System.out.println("padLeft_l = " + padLeft_l);
+        System.out.println("padRight_l = " + padRight_l);
+        System.out.println("numEntries_l = " + numEntries_l);
+        
+        System.out.println("startSubsRate_h = " + startSubsRate_h);
+        System.out.println("numRateBins_h = " + numRateBins_h);
+        System.out.println("padLeft_h = " + padLeft_h);
+        System.out.println("padRight_h = " + padRight_h);
+        System.out.println("numEntries_h = " + numEntries_h);
 
         String className = getClass().getSimpleName();
         Alignment alignment = dataInput.get();
@@ -167,7 +206,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         this.initCore();
 
         patternLogLikelihoods = new double[patterns];
-        m_fRootPartials = new double[patterns * stateCount * numRateBins];
         matrixSize = (stateCount + 1) * (stateCount + 1);
         probabilities = new double[(stateCount + 1) * (stateCount + 1)];
         Arrays.fill(probabilities, 1.0);
@@ -175,6 +213,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         if (dataInput.get().isAscertained) {
             useAscertainedSitePatterns = true;
         }
+        
+        // root partial array always use low resolution
+        m_fRootPartials = new double[patterns * stateCount * numRateBins_l];
     }
 
     /**
@@ -183,39 +224,41 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     @Override
     protected void setPartials(Node node, int patternCount) {
         if (node.isLeaf()) {
+        	// for leaf, always use high resolution
             Alignment data = dataInput.get();
             int states = data.getDataType().getStateCount();
             double[] traitValues = getTraits(node);
-            double[] partials = new double[patternCount * (states + 1) * numRateBins];
+            double[] partials = new double[patternCount * (states + 1) * numRateBins_max];
             int k = 0;
             int taxonIndex = data.getTaxonIndex(node.getID());
             for (int patternIndex = 0; patternIndex < patternCount; patternIndex++) {
-            	double subsInterval = startSubsRate;
-                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries, startSubsRate + padLeft * subsInterval, subsInterval);
+            	k = patternIndex * (states + 1) * numRateBins_max;
+            	double subsInterval = startSubsRate_h;
+                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_h, startSubsRate_h + padLeft_h * subsInterval, subsInterval);
                 int stateCount = data.getPattern(taxonIndex, patternIndex);
-                    boolean[] stateSet = data.getStateSet(stateCount);
-                    // E initial values are zero
-                    for (int i = 0; i < numRateBins; i++) {
-                        partials[k++] = 0.0;
-                    }
-                    // D initial values
-                    for (int state = 0; state < states; state++) {
-                        if (stateSet[state]) {
-                            // set likelihoods for nucleotide in data
-                            for (int i = 0; i < numRateBins; i++) {
-                                if (i < numEntries) {
-                                    partials[k++] = tipLikelihoods[i];
-                                } else {
-                                    partials[k++] = 0.0; // within padding
-                                }
-                            }
-                        } else {
-                            // otherwise set likelihoods to zero
-                            for (int i = 0; i < numRateBins; i++) {
-                                partials[k++] = 0.0;
+                boolean[] stateSet = data.getStateSet(stateCount);
+                // E initial values are zero
+                for (int i = 0; i < numRateBins_h; i++) {
+                    partials[k++] = 0.0;
+                }
+                // D initial values
+                for (int state = 0; state < states; state++) {
+                    if (stateSet[state]) {
+                        // set likelihoods for nucleotide in data
+                        for (int i = 0; i < numRateBins_h; i++) {
+                            if (i < numEntries_h) {
+                                partials[k++] = tipLikelihoods[i];
+                            } else {
+                                partials[k++] = 0.0; // within padding
                             }
                         }
+                    } else {
+                        // otherwise set likelihoods to zero
+                        for (int i = 0; i < numRateBins_h; i++) {
+                            partials[k++] = 0.0;
+                        }
                     }
+                }
             }
             mosseLikelihoodCore.setNodePartials(node.getNr(), partials);
 
@@ -233,20 +276,20 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         throw new UnsupportedOperationException();
     }
 
-    protected double getTreeLength(TreeInterface tree) {
-        double total = 0.0;
-        int nNodes = tree.getNodeCount();
-
-        for (int i = 0; i < nNodes; i++) {
-            Node node = tree.getNode(i);
-            if (!node.isRoot()) {
-                double parentHeight = node.getParent().getHeight();
-                double nodeHeight = node.getHeight();
-                total += parentHeight - nodeHeight;
-            }
-        }
-        return total;
-    }
+//    protected double getTreeLength(TreeInterface tree) {
+//        double total = 0.0;
+//        int nNodes = tree.getNodeCount();
+//
+//        for (int i = 0; i < nNodes; i++) {
+//            Node node = tree.getNode(i);
+//            if (!node.isRoot()) {
+//                double parentHeight = node.getParent().getHeight();
+//                double nodeHeight = node.getHeight();
+//                total += parentHeight - nodeHeight;
+//            }
+//        }
+//        return total;
+//    }
     
     protected void initCore() {
         final int nodeCount = treeInput.get().getNodeCount();
@@ -298,26 +341,24 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         	vars[i] /= vsum;
         return Math.log(vsum);
     }
-
+    
     /**
-     * traverse the subtree rooted at node
-     * @param node
-     * @return log P
+     * create a flatTransitionMatrice
      */
-    private double traverseFull(Node node) {
-        int numPlan = 5; // dimensions
+    private double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
         double deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
-        double rate = treeModel.dxInput.get().getValue(); // dx
         int numStates = dataInput.get().getDataType().getStateCount();
-        int numPattern = dataInput.get().getPatternCount();
-        double logPNode = 0.0;
-
+        double rate = treeModel.dxInput.get().getValue(); // dx
+        int numEntries = numEntries_h;
+        int padLeft = padLeft_h;
+        if (lowResolution) {
+        	rate = rate * resolution;
+        	numEntries = numEntries_l;
+        	padLeft = padLeft_l;
+        }
         double[] transitionMatrix = new double[numStates * numStates];
-        double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
-        // P(0) = exp(dx * Q * dt)
-        
         substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater than endTime
-        
+        double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
         double[] prevMatrix = new double[numStates * numStates];
         prevMatrix = transitionMatrix;
 
@@ -341,9 +382,97 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             transitionMatrices[l] = result.toArray();
         }
 
-        flatTransitionMatrices = Arrays.stream(transitionMatrices)
+        return Arrays.stream(transitionMatrices)
                 .flatMapToDouble(Arrays::stream)
                 .toArray();
+    }
+    
+    /**
+     * compute likelihoods for single branch
+     */
+    private void computeSingleBranchLikelihood(Node node, Node child, double[] partials) {
+        int numPlan = 5; // dimensions
+    	if (node.getHeight() <= tc) {
+    		// high resolution for the whole branch
+    		boolean lowResolution = false;
+    		double branchTime = node.getHeight() - child.getHeight();
+    		if (flatTransitionMatrices_h == null)
+    			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_h, mus_h, flatTransitionMatrices_h, partials, lowResolution);
+    	} else if (child.getHeight() >= tc) {
+    		// low resolution for the whole branch
+    		boolean lowResolution = true;
+    		double branchTime = node.getHeight() - child.getHeight();
+    		if (flatTransitionMatrices_l == null)
+    			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_l, mus_l, flatTransitionMatrices_l, partials, lowResolution);
+    	} else {
+    		// high resolutions between child.getHight() and tc
+    		double branchTime = tc - child.getHeight();
+    		boolean lowResolution = false;
+    		double[] partialsMiddle = new double[numPlan * numRateBins_max];
+    		if (flatTransitionMatrices_h == null)
+    			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_h, mus_h, flatTransitionMatrices_h, partialsMiddle, lowResolution);
+    		// selecting the corresponding entries in the partialMiddle as the input for low resolution
+    		for (int i = 0; i < numPlan; i++) {
+        		int k = 0;
+        		int s_h = i * numRateBins_h;
+        		int s_l = i * numRateBins_l;
+    			for (int j = resolution-1; j < numRateBins_h && k < numRateBins_l; j+= resolution) {
+    				partialsMiddle[s_l + k] = partialsMiddle[s_h + j];
+    				k++;
+    			}
+    		}
+    		// then low resolution between tc and node.getHeight()
+    		lowResolution = true;
+    		branchTime = node.getHeight() - tc;
+    		if (flatTransitionMatrices_l == null)
+    			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+    		treeModel.calculateBranchLogP(branchTime, partialsMiddle, lambdas_l, mus_l, flatTransitionMatrices_l, partials, lowResolution);
+    	}
+    }
+
+    /**
+     * traverse the subtree rooted at node
+     * @param node
+     * @return log P
+     */
+    private double traverseFull(Node node) {
+        int numPlan = 5; // dimensions
+        double deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
+        // double rate = treeModel.dxInput.get().getValue(); // dx
+        int numStates = dataInput.get().getDataType().getStateCount();
+        int numPattern = dataInput.get().getPatternCount();
+        double logPNode = 0.0;
+
+//        double[] transitionMatrix = new double[numStates * numStates];
+//        substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater than endTime
+//
+//        double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
+//        double[] prevMatrix = new double[numStates * numStates];
+//        prevMatrix = transitionMatrix;
+//
+//        // skip the first padLeft entries
+//        for (int i = 0; i < padLeft; i++) {
+//            // multiplication of matrix
+//            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrix);
+//            DoubleMatrix matrixTwo = new DoubleMatrix(numStates, numStates, prevMatrix);
+//            DoubleMatrix result = matrixOne.mmul(matrixTwo);
+//            prevMatrix = result.toArray();
+//        }
+//        int l = 0;
+//        // update transitionMatrices
+//        transitionMatrices[l] = prevMatrix;
+//        for (int i = padLeft; i < numEntries + padLeft - 1; i++) {
+//            // multiplication of matrix
+//            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrix);
+//            DoubleMatrix matrixTwo = new DoubleMatrix(numStates, numStates, transitionMatrices[l]);
+//            DoubleMatrix result = matrixOne.mmul(matrixTwo);
+//            l++;
+//            transitionMatrices[l] = result.toArray();
+//        }
+
 
         // get lambdas and mus
         double[] x = getSubstitutionRates(numEntries); // substitution rates
@@ -367,14 +496,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             logPChild1 = traverseFull(node.getChild(1)); // right child
             logPNode += logPChild0;
             logPNode += logPChild1;
+            
+            flatTransitionMatrices_l = null;
+            flatTransitionMatrices_h = null;
 
-            // propagate child branches of root
-            double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
-            double branchTimeRight = node.getHeight() - node.getRight().getHeight();
-
-            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins];
-            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins];
-            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins];
+            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins_max];
+            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins_max];
+            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins_max];
 
             // get child node partials all patterns
             mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
@@ -382,11 +510,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             int k = 0;
             for (int pattern = 0; pattern < numPattern; pattern++) {
                 // partial for single pattern
-                int partialSize = numPlan * numRateBins;
+                int partialSize = numPlan * numRateBins_max;
                 int startPos = pattern * partialSize;
-                double[] partialsLeft = new double[numPlan * numRateBins];
+                double[] partialsLeft = new double[numPlan * numRateBins_max];
                 System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSize);
-                double[] partialsRight = new double[numPlan * numRateBins];
+                double[] partialsRight = new double[numPlan * numRateBins_max];
                 System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
                 double[] partialsCombined = new double[partialsLeft.length];
                 
