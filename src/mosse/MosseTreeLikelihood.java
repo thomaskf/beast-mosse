@@ -25,6 +25,7 @@ import java.util.List;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse likelihood class calculates the probability of sequence and trait data on a tree")
@@ -52,9 +53,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
     final public Input<IntegerParameter> resolutionOptionInput = new Input<>("resolution", "resolution scale factor", new IntegerParameter("1"), Input.Validate.OPTIONAL);
 
-
-//    final public int SUBST_NUM_STATES = 4; // for testing
-
     // root options
     final public int ROOT_FLAT = 1;
     final public int ROOT_OBS = 2;
@@ -64,7 +62,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     protected int resolution;
 
     protected int rootOption = 3; // default to ROOT_EQUI
-    // protected int rootOption = 2; // default to ROOT_OBS
 
     protected LinkFn rootFunc;
     protected LinkFn lambdaFunc;
@@ -275,21 +272,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         throw new UnsupportedOperationException();
     }
 
-//    protected double getTreeLength(TreeInterface tree) {
-//        double total = 0.0;
-//        int nNodes = tree.getNodeCount();
-//
-//        for (int i = 0; i < nNodes; i++) {
-//            Node node = tree.getNode(i);
-//            if (!node.isRoot()) {
-//                double parentHeight = node.getParent().getHeight();
-//                double nodeHeight = node.getHeight();
-//                total += parentHeight - nodeHeight;
-//            }
-//        }
-//        return total;
-//    }
-    
     protected void initCore() {
         final int nodeCount = treeInput.get().getNodeCount();
         mosseLikelihoodCore.initialize(
@@ -486,15 +468,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
      */
     private double traverseFull(Node node) {
         int numPlan = 5; // dimensions
-//        double deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
-//        int numStates = dataInput.get().getDataType().getStateCount();
         int numPattern = dataInput.get().getPatternCount();
         double logPNode = 0.0;
 
         if (node.isLeaf()) {
             // leaf node
-            // leaf partials size = nrPatterns * (nrStates + 1) * numBins
-            // columns = (4x D's for each nucleotide, 1x E), rows = bins for substitution rate
             setPartials(node, numPattern); // all site patterns
 
         } else {
@@ -522,27 +500,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
             mosseLikelihoodCore.getNodePartials(node.getRight().getNr(), patternPartialsRight);
             
-            // numRateBins, dx of left child, right child, and current node
+            // numRateBins, numEntries, lambdas
             int numRateBins_left = numRateBins_h;
             int numRateBins_right = numRateBins_h;
             int numRateBins_curr = numRateBins_h;
             int numEntries_curr = numEntries_h;
-//            double dx_left = dx_h;
-//            double dx_right = dx_h;
-//            double dx_curr = dx_h;
             double[] lambdas_curr = lambdas_h;
             if (node.getLeft().getHeight() >= tc && !node.getLeft().isLeaf()) {
             	numRateBins_left = numRateBins_l;
-//            	dx_left = dx_l;
             }
             if (node.getRight().getHeight() >= tc && !node.getRight().isLeaf()) {
             	numRateBins_right = numRateBins_l;
-//            	dx_right = dx_l;
             }
             if (node.getHeight() >= tc || node.isRoot()) {
             	numRateBins_curr = numRateBins_l;
             	numEntries_curr = numEntries_l;
-//            	dx_curr = dx_l;
             	lambdas_curr = lambdas_l;
             }
             
@@ -614,7 +586,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
      * @return log probability for root
      */
     private double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
-        // double dxScaled = dx * r;
         int ntypes = 4;
 
         double[][] vals = new double[nx][ntypes+1];
@@ -731,14 +702,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         return res;
     }
 
-//    private double getSum(double[] array) {
-//        double res = 0.0;
-//        for (double i: array) {
-//            res = res + i;
-//        }
-//        return res;
-//    }
-
     private double getSum(double[][] array) {
         double res = 0.0;
         for (int i = 0; i < array.length; i++) {
@@ -761,10 +724,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         return column;
     }
 
-//    public double[] getFlatTransitionMatrices() {
-//        return flatTransitionMatrices;
-//    }
-//
     private double[] getSubstitutionRates(int numElements, double startRate, double dx, double padLeft) {
         double[] res = new double[numElements];
         res[0] = startRate + dx * padLeft;

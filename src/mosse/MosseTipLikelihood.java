@@ -9,6 +9,7 @@ import org.apache.commons.math3.distribution.NormalDistribution;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse tip likelihood using regression model of tip rate given traits and parameters beta and epsilon")

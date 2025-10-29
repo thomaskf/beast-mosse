@@ -26,6 +26,7 @@ import static org.junit.Assert.assertNotNull;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 public class MosseTreeLikelihoodTest {
@@ -84,7 +85,6 @@ public class MosseTreeLikelihoodTest {
         
         // Parameters
         Double[] betasArray = {1.0};
-        // Double[] betasArray = {0.1, 0.2};
         double meanSubst = 0.0; // mean substitution rate
         double epsilon = 0.01;
         double startSubsRate = 0.0001;
@@ -128,13 +128,6 @@ public class MosseTreeLikelihoodTest {
                 "logscale", "false"
         );
 
-        // trait 0
-//        TraitSet trait0 = new TraitSet();
-//        trait0.initByName(
-//                "traitname", "trait0",
-//                "taxa", new TaxonSet(alignment),
-//                "value", trait0Values);
-//        traitsList.add(trait0);
         // trait 1
         TraitSet trait1 = new TraitSet();
         trait1.initByName(
@@ -172,8 +165,7 @@ public class MosseTreeLikelihoodTest {
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),          
-                "resolution", Integer.toString(resolution) //, 
-//                "lowresolution", Boolean.toString(lowresolution)
+                "resolution", Integer.toString(resolution) 
         );
 
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();

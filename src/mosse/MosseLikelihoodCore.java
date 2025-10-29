@@ -6,6 +6,7 @@ import beast.base.evolution.likelihood.BeerLikelihoodCore;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse likelihood core calculation class")
