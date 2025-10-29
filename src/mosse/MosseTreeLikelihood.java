@@ -149,7 +149,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
         beagle = null;
 
-        tc = treeInput.get().getRoot().getHeight() / 2.0; // getTreeLength(treeInput.get());
+        tc = treeInput.get().getRoot().getHeight() / 10.0;
         int nodeCount = treeInput.get().getNodeCount();
         m_siteModel = (SiteModel.Base) siteModelInput.get();
         m_siteModel.setDataType(dataInput.get().getDataType());
@@ -564,7 +564,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             	numRateBins_right = numRateBins_l;
 //            	dx_right = dx_l;
             }
-            if (node.getHeight() >= tc && node.isRoot()) {
+            if (node.getHeight() >= tc || node.isRoot()) {
             	numRateBins_curr = numRateBins_l;
             	numEntries_curr = numEntries_l;
 //            	dx_curr = dx_l;
