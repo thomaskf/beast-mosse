@@ -18,6 +18,7 @@ import java.lang.UnsupportedOperationException;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse tree model")
