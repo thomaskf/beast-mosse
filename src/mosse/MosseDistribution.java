@@ -4,13 +4,10 @@ import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.Parameter;
 import beast.base.inference.parameter.RealParameter;
 import beast.base.inference.parameter.BooleanParameter;
-import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeDistribution;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.lang.UnsupportedOperationException;
