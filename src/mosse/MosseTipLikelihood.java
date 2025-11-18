@@ -27,7 +27,6 @@ public class MosseTipLikelihood extends CalculationNode {
 	private RealParameter beta;
 	private RealParameter meanSubstitution;
 	private RealParameter epsilon;
-	private boolean logScale;
 
 	public MosseTipLikelihood() {
 
@@ -104,10 +103,5 @@ public class MosseTipLikelihood extends CalculationNode {
 		beta = betaInput.get();
 		meanSubstitution = meanSubstitutionInput.get();
 		epsilon = epsilonInput.get();
-		if (logScaleInput.get() == null) {
-			logScale = true;
-		} else {
-			logScale = logScaleInput.get().getValue();
-		}
 	}
 }
