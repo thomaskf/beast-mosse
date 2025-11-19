@@ -5,7 +5,6 @@ import beast.base.core.Input;
 import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
-import beast.base.inference.parameter.BooleanParameter;
 import beast.base.evolution.tree.TreeDistribution;
 
 import java.util.List;

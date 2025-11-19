@@ -8,7 +8,6 @@ import beast.base.inference.parameter.RealParameter;
 import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
-import beast.base.evolution.likelihood.TreeLikelihood.Scaling;
 import beast.base.evolution.sitemodel.SiteModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
