@@ -528,7 +528,7 @@ public class MosseTreeLikelihoodFast extends TreeLikelihood {
         // if either child was updated, we must recompute this node's partials
         if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN) {
         	
-        	System.out.println("[F] Compute " + nodeIndex + "'s partial likelihood value");
+        	// System.out.println("[F] Compute " + nodeIndex + "'s partial likelihood value");
             final int childNum1 = child1.getNr();
             final int childNum2 = child2.getNr();
             
@@ -806,7 +806,9 @@ public class MosseTreeLikelihoodFast extends TreeLikelihood {
 	    		calcLogP();
 	    	}
         }
-        return logP + log_compensates[rootIndex];
+        double ans = logP + log_compensates[rootIndex];
+        System.out.println("logP = " + ans);
+        return ans;
     }
 
     protected void calcLogP() {

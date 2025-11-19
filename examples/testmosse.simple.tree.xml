@@ -2,15 +2,21 @@
     namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood'>
 
     <!-- The sequence alignment                                                  -->
-    <!-- ntax=20 nchar=2000                                                      -->
-    <!-- npatterns=360                                                           -->
+    <!-- ntax=4 nchar=2                                                      -->
+    <!-- npatterns=2                                                           -->
     <data
         id="alignment" dataType="nucleotide">
         <sequence taxon="t0">
-            A
+            AC
         </sequence>
         <sequence taxon="t1">
-            C
+            CG
+        </sequence>
+        <sequence taxon="t2">
+            AC
+        </sequence>
+        <sequence taxon="t3">
+            CG
         </sequence>
     </data>
 
@@ -18,19 +24,21 @@
         id="taxonset" spec="beast.base.evolution.alignment.TaxonSet">
         <taxon id="t0" spec="Taxon" />
         <taxon id="t1" spec="Taxon" />
+        <taxon id="t2" spec="Taxon" />
+        <taxon id="t3" spec="Taxon" />
     </taxonset>
 
     <tree
         id='tree' spec='beast.base.evolution.tree.TreeParser'
         IsLabelledNewick='true'
-        newick='(t0: 0.5, t1: 0.5);'
+        newick='((t0:0.2,t1:0.2):0.3,(t2:0.2,t3:0.2):0.3);'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood"
         spec="mosse.MosseTipLikelihood"
-        subst="0.01" logscale="true">
+        subst="0.0" logscale="false">
         <epsilon id="epsilon" spec="parameter.RealParameter">0.01</epsilon>
-        <beta id="beta" dimension="2" spec="parameter.RealParameter">0.1 0.2</beta>
+        <beta id="beta" dimension="1" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
 
     <JukesCantor
@@ -42,7 +50,8 @@
         gammaCategoryCount="1.0" />
 
     <MosseDistribution id="treemodel"
-        spec="mosse.MosseDistribution" tree="@tree" />
+        spec="mosse.MosseDistribution" tree="@tree"
+        nx="1024" dx="0.0001" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" />
 
     <LogisticFunction
         id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
@@ -56,26 +65,22 @@
 
         <state id="state" storeEvery="10000">
             <stateNode idref="epsilon" />
-            <stateNode idref="beta" />
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
-                <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihood" 
+                <distribution id="mossetreelikelihoodfast"
+                    spec="mosse.MosseTreeLikelihoodFast" 
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    startSubsRate="0.01" numRateBins="1024"
-                    lambdaFunc="@logfunc" muFunc="@constfunc">
+                    startSubsRate="0.0001" numRateBins="1024"
+                    lambdaFunc="@logfunc" muFunc="@constfunc"
+                    resolution="4">
                     <traits id="trait0"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
-                        value="t0=0.3, t1=0.3" />
-                    <traits id="trait1"
-                        spec="beast.base.evolution.tree.TraitSet"
-                        traitname="trait1" taxa="@taxonset"
-                        value="t0=0.15, t1=0.1" />
+                        value="t0=0.15, t1=0.1, t2=0.15, t3=0.1" />
                 </distribution>
             </distribution>
 
@@ -97,7 +102,7 @@
         <logger logEvery="10" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
             <log idref='likelihood' />
-            <log idref="mossetreelikelihood" />
+            <log idref="mossetreelikelihoodfast" />
             <log idref="beta" />
             <log idref="epsilon" />
         </logger>
