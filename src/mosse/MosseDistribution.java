@@ -28,7 +28,6 @@ public class MosseDistribution extends TreeDistribution {
     final public Input<RealParameter> dtInput = new Input<>("dt", "time interval dt", new RealParameter("0.01"));
     final public Input<IntegerParameter> widthInput = new Input<>("width", "width of the kernel for convolution", new IntegerParameter("10"));
     final public Input<IntegerParameter> resolutionInput = new Input<>("resolution", "scale factor for resolution of bins", new IntegerParameter("4"));
-    final public Input<BooleanParameter> lowresolutionInput = new Input<>("lowresolution", "whether using low resolution", new BooleanParameter("false"));
 
 
     final public int FLAG_FFTW3_DEFAULT = 0;
