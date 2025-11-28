@@ -7,16 +7,16 @@
     <data
         id="alignment" dataType="nucleotide">
         <sequence taxon="t0">
-            AC
+            AG
         </sequence>
         <sequence taxon="t1">
-            CG
+            CT
         </sequence>
         <sequence taxon="t2">
-            AC
+            GG
         </sequence>
         <sequence taxon="t3">
-            CG
+            TC
         </sequence>
     </data>
 
@@ -31,7 +31,7 @@
     <tree
         id='tree' spec='beast.base.evolution.tree.TreeParser'
         IsLabelledNewick='true'
-        newick='((t0:0.2,t1:0.2):0.3,(t2:0.2,t3:0.2):0.3);'
+        newick='((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood"
@@ -80,7 +80,7 @@
                     <traits id="trait0"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
-                        value="t0=0.15, t1=0.1, t2=0.15, t3=0.1" />
+                        value="t0=0.15, t1=0.1, t2=0.25, t3=0.2" />
                 </distribution>
             </distribution>
 
