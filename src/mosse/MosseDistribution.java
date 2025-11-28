@@ -28,9 +28,22 @@ public class MosseDistribution extends TreeDistribution {
     final public Input<IntegerParameter> widthInput = new Input<>("width", "width of the kernel for convolution", new IntegerParameter("10"));
     final public Input<IntegerParameter> resolutionInput = new Input<>("resolution", "scale factor for resolution of bins", new IntegerParameter("4"));
 
-
     final public int FLAG_FFTW3_DEFAULT = 0;
-
+    
+    protected int resolution;
+    protected int nx;
+    protected double dx;
+    protected int padLeft_h; // padLeft for high resolution
+    protected int padLeft_l; // padLeft for low resolution
+    protected int padRight_h; // padRight for high resolution
+    protected int padRight_l; // padRight for low resolution
+    
+    protected double drift;
+    protected double diffusion;
+    protected double dt;
+    protected double mean;
+    protected double sd;
+    protected int width;
 
     static {
         System.loadLibrary("test");
@@ -56,15 +69,37 @@ public class MosseDistribution extends TreeDistribution {
             double drift, double diffusion, double[] Q, int nt, double dt, int pad_left, int pad_right);
 
     public void initAndValidate() {
-
+        if (resolutionInput.get() != null) {
+            resolution = resolutionInput.get().getValue();
+        } else {
+            resolution = resolutionInput.defaultValue.getValue();
+        }
+        if (nxInput.get() != null) {
+            nx = nxInput.get().getValue();
+        } else {
+            nx = nxInput.defaultValue.getValue();
+        }
+        if (dxInput.get() != null) {
+            dx = dxInput.get().getValue();
+        } else {
+            dx = dxInput.defaultValue.getValue();
+        }
+        
+        drift = driftInput.get().getValue();
+        diffusion = diffusionInput.get().getValue();
+        dt = dtInput.get().getValue();
+        
+        mean = drift * dt;
+        sd = Math.sqrt(diffusion * dt);
+        width = widthInput.get().getValue();
+        
+        padLeft_h = getPadLeft(false); // padLeft for high resolution
+        padLeft_l = getPadLeft(true); // padLeft for low resolution
+        padRight_h = getPadRight(false); // padRight for high resolution
+        padRight_l = getPadRight(true); // padRight for low resolution
     }
 
     public int getPadLeft(boolean lowResolution) {
-        double mean = driftInput.get().getValue() * dtInput.get().getValue();
-        double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
-        double dx = dxInput.get().getValue();
-        int width = widthInput.get().getValue();
-        int resolution = resolutionInput.get().getValue();
         int padLeft = 0;
         if (lowResolution) {
             padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution);
@@ -75,11 +110,6 @@ public class MosseDistribution extends TreeDistribution {
     }
 
     public int getPadRight(boolean lowResolution) {
-        double mean = driftInput.get().getValue() * dtInput.get().getValue();
-        double sd = Math.sqrt(diffusionInput.get().getValue() * dtInput.get().getValue());
-        double dx = dxInput.get().getValue();
-        int width = widthInput.get().getValue();
-        int resolution = resolutionInput.get().getValue();
         int padRight = 0;
         if (lowResolution) {
             padRight = (int) Math.ceil((mean + width * sd) / dx / resolution);
@@ -92,13 +122,7 @@ public class MosseDistribution extends TreeDistribution {
     public void calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q, double[] result, boolean lowResolution) {
         // double logP = 0.0;
         // getting parameter values
-        int nx = nxInput.get().getValue();
-        double dx = dxInput.get().getValue();
         int[] nd = {5};
-        double drift = driftInput.get().getValue();
-        double diffusion = diffusionInput.get().getValue();
-        double dt = dtInput.get().getValue();
-        int resolution = resolutionInput.get().getValue();
         
         // consider this special case: 
         // Consider branchTime = 0.3000001; dt = 0.01;
@@ -107,21 +131,21 @@ public class MosseDistribution extends TreeDistribution {
         // x need to be greater than say 30 + delta so that nt would be 31
         double delta = 0.1;
         int nt = (int) Math.ceil(branchTime / dt - delta);
+        double[] the_result;
         
         if (lowResolution) {
-        	dx = dx * resolution;
+	        the_result = doIntegration(nx, dx * resolution, nd, FLAG_FFTW3_DEFAULT,
+	            vars, lambda, mu,
+	            drift, diffusion,
+	            Q, nt, dt,
+	            padLeft_l, padRight_l);
         } else {
-        	nx = nx * resolution;
+	        the_result = doIntegration(nx * resolution, dx, nd, FLAG_FFTW3_DEFAULT,
+		        vars, lambda, mu,
+		        drift, diffusion,
+		        Q, nt, dt,
+		        padLeft_h, padRight_h);
         }
-
-        int padLeft = getPadLeft(lowResolution);
-        int padRight = getPadRight(lowResolution);
-
-        double[] the_result = doIntegration(nx, dx, nd, FLAG_FFTW3_DEFAULT,
-            vars, lambda, mu,
-            drift, diffusion,
-            Q, nt, dt,
-            padLeft, padRight);
 
         System.arraycopy(the_result, 0, result, 0, the_result.length);
     }

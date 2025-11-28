@@ -37,10 +37,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     final public Input<MosseTipLikelihood> tipModelInput = new Input<>("tipModel", "model of tip probabilities", Input.Validate.REQUIRED);
     final public Input<Distribution> treeModelInput = new Input<>("treeModel", "species diversification model", Input.Validate.REQUIRED);
 
-    // substitution rate parameters
-    final public Input<RealParameter> startSubsRateInput = new Input<>("startSubsRate", "lower range for substitution rate", Input.Validate.REQUIRED);
-    final public Input<IntegerParameter> numRateBinsInput = new Input<>("numRateBins", "number of bins for substitution rate", Input.Validate.REQUIRED);
-
     // lambda and mu functions
     final public Input<LinkFn> lambdaFuncInput = new Input<>("lambdaFunc", "function for birth rate lambda", Input.Validate.REQUIRED);
     final public Input<LinkFn> muFuncInput = new Input<>("muFunc", "function for death rate mu", Input.Validate.REQUIRED);
@@ -49,8 +45,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     final public Input<LinkFn> rootFuncInput = new Input<>("rootFunc", "function for root", Input.Validate.OPTIONAL);
 
     final public Input<IntegerParameter> rootOptionInput = new Input<>("rootOption", "option for root calculation", Input.Validate.OPTIONAL);
-
-    final public Input<IntegerParameter> resolutionOptionInput = new Input<>("resolution", "resolution scale factor", new IntegerParameter("1"), Input.Validate.OPTIONAL);
 
     // root options
     final public int ROOT_FLAT = 1;
@@ -99,22 +93,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         traits = traitListInput.get();
         tipModel = tipModelInput.get();
         treeModel = (MosseDistribution) treeModelInput.get();
-
-        if (resolutionOptionInput.get() != null) {
-            resolution = resolutionOptionInput.get().getValue();
-        } else {
-            resolution = resolutionOptionInput.defaultValue.getValue();
-        }
+        resolution = treeModel.resolution;
         
         // high resolution
-        numRateBins_h = numRateBinsInput.get().getValue() * resolution;
-        dx_h = treeModel.dxInput.get().getValue();
-        startSubsRate_h = startSubsRateInput.get().getValue();
+        numRateBins_h = treeModel.nx * resolution;
+        dx_h = treeModel.dx;
+        startSubsRate_h = dx_h;
         // low resolution
-        numRateBins_l = numRateBinsInput.get().getValue();
-        dx_l = treeModel.dxInput.get().getValue() * resolution;
-        startSubsRate_l = startSubsRateInput.get().getValue() + treeModel.dxInput.get().getValue() * (resolution - 1);
-
+        numRateBins_l = treeModel.nx;
+        dx_l = treeModel.dx * resolution;
+        startSubsRate_l = dx_l;
+        
         // maximum value of numRateBins (always numRateBins_h)
         numRateBins_max = numRateBins_h;
         
@@ -135,8 +124,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                     treeInput.get().getLeafNodeCount(),
                     dataInput.get().getTaxonCount());
             throw new IllegalArgumentException(message);
-        } else if (numRateBinsInput.get().getValue() <= 0) {
-            throw new IllegalArgumentException("numRateBins input must be a positive integer");
         } else if (!(siteModelInput.get() instanceof SiteModel.Base)) {
             throw new IllegalArgumentException("siteModel input should be of type SiteModel.Base");
         } else if (branchRateModelInput.get() != null) {
@@ -163,16 +150,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         // set likelihood core number of states and number of rate bins
         mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins_max);
         
-        // compute the padLeft, padRight, and numEntries for low resolution
-        boolean lowResolution = true;
-        padLeft_l = treeModel.getPadLeft(lowResolution);
-        padRight_l = treeModel.getPadRight(lowResolution);
+        // compute the padLeft, padRight, and numEntries for low and high resolution
+        padLeft_l = treeModel.padLeft_l;
+        padRight_l = treeModel.padRight_l;
         numEntries_l = numRateBins_l - padLeft_l - padRight_l - 1;
-        
-        // compute the padLeft, padRight, and numEntries for high resolution
-        lowResolution = false;
-        padLeft_h = treeModel.getPadLeft(lowResolution);
-        padRight_h = treeModel.getPadRight(lowResolution);
+        padLeft_h = treeModel.padLeft_h;
+        padRight_h = treeModel.padRight_h;
         numEntries_h = numRateBins_h - padLeft_h - padRight_h - 1;
 
         // get lambdas and mus
