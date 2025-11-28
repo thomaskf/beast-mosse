@@ -88,7 +88,6 @@ public class MosseTreeLikelihoodTest {
         Double[] betasArray = {1.0};
         double meanSubst = 0.0; // mean substitution rate
         double epsilon = 0.01;
-        double startSubsRate = 0.0001;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
@@ -169,7 +168,7 @@ public class MosseTreeLikelihoodTest {
                 "resolution", Integer.toString(resolution) 
         );
 
-        MosseTreeLikelihoodFast likelihood = new MosseTreeLikelihoodFast();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
@@ -177,11 +176,8 @@ public class MosseTreeLikelihoodTest {
                 "tipModel", tipModel,
                 "treeModel", mosseDist,
                 "traits", traitsList,
-                "startSubsRate", Double.toString(startSubsRate),
-                "numRateBins", Integer.toString(numBins),
                 "lambdaFunc", logFunc,
-                "muFunc", constFunc,
-                "resolution", Integer.toString(resolution)
+                "muFunc", constFunc
         );
 
         // using observed root
