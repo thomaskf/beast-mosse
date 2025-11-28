@@ -378,7 +378,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
      * compute likelihoods for single branch
      * return the log compensation
      */
-    private double computeSingleBranchLikelihood(Node node, Node child, double[] partials) {
+    protected double computeSingleBranchLikelihood(Node node, Node child, double[] partials) {
         int numPlan = 5; // dimensions
         double logP = 0.0; // for log-compensation
 
@@ -587,7 +587,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
      * @param conditionSurv whether to condition on survival
      * @return log probability for root
      */
-    private double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
+    protected double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
         int ntypes = 4;
 
         double[][] vals = new double[nx][ntypes+1];
