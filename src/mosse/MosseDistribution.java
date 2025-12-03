@@ -124,13 +124,7 @@ public class MosseDistribution extends TreeDistribution {
         // getting parameter values
         int[] nd = {5};
         
-        // consider this special case: 
-        // Consider branchTime = 0.3000001; dt = 0.01;
-        // let x = branchTime/dt 
-        // then x = 30.00001, and Math.ceil(x) would be 31
-        // x need to be greater than say 30 + delta so that nt would be 31
-        double delta = 0.1;
-        int nt = (int) Math.ceil(branchTime / dt - delta);
+        int nt = (int) Math.ceil(branchTime / dt);
         double[] the_result;
         
         if (lowResolution) {
