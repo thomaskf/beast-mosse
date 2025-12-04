@@ -19,6 +19,7 @@ import java.lang.UnsupportedOperationException;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 
@@ -88,6 +89,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     
     protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
+    // indices of taxa under subtree of every node
+    protected int[] taxaIndexUnderNode;
+    
     @Override
     public void initAndValidate() {
         traits = traitListInput.get();
@@ -197,8 +201,42 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         
         // root partial array always use low resolution
         m_fRootPartials = new double[patterns * stateCount * numRateBins_l];
+
+        // get all the taxon indices under all children of each node
+        Alignment data = dataInput.get();
+        int taxonCount = data.getTaxonCount();
+        taxaIndexUnderNode = new int[taxonCount * nodeCount];
+        Arrays.fill(taxaIndexUnderNode, -1);
+        setTaxonIndices(treeInput.get().getRoot());
     }
 
+    /**
+     * set the taxon indices under all children of each node
+     */
+    private void setTaxonIndices(Node node) {
+        Alignment data = dataInput.get();
+        int nTaxa = data.getTaxonCount();
+    	if (node.isLeaf()) {
+    		taxaIndexUnderNode[node.getNr() * nTaxa] = data.getTaxonIndex(node.getID());;
+    	} else {
+    		int k = node.getNr() * data.getTaxonCount();
+    		setTaxonIndices(node.getLeft());
+    		setTaxonIndices(node.getRight());
+    		// for left
+    		int k_left = node.getLeft().getNr() * data.getTaxonCount();
+    		while (taxaIndexUnderNode[k_left] != -1) {
+    			taxaIndexUnderNode[k] = taxaIndexUnderNode[k_left];
+    			k_left++; k++;
+    		}
+    		// for right
+    		int k_right = node.getRight().getNr() * data.getTaxonCount();
+    		while (taxaIndexUnderNode[k_right] != -1) {
+    			taxaIndexUnderNode[k] = taxaIndexUnderNode[k_right];
+    			k_right++; k++;
+    		}
+    	}
+    }
+    
     /**
      * set leaf partials using tip GLM likelihood model *
      */
@@ -503,40 +541,71 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             	lambdas_curr = lambdas_l;
             }
             
+            HashMap<ArrayList<Integer>, Integer> subpattern2pos = new HashMap<ArrayList<Integer>, Integer>();
+            HashMap<ArrayList<Integer>, Double> subpattern2logp = new HashMap<ArrayList<Integer>, Double>();
+            Alignment data = dataInput.get();
+        	int s = node.getNr() * data.getTaxonCount();
+            
             for (int pattern = 0; pattern < numPattern; pattern++) {
                 // partial for single pattern
                 int startPos = pattern * numPlan * numRateBins_max;
-                int partialSizeLeft = numPlan * numRateBins_left;
-                int partialSizeRight = numPlan * numRateBins_right;
-                double[] partialsLeft = new double[partialSizeLeft];
-                System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSizeLeft);
-                double[] partialsRight = new double[partialSizeRight];
-                System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSizeRight);
-                
-                // propagate each child branch
-                logPNode += computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft);
-                logPNode += computeSingleBranchLikelihood(node, node.getRight(), partialsRight);
+                ArrayList<Integer> subpattern = null;
 
-                int k = 0;
-                for (int i = 0; i < numPlan; i++) {
-                    for (int j = 0; j < numRateBins_curr; j++) {
-                        if (i == 0) {
-                            // E is topology independent
-                            partialsAllPatterns[startPos + k] = partialsLeft[k];
-                        } else {
-                            if (j < numEntries_curr) {
-                                // non padded elements
-                                // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-                                partialsAllPatterns[startPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
-                            } else {
-                                // padded elements
-                                partialsAllPatterns[startPos +  k] = 0.0;
-                            }
-                        }
-                        k++;
-                    }
+                if (!node.isRoot()) {
+	                // get the subpattern
+	            	// first check whether the subpattern has appeared before
+	            	subpattern = new ArrayList<Integer>();
+	            	for (int i = 0; i < data.getTaxonCount(); i++) {
+	            		if (taxaIndexUnderNode[s+i] == -1)
+	            			break;
+	            		int taxonIndex = taxaIndexUnderNode[s+i];
+	            		int stateCount = data.getPattern(taxonIndex, pattern);
+	            		subpattern.add(stateCount);
+	            	}
                 }
+                double logp = 0.0;
+            	if (subpattern != null && !subpattern.isEmpty() && subpattern2pos.containsKey(subpattern)) {
+            		int pos = subpattern2pos.get(subpattern);
+            		logp = subpattern2logp.get(subpattern);
+            		System.arraycopy(partialsAllPatterns, pos, partialsAllPatterns, startPos, numPlan * numRateBins_curr);
+            	} else {
+	                int partialSizeLeft = numPlan * numRateBins_left;
+	                int partialSizeRight = numPlan * numRateBins_right;
+	                double[] partialsLeft = new double[partialSizeLeft];
+	                System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSizeLeft);
+	                double[] partialsRight = new double[partialSizeRight];
+	                System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSizeRight);
+	                
+	                // propagate each child branch
+	                logp += computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft);
+	                logp += computeSingleBranchLikelihood(node, node.getRight(), partialsRight);
+	
+	                int k = 0;
+	                for (int i = 0; i < numPlan; i++) {
+	                    for (int j = 0; j < numRateBins_curr; j++) {
+	                        if (i == 0) {
+	                            // E is topology independent
+	                            partialsAllPatterns[startPos + k] = partialsLeft[k];
+	                        } else {
+	                            if (j < numEntries_curr) {
+	                                // non padded elements
+	                                // D_left * D_right * lambda(x)
+	                                double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+	                                partialsAllPatterns[startPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+	                            } else {
+	                                // padded elements
+	                                partialsAllPatterns[startPos +  k] = 0.0;
+	                            }
+	                        }
+	                        k++;
+	                    }
+	                }
+	                if (subpattern != null) {
+	                	subpattern2pos.put(subpattern, startPos);
+	                	subpattern2logp.put(subpattern, logp);
+	                }
+            	}
+            	logPNode += logp;
             }
             
 	        // set node partials
