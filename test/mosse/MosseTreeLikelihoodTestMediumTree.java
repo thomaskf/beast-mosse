@@ -80,6 +80,21 @@ public class MosseTreeLikelihoodTestMediumTree {
     	
     	long startTime = System.nanoTime();
 
+/*    	
+        int numLeaves = 5;
+        String[] names = {"sp1","sp2","sp3","sp4","sp5"};
+        
+        
+        String[] sequences = {"tttttttttt",
+        		"ttttcttttt",
+        		"tcttcttttt",
+        		"ttttcttttt",
+        		"ttttcttttt"};
+        
+        String newick = "((sp2:0.447228123,sp4:0.447228123):0.3558778628,((sp5:0.5746148967,sp3:0.5746148967):0.1414185342,sp1:0.716033431):0.08707255494);";
+        String trait0Values = "sp1=0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=0.0170916723535904,sp5=0.0643209355960926";
+*/
+    	
         int numLeaves = 20;
         String[] names = {"sp1","sp2","sp3","sp4","sp5","sp6","sp7","sp8","sp9","sp10","sp11","sp12","sp13","sp14","sp15","sp16","sp17","sp18","sp19","sp20"};
         String[] sequences = {"tttttttttttttctatctttttttttttttcttttattttaattgtttattttttttttagtttctatttttttcttttttttcattttctttttctttttaactctttatcatctttttttttttctttttttttttaactttttattctttttctttcttttttatattctattttttttttttttctttttctttttctttttccttcttttttcttctcgtctgtttattttttttttatttttctgtctttttattttaattttcatttctttttcttgtttttttttttttatttcttctattttcttttttttttttttcttttttacttttgtcatattcctttttttttttttttcattttgtattttttcttttttttattttcttccatttttttatttatttatcttttttttttcttttttctttttctttttatttttttatttttacattttctttcttatctttcccattcatttctttcattattttttattcttttatctttttctatttttaattcttttattttatttctttccttcttctgtttcttctttattatttacttatttttttttctattttcttttctctttttttttttattttatcttttgtttttcttttttaatttgctatttattttttacttttttattatatgctttttttatactttttactttttattcttttatattccttatttttttatatttcttctttctttttttttcttatttaactactttttcttcttgtttttttttttcttattctttttatctcttttcattttttttatttatcactctttatatcctctttatttttttttctttatttatttttttttttctttttttcttttaatatttatttttttttactatttttttcacgatattccgtatattattttctatttgtttttttctttacttaaatctttctttttttttctttctttattttttactcttt",
@@ -102,9 +117,11 @@ public class MosseTreeLikelihoodTestMediumTree {
         		"ttttcttttttcttttttttttttttcttttttttttttttaactgtttattctttttttagtttctattttttttctttttttttttttctttttttttttaactctttatcatcttttcttttttcctcttttttttagctttttattcttttttttttctttttatttcttattttttttttttctctttttctttttgtttattcatcttttttctctttgtctgtttatttttttcttattttcctgtctttttattttaatcttcttttttttttcttatttttctttttttatttcttttattttttttttttttttcttcttttttatttctgtcatattctttttcttctttttttcattttgtattttttcctttttttattttcttctattttttcattcatttatctttattttttcttttttctttttttttttatttttctatttttatattttctttcttatttttttcattttttttttttattattttttatttttttatttttttctgttcttaattcttctattttatttctttcctccttttgttttttttttattatctatttatttttttttttatttttctttatcttttcttttttattttatcttttgtttctcttttttaatttgctattttttttttatttttattttatatgctttttttattctttttgctatctactcctttatattccttatttttttattttttttttttttttttttttcttatttaactacttttttttcttgtttctttttctttttttctttttattttttttcattttttttttttttcactctttatatcctttctactctttttcctttatttatttatttttttcttttttccttttcttatttatttttttttactattttttttacgtcattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttttttcattttctactcttt",
         		"tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttt",
         		"tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttt"};
+
         String newick = "(((sp2:1.049838447,(sp4:0.6939605846,(sp19:0.01462697391,sp20:0.01462697391):0.6793336107):0.3558778628):0.4268244178,((((sp11:0.1487890344,sp12:0.1487890344):0.1609632737,sp7:0.3097523081):0.5893893643,((sp5:0.5746148967,((sp17:0.05206627524,sp18:0.05206627524):0.107884737,sp10:0.1599510123):0.4146638844):0.1831082415,sp3:0.7577231382):0.1414185342):0.08707255494,(((sp6:0.3752693329,(sp8:0.1716235721,sp9:0.1716235721):0.2036457608):0.03000869401,(sp15:0.06826060454,sp16:0.06826060454):0.3370174224):0.3270523139,(sp13:0.08543504527,sp14:0.08543504527):0.6468952955):0.2538838865):0.4904486378):1.522943414,sp1:2.999606279);";
-        int numTraits = 1;
         String trait0Values = "sp1=0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
+        
+        int numTraits = 1;
         // String trait0Values = "sp1=-0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=-0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
@@ -184,7 +201,7 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "resolution", Integer.toString(resolution) 
         );
         
-        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
+        MosseTreeLikelihoodFast likelihood = new MosseTreeLikelihoodFast();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
