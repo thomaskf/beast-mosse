@@ -212,10 +212,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             double[] partials = new double[patternCount * (states + 1) * numRateBins_max];
             int k = 0;
             int taxonIndex = data.getTaxonIndex(node.getID());
+        	double subsInterval = startSubsRate_h;
+            double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_h, startSubsRate_h + padLeft_h * subsInterval, subsInterval);
             for (int patternIndex = 0; patternIndex < patternCount; patternIndex++) {
             	k = patternIndex * (states + 1) * numRateBins_max;
-            	double subsInterval = startSubsRate_h;
-                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_h, startSubsRate_h + padLeft_h * subsInterval, subsInterval);
                 int stateCount = data.getPattern(taxonIndex, patternIndex);
                 boolean[] stateSet = data.getStateSet(stateCount);
                 // E initial values are zero
