@@ -125,17 +125,18 @@
         id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
 
     <run
-        chainLength="10" id="mcmc" spec="MCMC">
+        chainLength="3" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
-            <stateNode idref="epsilon" />
+            <!-- <stateNode idref="epsilon" /> -->
+            <stateNode idref="tree" />
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihood"
+                    spec="mosse.MosseTreeLikelihoodFast"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
@@ -148,25 +149,44 @@
 
             <!-- START prior-->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
+                <distribution id="tree.prior" spec="beast.base.evolution.tree.coalescent.Coalescent">
+                    <tree idref="tree"/>
+                    <populationModel id="popModel" spec="ConstantPopulation">
+                        <parameter id="popSize" name="popSize">1.0</parameter>
+                    </populationModel>
+                </distribution>            
+                <!--
                 <distribution id="EpsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
                     <distr id="LogNormal.Epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" offset="0.0" meanInRealSpace="false">
                         <parameter name="M" value="1.0" estimate="false" />
                         <parameter name="S" value="1.0" estimate="false" />
                     </distr>
                 </distribution>
+                -->
             </distribution>
             <!-- END prior-->
         </distribution>
+        
+        <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
 
+        <!-- SubtreeSlide: local node-height / branch-length move, no topology change -->
+        <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
+
+        <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
+        <!-- <operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
+
+        <!--
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
             scaleFactor="0.75" weight="3.0" />
+        -->
 
-        <logger logEvery="10" fileName="examples/test.$(seed).log" model="@likelihood">
+        <logger logEvery="1" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
             <log idref='likelihood' />
             <log idref="mossetreelikelihood" />
-            <log idref="beta" />
-            <log idref="epsilon" />
+            <log idref="tree" />
+            <!-- <log idref="beta" />
+            <log idref="epsilon" /> -->
         </logger>
     </run>
 

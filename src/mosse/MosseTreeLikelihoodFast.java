@@ -243,6 +243,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     public double calculateLogP() {
         final TreeInterface tree = treeInput.get();
         final int rootIndex = tree.getRoot().getNr();
+        System.out.println(tree.toString());
         if (requiresRecalculation()) {
 	    	if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
 	    		calcLogP();
