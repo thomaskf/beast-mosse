@@ -800,6 +800,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     @Override
     public double calculateLogP() {
         final TreeInterface tree = treeInput.get();
+        System.out.println(tree.toString());
         traverseFull(tree.getRoot());
         System.out.println("logP = " + logP);
         return logP;
