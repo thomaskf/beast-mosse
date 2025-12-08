@@ -125,7 +125,7 @@
         id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
 
     <run
-        chainLength="3" id="mcmc" spec="MCMC">
+        chainLength="10" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
             <!-- <stateNode idref="epsilon" /> -->

@@ -37,9 +37,6 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     // store the log compensations for each nodes
     private double[] log_compensates;
 
-    // Force full recomputation on the first call to calculateLogP()
-    private boolean firstEval = true;
-    
     @Override
     public void initAndValidate() {
     	
@@ -48,16 +45,14 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     	alignment = dataInput.get();
 
     	// initialize the log-compensation array
-        System.out.println("Number of nodes: " + treeInput.get().getNodeCount());
         log_compensates = new double[treeInput.get().getNodeCount()];
         Arrays.fill(log_compensates, 0.0);
-        
-        // optional but consistent: force a full recompute on first call
-        hasDirt = Tree.IS_DIRTY;
-        updateSiteModel = true;
-        updateTips = true;
-    }
 
+        // initialize the flags
+		updateTips = true;
+		updateSiteModel = true;
+    }
+    
     /**
      * traverse tree with optimized caching
      * @param node tree node
@@ -65,48 +60,50 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
      */
     @Override
     protected int traverse(final Node node) {
-        int numPlan = 5; // dimensions
-        int numPattern = alignment.getPatternCount();
-        
-        int update = (node.isDirty() | hasDirt);
+    	
+    	/*
+    	System.out.print("[traverse] node.getNr() = " + node.getNr());
+    	if (!node.isRoot())
+    		System.out.print("; parent = " + node.getParent().getNr());
+    	else
+    		System.out.print("; this is a root");
+    	if (!node.isLeaf())
+    		System.out.print("; left child = " + node.getLeft().getNr() + "; right child = " + node.getRight().getNr());
+    	else
+    		System.out.print("; this is a leaf");
+    	System.out.println();
+    	*/
+    	
+    	
+    	if (node.isRoot()) {
+        	// taxon indices under all children of each node
+            setTaxonIndices(tree.getRoot());
+            if (updateTips) {
+            	// update all the partial for all leaves
+        		setPartials(node, patterns);
+            }
+    	}
+    	
+        int update = node.isDirty();
         final int nodeIndex = node.getNr();
         
-        // If nothing changed at or below this node and no global dirt,
-        // we can stop immediately – cached partials are still valid.
-        if (update == Tree.IS_CLEAN) {
-            return Tree.IS_CLEAN;
-        }
-
-        // ---- leaf case ----
+        
+        // -------- leaf --------
         if (node.isLeaf()) {
-        	if (updateTips) {
-        		// update tips from GLM if node is a leaf
-        		setPartials(node, numPattern);
-        		updateTips = false;
-        	}
-        	
-        	if (updateSiteModel) {
-        		// update site transition matrices
-        		flatTransitionMatrices_h = null;
-        		flatTransitionMatrices_l = null;
-                updateSiteModel = false;
-        	}
-        	
-        	// Noting else to do for a leaf
+        	// nothing else to do for a leaf
         	return update;
         }
-
-        // ---- internal node case ----
+        
+        // --------- internal node ----------
         final Node child1 = node.getLeft();
         final int update1 = traverse(child1);
 
         final Node child2 = node.getRight();
         final int update2 = traverse(child2);
-
+        
         // if either child was updated, we must recompute this node's partials
-        if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN) {
+        if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel) {
         	
-        	// System.out.println("[F] Compute " + nodeIndex + "'s partial likelihood value");
             final int childNum1 = child1.getNr();
             final int childNum2 = child2.getNr();
             
@@ -115,9 +112,9 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
             flatTransitionMatrices_l = null;
             flatTransitionMatrices_h = null;
 
-            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins_max];
-            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins_max];
-            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins_max];
+            double[] patternPartialsLeft = new double[patterns * numPlan * numRateBins_max];
+            double[] patternPartialsRight = new double[patterns * numPlan * numRateBins_max];
+            double[] partialsAllPatterns = new double[patterns * numPlan * numRateBins_max];
             
             // get the get compensation values from left and right children
             double logPNode = 0.0;
@@ -148,10 +145,9 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
             
             HashMap<ArrayList<Integer>, Integer> subpattern2pos = new HashMap<ArrayList<Integer>, Integer>();
             HashMap<ArrayList<Integer>, Double> subpattern2logp = new HashMap<ArrayList<Integer>, Double>();
-            Alignment data = dataInput.get();
-        	int s = node.getNr() * data.getTaxonCount();
+        	int s = node.getNr() * taxonCount;
 
-        	for (int pattern = 0; pattern < numPattern; pattern++) {
+        	for (int pattern = 0; pattern < patterns; pattern++) {
                 // partial for single pattern
                 int startPos = pattern * numPlan * numRateBins_max;
                 ArrayList<Integer> subpattern = null;
@@ -221,7 +217,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 	        
             if (node.isRoot()) {
 	        	// root is always low resolution
-	            for (int pattern = 0; pattern < numPattern; pattern++) {
+	            for (int pattern = 0; pattern < patterns; pattern++) {
 	                int startPos = pattern * numPlan * numRateBins_max;
 	                int partialSizeRoot = numPlan * numRateBins_l;
 	                double[] partials =  new double[partialSizeRoot];
@@ -231,17 +227,22 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 	                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 	                patternLogLikelihoods[pattern] = patternLogLikelihood;
 	            }
-	            
-	            update |= (update1 | update2);
             }
         }
+        update |= (update1 | update2);
+        
+        // reset the flag
+    	if (node.isRoot()) {
+    		updateTips = false;
+    		updateSiteModel = false;
+    	}
 
         return update;
     }
     
     @Override
     public double calculateLogP() {
-        final TreeInterface tree = treeInput.get();
+    	
         final int rootIndex = tree.getRoot().getNr();
         System.out.println(tree.toString());
         if (requiresRecalculation()) {
@@ -251,6 +252,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
         }
         double ans = logP + log_compensates[rootIndex];
         System.out.println("logP = " + ans);
+        System.out.println();
         return ans;
     }
 
@@ -270,32 +272,20 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     
     @Override
     protected boolean requiresRecalculation() {
-        // Reset global flags
-        hasDirt = Tree.IS_CLEAN;
-        updateTips = false;
-        updateSiteModel = false;
-
-        // first evaluation: force a full recomputation
-        if (firstEval) {
-        	firstEval = false;
-        	hasDirt = Tree.IS_DIRTY;
-        	updateSiteModel = true;
-        	updateTips = true;
-        	return true;
-        }
-
+    	
+    	// for debugging
+    	// checkNodeStatus(tree.getRoot());
+    	
         boolean recalc = false;
         
         // If site model changed, we must recompute all partials
-        if (m_siteModel.isDirtyCalculation()) {
-            hasDirt = Tree.IS_DIRTY;
+        if (m_siteModel.isDirtyCalculation() || updateSiteModel) {
             updateSiteModel = true;
             recalc = true;
         }
 
         // If tip model changed, we must recompute all leaf partials
-        if (tipModel.isDirtyCalculation()) {
-            hasDirt = Tree.IS_DIRTY;
+        if (tipModel.isDirtyCalculation() || updateTips) {
             updateTips = true;
             recalc = true;
         }
@@ -306,5 +296,21 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
         }
 
         return recalc;
-    }    
+    }
+    
+    /*
+    private void checkNodeStatus(final Node node) {
+    	if (node.isDirty() == Tree.IS_DIRTY) {
+    		System.out.println ("node " + node.getNr() + " is dirty");
+    	}
+    	if (node.isDirty() == Tree.IS_FILTHY) {
+    		System.out.println ("node " + node.getNr() + " is filthy");
+    	}
+    	if (!node.isLeaf()) {
+    		checkNodeStatus(node.getLeft());
+    		checkNodeStatus(node.getRight());
+    	}
+    }
+    */
+    
 }
