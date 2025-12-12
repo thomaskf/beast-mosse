@@ -173,7 +173,7 @@
         <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
 
         <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
-        <!-- <operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
+        <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
 
         <!--
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
