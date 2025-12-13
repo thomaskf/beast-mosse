@@ -204,7 +204,7 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "resolution", Integer.toString(resolution) 
         );
         
-        MosseTreeLikelihoodFast likelihood = new MosseTreeLikelihoodFast();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,

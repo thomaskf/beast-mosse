@@ -574,9 +574,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         // obtain the numRateBins for left and right children
         int numRateBins_left = numRateBinsPerNode[node.getLeft().getNr()];
         int numRateBins_right = numRateBinsPerNode[node.getRight().getNr()];
+        int subPatterns_left = subpatternPerNode[node.getLeft().getNr()];
+        int subPatterns_right = subpatternPerNode[node.getRight().getNr()];
 
-        double[] patternPartialsLeft = new double[patterns * numPlan * numRateBins_left];
-        double[] patternPartialsRight = new double[patterns * numPlan * numRateBins_right];
+        double[] patternPartialsLeft = new double[subPatterns_left * numPlan * numRateBins_left];
+        double[] patternPartialsRight = new double[subPatterns_right * numPlan * numRateBins_right];
 
         // get child node partials all patterns
         mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
