@@ -67,14 +67,13 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
     }
 
     @Override
-    public void setNodePartials(int nodeIndex, double[] partials) {
-        if (this.partials[0][nodeIndex] == null) {
-            this.partials[0][nodeIndex] = new double[partialsSize];
-            this.partials[1][nodeIndex] = new double[partialsSize];
+    public void setNodePartials(int nodeIndex, double[] partialsIn) {
+        if (this.partials[0][nodeIndex] == null || this.partials[0][nodeIndex].length < partialsIn.length) {
+            this.partials[0][nodeIndex] = new double[partialsIn.length];
+            this.partials[1][nodeIndex] = new double[partialsIn.length];
         }
-
-        System.arraycopy(partials, 0, this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0, partials.length);
-
+        
+        System.arraycopy(partialsIn, 0, this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0, partialsIn.length);
     }
 
 }
