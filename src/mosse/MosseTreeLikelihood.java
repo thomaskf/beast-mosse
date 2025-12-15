@@ -478,27 +478,25 @@ public class MosseTreeLikelihood extends TreeLikelihood {
      * compute likelihoods for single branch
      * return the log compensation
      */
-    /*
-    protected double[] computeSingleBranchLikelihood(Node node, Node child, double[] partialsIn, double[] logp_patn) {
+    protected double[] computeSingleBranchLikelihood(Node node, Node child, double[] partialsIn, double[] logCompen) {
+        boolean lowResolution;
+        double[] partialsOut;
 
-    	double[] partialsOut;
-    	boolean lowResolution;
-    	
         if (!isLowResolution(node)) {
-    		// if current node is in high resolution, then high resolution for the whole branch
+    		// if node has high resolution, then high resolution for the whole branch
     		lowResolution = false;
-        	logp_patn[0] += normalization(lowResolution, partialsIn);
     		double branchTime = node.getHeight() - child.getHeight();
     		if (flatTransitionMatrices_h == null)
     			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+            logCompen[0] += normalization(lowResolution, partialsIn);
     		partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h, flatTransitionMatrices_h, lowResolution);
     	} else if (isLowResolution(child)) {
-    		// if child is in low resolution, then low resolution for the whole branch
+    		// if child has low resolution, then low resolution for the whole branch
     		lowResolution = true;
-        	logp_patn[0] += normalization(lowResolution, partialsIn);
     		double branchTime = node.getHeight() - child.getHeight();
     		if (flatTransitionMatrices_l == null)
     			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+            logCompen[0] += normalization(lowResolution, partialsIn);
     		partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l, flatTransitionMatrices_l, lowResolution);
     	} else {
     		// combination of high and low resolutions along the branch
@@ -509,117 +507,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     			t_mid = node.getHeight();
     		branchTime = t_mid - child.getHeight();
     		lowResolution = false;
-        	logp_patn[0] += normalization(lowResolution, partialsIn);
     		if (flatTransitionMatrices_h == null)
     			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
-    		double[] partialsInter = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h, flatTransitionMatrices_h, lowResolution);
+            logCompen[0] += normalization(lowResolution, partialsIn);
+    		partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h, flatTransitionMatrices_h, lowResolution);
     		// reduce the size of partials to "numPlan * numRateBins_l"
-    		int partial2_size = numPlan * numRateBins_l;
-    		double[] partials2 = new double[partial2_size];
-    		// selecting the corresponding entries in the partialInter as the input for low resolution
-    		for (int i = 0; i < numPlan; i++) {
-        		int k = 0;
-        		int s_h = i * numRateBins_h;
-        		int s_l = i * numRateBins_l;
-    			for (int j = resolution-1; j < numRateBins_h && k < numRateBins_l; j+= resolution) {
-    				partials2[s_l + k] = partialsInter[s_h + j];
-    				k++;
-    			}
-    			while (k < numRateBins_l) {
-    				partials2[s_l + k] = 0.0;
-    				k++;
-    			}
-    		}
-    		// low resolutions between t_mid and node.getHeight()
-        	// normalization (log compensation) on the input partials (low resolution)
-    		lowResolution = true;
-        	logp_patn[0] += normalization(lowResolution, partials2);
-    		branchTime = node.getHeight() - t_mid;
-    		if (branchTime <= 0.0) {
-    			return partials2;
-    		}
-    		if (flatTransitionMatrices_l == null)
-    			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
-    		partialsOut = treeModel.calculateBranchLogP(branchTime, partials2, lambdas_l, mus_l, flatTransitionMatrices_l, lowResolution);
-    	}
-    	// compute the log compensation
-		logp_patn[0] += normalization(lowResolution, partialsOut);
-        return partialsOut;
-    }
-    */
-    
-    protected double computeSingleBranchLikelihood(Node node, Node child, double[] partials) {
-        double logCompen = 0.0; // for log-compensation
-        boolean lowResolution;
-
-        if (!isLowResolution(node)) {
-    		// if node has high resolution, then high resolution for the whole branch
-    		lowResolution = false;
-    		double branchTime = node.getHeight() - child.getHeight();
-    		if (flatTransitionMatrices_h == null)
-    			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
-            logCompen += normalization(lowResolution, partials);
-    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_h, mus_h, flatTransitionMatrices_h, partials, lowResolution);
-    	} else if (isLowResolution(child)) {
-    		// if child has low resolution, then low resolution for the whole branch
-    		lowResolution = true;
-    		double branchTime = node.getHeight() - child.getHeight();
-    		if (flatTransitionMatrices_l == null)
-    			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
-            logCompen += normalization(lowResolution, partials);
-    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_l, mus_l, flatTransitionMatrices_l, partials, lowResolution);
-    	} else {
-    		// combination of high and low resolutions along the branch
-    		// high resolutions between child.getHight() and t_mid
-    		double branchTime;
-    		double t_mid = tc;
-    		if (node.getHeight() < tc)
-    			t_mid = node.getHeight();
-    		branchTime = t_mid - child.getHeight();
-    		lowResolution = false;
-    		if (flatTransitionMatrices_h == null)
-    			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
-            logCompen += normalization(lowResolution, partials);
-    		treeModel.calculateBranchLogP(branchTime, partials, lambdas_h, mus_h, flatTransitionMatrices_h, partials, lowResolution);
-    		// reduce the size of partials to "numPlan * numRateBins_l"
-    		int partial2_size = numPlan * numRateBins_l;
-    		double[] partials2 = new double[partial2_size];
-    		// selecting the corresponding entries in the partialMiddle as the input for low resolution
-    		for (int i = 0; i < numPlan; i++) {
-        		int k = 0;
-        		int s_h = i * numRateBins_h;
-        		int s_l = i * numRateBins_l;
-    			for (int j = resolution-1; j < numRateBins_h && k < numRateBins_l; j+= resolution, k++) {
-    				partials2[s_l + k] = partials[s_h + j];
-    			}
-    			while (k < numRateBins_l) {
-    				partials2[s_l + k] = 0.0;
-    				k++;
-    			}
-    		}
+    		partialsOut = reduceSize(partialsOut);
     		// then low resolution between t_mid and node.getHeight()
     		lowResolution = true;
     		branchTime = node.getHeight() - t_mid;
     		if (branchTime > 0.0) {
         		if (flatTransitionMatrices_l == null)
 	    			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
-        		logCompen += normalization(lowResolution, partials2);
-	    		treeModel.calculateBranchLogP(branchTime, partials2, lambdas_l, mus_l, flatTransitionMatrices_l, partials2, lowResolution);
+        		logCompen[0] += normalization(lowResolution, partialsOut);
+	    		partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l, flatTransitionMatrices_l, lowResolution);
     		}
-            System.arraycopy(partials2, 0, partials, 0, partial2_size);
     	}
         // normalization (log compensation) on the output partials
-        logCompen += normalization(lowResolution, partials);
-        /*
-        if (node.getHeight() >= tc || node.isRoot()) {
-        	// low resolution
-        	logCompen += normalization(partials, numRateBins_l, dx_l);
-        } else {
-        	// high resolution
-        	logCompen += normalization(partials, numRateBins_h, dx_h);
-        }
-        */
-    	return logCompen;
+        logCompen[0] += normalization(lowResolution, partialsOut);
+        
+        return partialsOut;
     }
     
 
@@ -769,8 +676,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
                 // propagate each child branch
                 // partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft, logp_patn);
                 // partialsRight = computeSingleBranchLikelihood(node, node.getRight(), partialsRight, logp_patn);
-                logp_patn[0] += computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft);
-                logp_patn[0] += computeSingleBranchLikelihood(node, node.getRight(), partialsRight);
+                partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft, logp_patn);
+                partialsRight = computeSingleBranchLikelihood(node, node.getRight(), partialsRight, logp_patn);
                 int k = 0;
                 for (int i = 0; i < numPlan; i++) {
                     for (int j = 0; j < numRateBins_curr; j++) {
@@ -1059,5 +966,25 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         	return true; // low resolution for root and the nodes on or above tc
         else
         	return false; // high resolution for nodes lower than tc
+    }
+    
+    private double[] reduceSize(double[] partials) {
+		// reduce the size of partials to "numPlan * numRateBins_l"
+		int partialNewSize = numPlan * numRateBins_l;
+		double[] partialsNew = new double[partialNewSize];
+		// selecting the corresponding entries in the partialMiddle as the input for low resolution
+		for (int i = 0; i < numPlan; i++) {
+    		int k = 0;
+    		int s_h = i * numRateBins_h;
+    		int s_l = i * numRateBins_l;
+			for (int j = resolution-1; j < numRateBins_h && k < numRateBins_l; j+= resolution, k++) {
+				partialsNew[s_l + k] = partials[s_h + j];
+			}
+			while (k < numRateBins_l) {
+				partialsNew[s_l + k] = 0.0;
+				k++;
+			}
+		}
+		return partialsNew;
     }
 }

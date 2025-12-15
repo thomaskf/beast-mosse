@@ -120,6 +120,7 @@ public class MosseDistribution extends TreeDistribution {
         return Math.abs(padRight);
     }
 
+    /*
     public void calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q, double[] result, boolean lowResolution) {
         // double logP = 0.0;
         // getting parameter values
@@ -143,7 +144,7 @@ public class MosseDistribution extends TreeDistribution {
         }
 
         System.arraycopy(the_result, 0, result, 0, the_result.length);
-    }
+    }*/
 
     public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q, boolean lowResolution) {
         // double logP = 0.0;
@@ -151,23 +152,21 @@ public class MosseDistribution extends TreeDistribution {
         int[] nd = {5};
         
         int nt = (int) Math.ceil(branchTime / dt);
-        double[] result = new double[vars.length];
+        double[] result;
         
         if (lowResolution) {
-	        vars = doIntegration(nx, dx * resolution, nd, FLAG_FFTW3_DEFAULT,
+	        result = doIntegration(nx, dx * resolution, nd, FLAG_FFTW3_DEFAULT,
 	            vars, lambda, mu,
 	            drift, diffusion,
 	            Q, nt, dt,
 	            padLeft_l, padRight_l);
         } else {
-	        vars = doIntegration(nx * resolution, dx, nd, FLAG_FFTW3_DEFAULT,
+	        result = doIntegration(nx * resolution, dx, nd, FLAG_FFTW3_DEFAULT,
 		        vars, lambda, mu,
 		        drift, diffusion,
 		        Q, nt, dt,
 		        padLeft_h, padRight_h);
         }
-        System.arraycopy(vars, 0, result, 0, result.length);
-        
         return result;
     }
     
