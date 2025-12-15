@@ -5,23 +5,13 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.sitemodel.SiteModel;
-import beast.base.evolution.substitutionmodel.Frequencies;
-import beast.base.evolution.substitutionmodel.GTR;
-import beast.base.evolution.substitutionmodel.GeneralSubstitutionModel;
 import beast.base.evolution.substitutionmodel.JukesCantor;
-import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.Tree;
 
 import org.junit.Test;
-import test.beast.evolution.substmodel.GTRTest;
-
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertNotNull;
 
 
 /**
@@ -29,8 +19,6 @@ import static org.junit.Assert.assertNotNull;
  */
 
 public class MosseTreeLikelihoodTestMediumTree {
-
-    private static double DELTA = 1e-7;
 
     /**
      * returns an Alignment of nucleotide sequences
@@ -204,7 +192,7 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "resolution", Integer.toString(resolution) 
         );
         
-        MosseTreeLikelihoodFast likelihood = new MosseTreeLikelihoodFast();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
