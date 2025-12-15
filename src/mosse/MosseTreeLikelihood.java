@@ -333,10 +333,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         // normalize the values of vars
         // ignore the first nx entries (i.e. first row)
         double vsum = 0.0;
-        for (int i = nx; i < vars.length; i++)
+        int totNum = nx * numPlan;
+        assert(vars.length >= totNum);
+        for (int i = nx; i < totNum; i++)
         	vsum += vars[i];
         vsum *= dx;
-        for (int i = nx; i < vars.length; i++)
+        for (int i = nx; i < totNum; i++)
         	vars[i] /= vsum;
         return Math.log(vsum);
     }
