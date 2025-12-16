@@ -249,9 +249,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			Arrays.fill(taxaIndexUnderNode, -1);
 		}
 		if (node.isLeaf()) {
+			// show the information of leaf
+			System.out.print(node.getNr() + "->" + node.getID() + "; ");
+			
 			taxaIndexUnderNode[node.getNr() * taxonCount] = data.getTaxonIndex(node.getID());
-			;
 		} else {
+			// show the information of children
+			System.out.print(node.getNr() + "->" + node.getLeft().getNr() + "; ");
+			System.out.print(node.getNr() + "->" + node.getRight().getNr() + "; ");
+			
 			int k = node.getNr() * taxonCount;
 			setTaxonIndices(node.getLeft());
 			setTaxonIndices(node.getRight());
@@ -558,6 +564,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// root node
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
+			System.out.println();
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
 		}
@@ -682,8 +689,28 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				int rightPos = patternMapPerNode[right_t + patternIndex];
 				int currPos = patternMapPerNode[t + patternIndex];
 				double[] partialsLeft = new double[partialSizeLeft];
+				if (leftPos + partialSizeLeft > patternPartialsLeft.length) {
+					System.out.println("leftnode = " + node.getLeft().getNr());
+					System.out.println("left height = " + node.getLeft().getHeight());
+					System.out.println("patternIndex = " + patternIndex);
+					System.out.println("patterns = " + patterns);
+					System.out.println("left numRateBins = " + numRateBins_left);
+					System.out.println("leftPos = " + leftPos);
+					System.out.println("partialSizeLeft = " + partialSizeLeft);
+					System.out.println("patternPartialsLeft.length = " + patternPartialsLeft.length);
+				}
 				System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeLeft);
 				double[] partialsRight = new double[partialSizeRight];
+				if (rightPos + partialSizeRight > patternPartialsRight.length) {
+					System.out.println("rightnode = " + node.getRight().getNr());
+					System.out.println("right height = " + node.getRight().getHeight());
+					System.out.println("patternIndex = " + patternIndex);
+					System.out.println("patterns = " + patterns);
+					System.out.println("right numRateBins = " + numRateBins_right);
+					System.out.println("rightPos = " + rightPos);
+					System.out.println("partialSizeRight = " + partialSizeRight);
+					System.out.println("patternPartialsRight.length = " + patternPartialsRight.length);
+				}
 				System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeRight);
 				// propagate each child branch
 				// partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(),
@@ -1017,5 +1044,23 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			System.out.print(logCompensatesPerNode[k] + "|");
 		}
 		System.out.println();
+	}
+	
+	/**
+	 * show the content of patternMapPerNode array
+	 */
+	protected void showPatternMapPerNodeArray() {
+		System.out.println("PatternMapPerNode:");
+		int k = 0;
+		for (int i = 0; i < nodeCount; i++) {
+			System.out.print(i + ": ");
+			for (int j = 0; j < patterns; j++) {
+				if (j > 0)
+					System.out.print(",");
+				System.out.print(patternMapPerNode[k]);
+				k++;
+			}
+			System.out.println();
+		}
 	}
 }
