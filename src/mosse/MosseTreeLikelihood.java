@@ -10,7 +10,6 @@ import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.sitemodel.SiteModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
-import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
 import org.jblas.DoubleMatrix;
 
