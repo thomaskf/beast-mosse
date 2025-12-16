@@ -18,7 +18,6 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
 	protected int[] storedPatternMapPerNode;
-	protected int[] storedSubpatternPerNode;
 	protected int[] storedNumRateBinsPerNode;
 	protected double[] storedLogCompensatesPerNode;
 
