@@ -11,52 +11,55 @@ import beast.base.inference.parameter.RealParameter;
  */
 public class ConstantLinkFn extends BEASTObject implements LinkFn {
 
-    final public Input<RealParameter> yValueInput = new Input<>("yV", "Constant value of dependent variable (quantitative trait).", Input.Validate.REQUIRED);
+	final public Input<RealParameter> yValueInput = new Input<>("yV",
+			"Constant value of dependent variable (quantitative trait).", Input.Validate.REQUIRED);
 
-    double yValue;
-    private static final String LINKFUNCTION = "constant";
+	double yValue;
+	private static final String LINKFUNCTION = "constant";
 
-    @Override
-    public void initAndValidate() {
-        yValue = yValueInput.get().getValue();
-    }
+	@Override
+	public void initAndValidate() {
+		yValue = yValueInput.get().getValue();
+	}
 
-    @Override
-    public boolean refreshParams() {
+	@Override
+	public boolean refreshParams() {
 
-        boolean refreshedSomething = false;
+		boolean refreshedSomething = false;
 
-        if (yValueInput.get().somethingIsDirty()) {
-            yValue = yValueInput.get().getValue();
-            refreshedSomething = true;
-        }
+		if (yValueInput.get().somethingIsDirty()) {
+			yValue = yValueInput.get().getValue();
+			refreshedSomething = true;
+		}
 
-        return refreshedSomething;
-    }
+		return refreshedSomething;
+	}
 
-    @Override
-    public double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
-        boolean refreshedSomething = false;
-        if (!ignoreRefresh) refreshedSomething = refreshParams();
+	@Override
+	public double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
+		boolean refreshedSomething = false;
+		if (!ignoreRefresh)
+			refreshedSomething = refreshParams();
 
-        /*
-         * if either we don't care about refreshing, or we do and something was refreshed,
-         * we repopulate y
-         */
-        if (ignoreRefresh || refreshedSomething) {
-            if (x.length != y.length) throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
+		/*
+		 * if either we don't care about refreshing, or we do and something was
+		 * refreshed, we repopulate y
+		 */
+		if (ignoreRefresh || refreshedSomething) {
+			if (x.length != y.length)
+				throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
 
-            for (int i=0; i<x.length; i++) {
-                y[i] = yValue;
-            }
-        }
+			for (int i = 0; i < x.length; i++) {
+				y[i] = yValue;
+			}
+		}
 
-        return y;
-    }
+		return y;
+	}
 
-    @Override
-    public String getLinkFnName() {
-        return LINKFUNCTION;
-    }
+	@Override
+	public String getLinkFnName() {
+		return LINKFUNCTION;
+	}
 
 }

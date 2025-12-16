@@ -1,27 +1,8 @@
 package mosse;
 
 import beast.base.core.Description;
-import beast.base.inference.Distribution;
-import beast.base.core.Input;
-import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.RealParameter;
-import beast.base.core.Log;
-import beast.base.evolution.alignment.Alignment;
-import beast.base.evolution.likelihood.TreeLikelihood;
-import beast.base.evolution.sitemodel.SiteModel;
 import beast.base.evolution.tree.Node;
-import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.Tree;
-import beast.base.evolution.tree.TreeInterface;
-import org.jblas.DoubleMatrix;
-
-import java.lang.UnsupportedOperationException;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-
 
 /**
  * @author Kylie Chen
@@ -56,7 +37,6 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 
         storedTaxaIndexUnderNode = new int[taxonCount * nodeCount];
         storedPatternMapPerNode = new int[nodeCount * patterns];
-        storedSubpatternPerNode = new int[nodeCount];
         storedNumRateBinsPerNode = new int[nodeCount];
         storedLogCompensatesPerNode = new double[nodeCount];
     }
@@ -110,7 +90,8 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     
     @Override
     public double calculateLogP() {
-        System.out.println(tree.toString());
+    	String newickstr = toNewick(tree.getRoot()) + ";";
+        System.out.println(newickstr);
         if (requiresRecalculation()) {
 	    	if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
 	    		calcLogP();
@@ -149,6 +130,39 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
         return recalc;
     }
     
+    @Override
+    public void store() {
+        super.store();  // important: let the parent class store its state
+
+        System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
+        System.arraycopy(patternMapPerNode, 0, storedPatternMapPerNode, 0, patternMapPerNode.length);
+        System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
+        System.arraycopy(logCompensatesPerNode, 0, storedLogCompensatesPerNode, 0, logCompensatesPerNode.length);
+    }
+
+    @Override
+    public void restore() {
+        super.restore();  // restore parent state (tree, partials, etc.)
+
+        int[] tmp; double[] tmp2;
+        
+        tmp = taxaIndexUnderNode;
+        taxaIndexUnderNode = storedTaxaIndexUnderNode;
+        storedTaxaIndexUnderNode = tmp;
+        
+        tmp = patternMapPerNode;
+        patternMapPerNode = storedPatternMapPerNode;
+        storedPatternMapPerNode = tmp;
+        
+        tmp = numRateBinsPerNode;
+        numRateBinsPerNode = storedNumRateBinsPerNode;
+        storedNumRateBinsPerNode = tmp;
+        
+        tmp2 = logCompensatesPerNode;
+        logCompensatesPerNode = storedLogCompensatesPerNode;
+        storedLogCompensatesPerNode = tmp2;
+    }
+
     private void checkNodeStatus(final Node node) {
     	if (node.isDirty() == Tree.IS_DIRTY) {
     		System.out.println ("node " + node.getNr() + " is dirty");
@@ -162,68 +176,5 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
     	}
     }
     
-
-    @Override
-    public void store() {
-        super.store();  // important: let the parent class store its state
-
-        if (taxaIndexUnderNode != null) {
-        	if (storedTaxaIndexUnderNode == null || storedTaxaIndexUnderNode.length != taxaIndexUnderNode.length) {
-        		storedTaxaIndexUnderNode = new int[taxaIndexUnderNode.length];
-        	}
-        	System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
-        }
-        if (patternMapPerNode != null) {
-            if (storedPatternMapPerNode == null || storedPatternMapPerNode.length != patternMapPerNode.length) {
-                storedPatternMapPerNode = new int[patternMapPerNode.length];
-            }
-            System.arraycopy(patternMapPerNode, 0, storedPatternMapPerNode, 0, patternMapPerNode.length);
-        }
-        if (subpatternPerNode != null ) {
-        	if (storedSubpatternPerNode == null || storedSubpatternPerNode.length != subpatternPerNode.length) {
-        		storedSubpatternPerNode = new int[subpatternPerNode.length];
-        	}
-        	System.arraycopy(subpatternPerNode, 0, storedSubpatternPerNode, 0, subpatternPerNode.length);
-        }
-        if (numRateBinsPerNode != null) {
-        	if (storedNumRateBinsPerNode == null || storedNumRateBinsPerNode.length != numRateBinsPerNode.length) {
-        		storedNumRateBinsPerNode = new int[numRateBinsPerNode.length];
-        	}
-        	System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
-        }
-        if (logCompensatesPerNode != null) {
-        	if (storedLogCompensatesPerNode == null || storedLogCompensatesPerNode.length != logCompensatesPerNode.length) {
-        		storedLogCompensatesPerNode = new double[logCompensatesPerNode.length];
-        	}
-        	System.arraycopy(logCompensatesPerNode, 0, storedLogCompensatesPerNode, 0, logCompensatesPerNode.length);
-        }
-    }
-
-    @Override
-    public void restore() {
-        super.restore();  // restore parent state (tree, partials, etc.)
-
-        // swap or copy back
-        int[] tmp = taxaIndexUnderNode;
-        taxaIndexUnderNode = storedTaxaIndexUnderNode;
-        storedTaxaIndexUnderNode = tmp;
-        
-        tmp = patternMapPerNode;
-        patternMapPerNode = storedPatternMapPerNode;
-        storedPatternMapPerNode = tmp;
-        
-        tmp = subpatternPerNode;
-        subpatternPerNode = storedSubpatternPerNode;
-        storedSubpatternPerNode = tmp;
-        
-        tmp = numRateBinsPerNode;
-        numRateBinsPerNode = storedNumRateBinsPerNode;
-        storedNumRateBinsPerNode = tmp;
-        
-        double[] tmp2 = logCompensatesPerNode;
-        logCompensatesPerNode = storedLogCompensatesPerNode;
-        storedLogCompensatesPerNode = tmp2;
-    }
-
 }
 

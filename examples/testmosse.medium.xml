@@ -136,7 +136,7 @@
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihoodFast"
+                    spec="mosse.MosseTreeLikelihood"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">

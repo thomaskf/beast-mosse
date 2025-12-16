@@ -64,7 +64,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @param traits        array of trait values
 	 * @param numBins       number of bins for substitution rate discretization
 	 * @param startSubsRate substitution rate lower bound for rate bins
-	 * @param subsInterval substitution rate interval for rate bins
+	 * @param subsInterval  substitution rate interval for rate bins
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double subsInterval) {
@@ -75,7 +75,7 @@ public class MosseTipLikelihood extends CalculationNode {
 			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
 		}
 		// TODO make logscale consistent with TreeLikelihood
-		
+
 		return tipLikelihoods;
 	}
 

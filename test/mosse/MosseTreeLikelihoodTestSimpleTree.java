@@ -175,8 +175,6 @@ public class MosseTreeLikelihoodTestSimpleTree {
 
         System.out.println("testMosseLikelihood logP = " + result);
         
-        likelihood.showNumSubPatterns();
-
     	long endTime = System.nanoTime();
     	long durationInNano = endTime - startTime;
     	long durationInMillis = durationInNano / 1_000_000;
