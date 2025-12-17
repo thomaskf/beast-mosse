@@ -20,6 +20,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 	protected int[] storedPatternMapPerNode;
 	protected int[] storedNumRateBinsPerNode;
 	protected double[] storedLogCompensatesPerNode;
+	protected int[] storedSubpatternPerNode;
 
 	@Override
 	public void initAndValidate() {
@@ -37,6 +38,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 		storedPatternMapPerNode = new int[nodeCount * patterns];
 		storedNumRateBinsPerNode = new int[nodeCount];
 		storedLogCompensatesPerNode = new double[nodeCount];
+		storedSubpatternPerNode = new int[nodeCount];
 	}
 
 	/**
@@ -93,16 +95,18 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
-		System.out.println("Before calculation");
-		showPatternMapPerNodeArray();
+		// System.out.println("Before calculation");
+		// showNumRateBinsPerNodeArray();
+		// showPatternMapPerNodeArray();
 		if (requiresRecalculation()) {
 			if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
 				calcLogP();
 			}
 		}
 		System.out.println("logP = " + logP);
-		System.out.println("After calculation");
-		showPatternMapPerNodeArray();
+		// System.out.println("After calculation");
+		// showNumRateBinsPerNodeArray();
+		// showPatternMapPerNodeArray();
 		System.out.println();
 		return logP;
 	}
@@ -138,17 +142,28 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 	@Override
 	public void store() {
 		System.out.println("Store!");
+
+		if (mosseLikelihoodCore != null) {
+        	mosseLikelihoodCore.store();
+        }
+
 		super.store(); // important: let the parent class store its state
 
 		System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
 		System.arraycopy(patternMapPerNode, 0, storedPatternMapPerNode, 0, patternMapPerNode.length);
 		System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
 		System.arraycopy(logCompensatesPerNode, 0, storedLogCompensatesPerNode, 0, logCompensatesPerNode.length);
+		System.arraycopy(subpatternPerNode, 0,  storedSubpatternPerNode, 0, subpatternPerNode.length);
 	}
 
 	@Override
 	public void restore() {
 		System.out.println("Restore!");
+		
+        if (mosseLikelihoodCore != null) {
+        	mosseLikelihoodCore.restore();
+        }
+		
 		super.restore(); // restore parent state (tree, partials, etc.)
 
 		int[] tmp;
@@ -169,6 +184,10 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 		tmp2 = logCompensatesPerNode;
 		logCompensatesPerNode = storedLogCompensatesPerNode;
 		storedLogCompensatesPerNode = tmp2;
+		
+		tmp = subpatternPerNode;
+		subpatternPerNode = storedSubpatternPerNode;
+		storedSubpatternPerNode = tmp;
 	}
 
 	private void checkNodeStatus(final Node node) {

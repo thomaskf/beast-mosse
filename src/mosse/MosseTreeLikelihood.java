@@ -111,6 +111,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int[] numRateBinsPerNode;
 	// for each node, store the log compensations
 	protected double[] logCompensatesPerNode;
+	// for each node, store the number of subpatterns
+    protected int[] subpatternPerNode;
 
 	@Override
 	public void initAndValidate() {
@@ -238,6 +240,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// for each node, store the log compensations
 		logCompensatesPerNode = new double[nodeCount];
 		Arrays.fill(logCompensatesPerNode, 0.0);
+		// for each node, store the number of subpatterns
+        subpatternPerNode = new int[nodeCount];
 	}
 
 	/**
@@ -250,13 +254,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		if (node.isLeaf()) {
 			// show the information of leaf
-			System.out.print(node.getNr() + "->" + node.getID() + "; ");
+//			System.out.print(node.getNr() + "->" + node.getID() + "; ");
 			
 			taxaIndexUnderNode[node.getNr() * taxonCount] = data.getTaxonIndex(node.getID());
 		} else {
 			// show the information of children
-			System.out.print(node.getNr() + "->" + node.getLeft().getNr() + "; ");
-			System.out.print(node.getNr() + "->" + node.getRight().getNr() + "; ");
+//			System.out.print(node.getNr() + "->" + node.getLeft().getNr() + "; ");
+//			System.out.print(node.getNr() + "->" + node.getRight().getNr() + "; ");
 			
 			int k = node.getNr() * taxonCount;
 			setTaxonIndices(node.getLeft());
@@ -316,7 +320,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				patternMapPerNode[node_s + patternIndex] = local_partial_pos;
 			}
 			assert (subpatns > 0);
-
+			// save the number of sub-patterns
+        	subpatternPerNode[node.getNr()] = subpatns;
+        	
 			double[] traitValues = getTraits(node);
 			double[] partials = new double[subpatns * singlePartialSize];
 			boolean[] updated = new boolean[subpatns];
@@ -564,7 +570,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// root node
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
-			System.out.println();
+			// System.out.println();
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
 		}
@@ -597,18 +603,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// obtain the numRateBins for left and right children
 		int numRateBins_left = numRateBinsPerNode[node.getLeft().getNr()];
 		int numRateBins_right = numRateBinsPerNode[node.getRight().getNr()];
+		int subPatterns_left = subpatternPerNode[node.getLeft().getNr()];
+        int subPatterns_right = subpatternPerNode[node.getRight().getNr()];
 
-		double[] patternPartialsLeft = null; // new double[subPatterns_left * numPlan * numRateBins_left];
-		double[] patternPartialsRight = null; // new double[subPatterns_right * numPlan * numRateBins_right];
+		double[] patternPartialsLeft = new double[subPatterns_left * numPlan * numRateBins_left];
+		double[] patternPartialsRight = new double[subPatterns_right * numPlan * numRateBins_right];
 
 		// get child node partials all patterns
 
-		patternPartialsLeft = mosseLikelihoodCore.getNodePartials(node.getLeft().getNr());
-		patternPartialsRight = mosseLikelihoodCore.getNodePartials(node.getRight().getNr());
-		// mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(),
-		// patternPartialsLeft);
-		// mosseLikelihoodCore.getNodePartials(node.getRight().getNr(),
-		// patternPartialsRight);
+		// patternPartialsLeft = mosseLikelihoodCore.getNodePartials(node.getLeft().getNr());
+		// patternPartialsRight = mosseLikelihoodCore.getNodePartials(node.getRight().getNr());
+		mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
+		mosseLikelihoodCore.getNodePartials(node.getRight().getNr(), patternPartialsRight);
 
 		// numRateBins, numEntries, lambdas
 		int numRateBins_curr = numRateBins_h;
@@ -663,7 +669,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		}
 		assert (subpatns > 0);
-
+		// save the number of sub-patterns
+    	subpatternPerNode[node.getNr()] = subpatns;
+    	
 		double[] partialsAllPatterns = new double[subpatns * singlePartialSize];
 		boolean[] updated = null;
 		double[] logCompensates = null;
@@ -1062,5 +1070,38 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			System.out.println();
 		}
+	}
+	
+	/**
+	 * show the number of sub-patterns per node
+	 */
+	protected void showNumSubPatterns() {
+    	int sum = 0;
+    	int max = 0;
+    	System.out.println("Number of sub-patterns:");
+    	for (int i = 0; i < nodeCount; i++) {
+    		if (i > 0)
+    			System.out.print(",");
+    		System.out.print(subpatternPerNode[i]);
+    		sum += subpatternPerNode[i];
+    		if (subpatternPerNode[i] > max)
+    			max = subpatternPerNode[i];
+    	}
+    	System.out.println();
+    	double avg = (double)sum / nodeCount;
+    	double avg_percent = avg / max * 100.0;
+    	System.out.println("Average percentage:" + avg_percent + "%");
+    }
+	
+	/**
+	 * show the number of ratebins per node
+	 */
+	protected void showNumRateBinsPerNodeArray() {
+		for (int i = 0; i < numRateBinsPerNode.length; i++) {
+			if (i > 0)
+				System.out.print(",");
+			System.out.print(numRateBinsPerNode[i]);
+		}
+		System.out.println();
 	}
 }

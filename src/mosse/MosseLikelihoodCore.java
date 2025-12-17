@@ -69,20 +69,19 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 
 	@Override
 	public void setNodePartials(int nodeIndex, double[] partialsIn) {
-//        if (this.partials[0][nodeIndex] == null || this.partials[0][nodeIndex].length < partialsIn.length) {
-//            this.partials[0][nodeIndex] = new double[partialsIn.length];
-//            this.partials[1][nodeIndex] = new double[partialsIn.length];
-//        }
+        if (this.partials[0][nodeIndex] == null || this.partials[0][nodeIndex].length < partialsIn.length) {
+            this.partials[0][nodeIndex] = new double[partialsSize]; // new double[partialsIn.length];
+            this.partials[1][nodeIndex] = new double[partialsSize]; // new double[partialsIn.length];
+        }
 
-		this.partials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
-		// System.arraycopy(partialsIn, 0,
-		// this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0,
-		// partialsIn.length);
+		// this.partials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
+		System.arraycopy(partialsIn, 0,	this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0, partialsIn.length);
 	}
+//
+//	public double[] getNodePartials(int nodeIndex) {
+//		return partials[currentPartialsIndex[nodeIndex]][nodeIndex];
+//		// System.arraycopy(partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0,
+//		// partialsOut, 0, partialsOut.length);
+//	}
 
-	public double[] getNodePartials(int nodeIndex) {
-		return partials[currentPartialsIndex[nodeIndex]][nodeIndex];
-		// System.arraycopy(partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0,
-		// partialsOut, 0, partialsOut.length);
-	}
 }
