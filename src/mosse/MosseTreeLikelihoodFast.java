@@ -73,7 +73,7 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel) {
 
 			mosseLikelihoodCore.setNodePartialsForUpdate(node.getNr());
-			System.out.println("Invoke computePartialLikelihood for node " + node.getNr());
+			// System.out.println("Invoke computePartialLikelihood for node " + node.getNr());
 			computePartialLikelihood(node);
 
 		}
@@ -93,16 +93,16 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
-		System.out.println("Before calculation");
-		showPatternMapPerNodeArray();
+		// System.out.println("Before calculation");
+		// showPatternMapPerNodeArray();
 		if (requiresRecalculation()) {
 			if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
 				calcLogP();
 			}
 		}
 		System.out.println("logP = " + logP);
-		System.out.println("After calculation");
-		showPatternMapPerNodeArray();
+		// System.out.println("After calculation");
+		// showPatternMapPerNodeArray();
 		System.out.println();
 		return logP;
 	}
@@ -137,7 +137,10 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 
 	@Override
 	public void store() {
-		System.out.println("Store!");
+		// System.out.println("Store!");
+
+		mosseLikelihoodCore.store();
+		
 		super.store(); // important: let the parent class store its state
 
 		System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
@@ -148,7 +151,10 @@ public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
 
 	@Override
 	public void restore() {
-		System.out.println("Restore!");
+		// System.out.println("Restore!");
+		
+		mosseLikelihoodCore.restore();
+		
 		super.restore(); // restore parent state (tree, partials, etc.)
 
 		int[] tmp;
