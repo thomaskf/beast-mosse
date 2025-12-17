@@ -249,15 +249,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			Arrays.fill(taxaIndexUnderNode, -1);
 		}
 		if (node.isLeaf()) {
-			// show the information of leaf
-			System.out.print(node.getNr() + "->" + node.getID() + "; ");
-			
 			taxaIndexUnderNode[node.getNr() * taxonCount] = data.getTaxonIndex(node.getID());
 		} else {
-			// show the information of children
-			System.out.print(node.getNr() + "->" + node.getLeft().getNr() + "; ");
-			System.out.print(node.getNr() + "->" + node.getRight().getNr() + "; ");
-			
 			int k = node.getNr() * taxonCount;
 			setTaxonIndices(node.getLeft());
 			setTaxonIndices(node.getRight());
@@ -564,7 +557,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// root node
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
-			System.out.println();
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
 		}
