@@ -10,7 +10,7 @@ import beast.base.evolution.tree.Tree;
  */
 
 @Description("Mosse likelihood class calculates the probability of sequence and trait data on a tree")
-public class MosseTreeLikelihoodFast extends MosseTreeLikelihood {
+public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	private boolean updateTips = true;
 	private boolean updateSiteModel = true;
