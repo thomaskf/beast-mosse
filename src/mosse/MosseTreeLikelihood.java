@@ -52,10 +52,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	final public Input<Double> tcInput = new Input<>("tc", "below this height for high resolution",
 			Input.Validate.OPTIONAL);
 
-	// number of cpu threads (not for this class)
-    public Input<Integer> threadsInput =
-            new Input<>("threads", "Number of threads for within-node parallelism", 1);
-	
 	// root options
 	final public int ROOT_FLAT = 1;
 	final public int ROOT_OBS = 2;

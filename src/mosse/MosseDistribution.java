@@ -29,7 +29,11 @@ public class MosseDistribution extends TreeDistribution {
 			new IntegerParameter("10"));
 	final public Input<IntegerParameter> resolutionInput = new Input<>("resolution",
 			"scale factor for resolution of bins", new IntegerParameter("4"));
-
+	
+	// number of cpu threads (not for this class)
+    final public Input<Integer> threadsInput =
+            new Input<>("threads", "Number of threads for within-node parallelism", 1);
+	
 	final public int FLAG_FFTW3_DEFAULT = 0;
 
 	protected int resolution;
@@ -47,6 +51,8 @@ public class MosseDistribution extends TreeDistribution {
 	protected double sd;
 	protected int width;
 	
+	// number of threads
+	protected int numThreads;
 	protected long ptr_l; // ptr for low resolution
 	protected long ptr_h; // ptr for high resolution
 
@@ -106,6 +112,10 @@ public class MosseDistribution extends TreeDistribution {
 		padRight_h = getPadRight(false); // padRight for high resolution
 		padRight_l = getPadRight(true); // padRight for low resolution
 		
+		if (threadsInput.get() != null) {
+			numThreads = threadsInput.get().intValue();
+		}
+
 		int[] nd = { 5 };
 		int flags = FLAG_FFTW3_DEFAULT;
 		ptr_l = makeMosseFFT(nx, dx * resolution, nd, flags);
