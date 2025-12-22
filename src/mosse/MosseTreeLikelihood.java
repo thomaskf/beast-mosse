@@ -452,7 +452,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	/**
 	 * create a flatTransitionMatrice
 	 */
-	private double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
+	protected double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
 		double rate; // dx
 		int numEntries;
 		int padLeft;
@@ -568,6 +568,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		if (node.isRoot()) {
 			// root node
+			flatTransitionMatrices_l = null;
+			flatTransitionMatrices_h = null;
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
 			// compute the partials for all leaves
@@ -713,8 +715,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double logPNode = 0.0;
 		logPNode += logCompensatesPerNode[node.getLeft().getNr()];
 		logPNode += logCompensatesPerNode[node.getRight().getNr()];
-		flatTransitionMatrices_l = null;
-		flatTransitionMatrices_h = null;
 		double[] patternPartialsLeft = null; // new double[subPatterns_left * numPlan * numRateBins_left];
 		double[] patternPartialsRight = null; // new double[subPatterns_right * numPlan * numRateBins_right];
 

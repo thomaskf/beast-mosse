@@ -51,6 +51,10 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		if (node.isRoot()) {
 			// taxon indices under all children of each node
 			setTaxonIndices(node);
+			if (updateSiteModel) {
+				flatTransitionMatrices_l = null;
+				flatTransitionMatrices_h = null;
+			}
 			if (updateTips) {
 				// update all the partial for all leaves
 				setPartials(node, patterns);
