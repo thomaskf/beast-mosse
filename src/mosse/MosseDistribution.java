@@ -46,6 +46,9 @@ public class MosseDistribution extends TreeDistribution {
 	protected double mean;
 	protected double sd;
 	protected int width;
+	
+	protected long ptr_l; // ptr for low resolution
+	protected long ptr_h; // ptr for high resolution
 
 	static {
 		System.loadLibrary("test");
@@ -102,6 +105,11 @@ public class MosseDistribution extends TreeDistribution {
 		padLeft_l = getPadLeft(true); // padLeft for low resolution
 		padRight_h = getPadRight(false); // padRight for high resolution
 		padRight_l = getPadRight(true); // padRight for low resolution
+		
+		int[] nd = { 5 };
+		int flags = FLAG_FFTW3_DEFAULT;
+		ptr_l = makeMosseFFT(nx, dx * resolution, nd, flags);
+		ptr_h = makeMosseFFT(nx * resolution, dx, nd, flags);
 	}
 
 	public int getPadLeft(boolean lowResolution) {
@@ -144,17 +152,13 @@ public class MosseDistribution extends TreeDistribution {
 			boolean lowResolution) {
 		// double logP = 0.0;
 		// getting parameter values
-		int[] nd = { 5 };
-
 		int nt = (int) Math.ceil(branchTime / dt);
 		double[] result;
 
 		if (lowResolution) {
-			result = doIntegration(nx, dx * resolution, nd, FLAG_FFTW3_DEFAULT, vars, lambda, mu, drift, diffusion, Q,
-					nt, dt, padLeft_l, padRight_l);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution);
 		} else {
-			result = doIntegration(nx * resolution, dx, nd, FLAG_FFTW3_DEFAULT, vars, lambda, mu, drift, diffusion, Q,
-					nt, dt, padLeft_h, padRight_h);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution);
 		}
 		return result;
 	}
@@ -162,10 +166,6 @@ public class MosseDistribution extends TreeDistribution {
 	/**
 	 * perform integration along a single branch
 	 *
-	 * @param nx        number of bins for substitution rate
-	 * @param dx        distance between xs
-	 * @param nd        plan dimensions for FFT3 integration
-	 * @param flags     flags for FFTW3 integration
 	 * @param vars      array of tips or partials
 	 * @param lambda    array of birth-rates
 	 * @param mu        array of death-rates
@@ -179,16 +179,22 @@ public class MosseDistribution extends TreeDistribution {
 	 * @param lq        log-scaling
 	 * @return partial probabilities
 	 */
-	public double[] doIntegration(int nx, double dx, int[] nd, int flags, double[] vars, double[] lambda, double[] mu,
-			double drift, double diffusion, double[] Q, int nt, double dt_max, int pad_left, int pad_right) {
+	public double[] doIntegration(double[] vars, double[] lambda, double[] mu, double drift, double diffusion, double[] Q, int nt,
+			double dt_max, int pad_left, int pad_right, boolean lowResolution) {
 
 		// make mosse fft object pointer
-		long ptr = makeMosseFFT(nx, dx, nd, flags);
+		long ptr;
+		if (lowResolution)
+			ptr = ptr_l;
+		else
+			ptr = ptr_h;
+		
+		// long ptr = makeMosseFFT(nx, dx, nd, flags);
 
 		// integrate using C propagate x and propagate t
 		double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
 
-		mosseFinalize(ptr); // destroy obj pointer
+		// mosseFinalize(ptr); // destroy obj pointer
 		return result; // return non logged results
 	}
 
