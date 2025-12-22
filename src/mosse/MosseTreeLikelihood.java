@@ -52,6 +52,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	final public Input<Double> tcInput = new Input<>("tc", "below this height for high resolution",
 			Input.Validate.OPTIONAL);
 
+	// number of cpu threads (not for this class)
+    public Input<Integer> threadsInput =
+            new Input<>("threads", "Number of threads for within-node parallelism", 1);
+	
 	// root options
 	final public int ROOT_FLAT = 1;
 	final public int ROOT_OBS = 2;
@@ -576,56 +580,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	/**
-	 * compute the partial likelihood array
-	 *
-	 * @param node
+	 * compute the mapping between the global pattern array and local subpattern array
+	 * return the number of subpatterns
 	 */
-	protected void computePartialLikelihood(Node node) {
-		if (node.isLeaf()) {
-			return;
-		}
-
-		// to store the pattern -> sub-pattern id
-		int[] patternMapSubpatternID = new int[patterns];
-
-		// internal node or the root node
-		double logPNode = 0.0;
-		logPNode += logCompensatesPerNode[node.getLeft().getNr()];
-		logPNode += logCompensatesPerNode[node.getRight().getNr()];
-
-		flatTransitionMatrices_l = null;
-		flatTransitionMatrices_h = null;
-
-		// obtain the numRateBins for left and right children
-		int numRateBins_left = numRateBinsPerNode[node.getLeft().getNr()];
-		int numRateBins_right = numRateBinsPerNode[node.getRight().getNr()];
-
-		double[] patternPartialsLeft = null; // new double[subPatterns_left * numPlan * numRateBins_left];
-		double[] patternPartialsRight = null; // new double[subPatterns_right * numPlan * numRateBins_right];
-
-		// get child node partials all patterns
-
-		patternPartialsLeft = mosseLikelihoodCore.getNodePartials(node.getLeft().getNr());
-		patternPartialsRight = mosseLikelihoodCore.getNodePartials(node.getRight().getNr());
-		// mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(),
-		// patternPartialsLeft);
-		// mosseLikelihoodCore.getNodePartials(node.getRight().getNr(),
-		// patternPartialsRight);
-
-		// numRateBins, numEntries, lambdas
-		int numRateBins_curr = numRateBins_h;
-		int numEntries_curr = numEntries_h;
-		double[] lambdas_curr = lambdas_h;
-		if (isLowResolution(node)) {
-			numRateBins_curr = numRateBins_l;
-			numEntries_curr = numEntries_l;
-			lambdas_curr = lambdas_l;
-		}
-		numRateBinsPerNode[node.getNr()] = numRateBins_curr;
-		int singlePartialSize = numPlan * numRateBins_curr;
+	 protected int computeMapGlobal2Subpattern(int[] patternMapSubpatternID, Node node, int singlePartialSize, int startPos) {
 
 		int subpatns = patterns;
-		int t = node.getNr() * patterns; // starting pos in patternMapPerNode
 		if (!node.isRoot()) {
 			// collect the number of sub-patterns if it is not a root node
 			// and compute the mapping between global pattern index and local partial index
@@ -657,96 +617,144 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				patternMapSubpatternID[patternIndex] = subpatnid;
 				// save the mapping: pattern -> local partial pos
 				local_partial_pos = subpatnid * singlePartialSize;
-				patternMapPerNode[t + patternIndex] = local_partial_pos;
+				patternMapPerNode[startPos + patternIndex] = local_partial_pos;
 			}
 		} else {
 			// for root
 			for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
-				patternMapPerNode[t + patternIndex] = patternIndex * singlePartialSize;
+				patternMapPerNode[startPos + patternIndex] = patternIndex * singlePartialSize;
 			}
 		}
+		return subpatns;
+	 }
+	 
+	 /**
+	  * compute partial likelihood for a pattern,
+	  * update numRateBinsPerNode
+	  * And return the log-compensation
+	  * 
+	  * @param node
+	  */
+	 protected double computePartialLikelihoodPattern(int patternIndex, Node node, double[] patternPartialsLeft, double[] patternPartialsRight,
+			 double[] partialsAllPatterns) {
+		 
+		double[] logp_patn = new double[1];
+		logp_patn[0] = 0.0; // log-compensate for this pattern
+
+		// obtain the numRateBins for left and right children
+		int numRateBins_left = numRateBinsPerNode[node.getLeft().getNr()];
+		int numRateBins_right = numRateBinsPerNode[node.getRight().getNr()];
+		int left_t = node.getLeft().getNr() * patterns;
+		int right_t = node.getRight().getNr() * patterns;
+		int t = node.getNr() * patterns; // starting pos in patternMapPerNode
+		
+		int partialSizeLeft = numPlan * numRateBins_left;
+		int partialSizeRight = numPlan * numRateBins_right;
+		int leftPos = patternMapPerNode[left_t + patternIndex];
+		int rightPos = patternMapPerNode[right_t + patternIndex];
+		int currPos = patternMapPerNode[t + patternIndex];
+		double[] partialsLeft = new double[partialSizeLeft];
+		System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeLeft);
+		double[] partialsRight = new double[partialSizeRight];
+		System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeRight);
+
+		// propagate each child branch
+		partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft, logp_patn);
+		partialsRight = computeSingleBranchLikelihood(node, node.getRight(), partialsRight, logp_patn);
+		
+		// numRateBins, numEntries, lambdas
+		int numRateBins_curr = numRateBins_h;
+		int numEntries_curr = numEntries_h;
+		double[] lambdas_curr = lambdas_h;
+		if (isLowResolution(node)) {
+			numRateBins_curr = numRateBins_l;
+			numEntries_curr = numEntries_l;
+			lambdas_curr = lambdas_l;
+		}
+		
+		int k = 0;
+		for (int i = 0; i < numPlan; i++) {
+			for (int j = 0; j < numRateBins_curr; j++) {
+				if (i == 0) {
+					// E is topology independent
+					partialsAllPatterns[currPos + k] = partialsLeft[k];
+				} else {
+					if (j < numEntries_curr) {
+						// non padded elements
+						// D_left * D_right * lambda(x)
+						double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+						partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					} else {
+						// padded elements
+						partialsAllPatterns[currPos + k] = 0.0;
+					}
+				}
+				k++;
+			}
+		}
+		
+		return logp_patn[0];
+	 }
+	
+	/**
+	 * compute the partial likelihood array
+	 *
+	 * @param node
+	 */
+	protected void computePartialLikelihood(Node node) {
+		if (node.isLeaf()) {
+			return;
+		}
+
+		// to store the pattern -> sub-pattern id
+		int[] patternMapSubpatternID = new int[patterns];
+
+		// internal node or the root node
+		double logPNode = 0.0;
+		logPNode += logCompensatesPerNode[node.getLeft().getNr()];
+		logPNode += logCompensatesPerNode[node.getRight().getNr()];
+		flatTransitionMatrices_l = null;
+		flatTransitionMatrices_h = null;
+		double[] patternPartialsLeft = null; // new double[subPatterns_left * numPlan * numRateBins_left];
+		double[] patternPartialsRight = null; // new double[subPatterns_right * numPlan * numRateBins_right];
+
+		// get child node partials all patterns
+
+		patternPartialsLeft = mosseLikelihoodCore.getNodePartials(node.getLeft().getNr());
+		patternPartialsRight = mosseLikelihoodCore.getNodePartials(node.getRight().getNr());
+
+		// numRateBins, numEntries, lambdas
+		int numRateBins_curr = numRateBins_h;
+		if (isLowResolution(node)) {
+			numRateBins_curr = numRateBins_l;
+		}
+		numRateBinsPerNode[node.getNr()] = numRateBins_curr;
+		int singlePartialSize = numPlan * numRateBins_curr;
+		int t = node.getNr() * patterns; // starting pos in patternMapPerNode
+		int subpatns = computeMapGlobal2Subpattern(patternMapSubpatternID, node, singlePartialSize, t);
+
 		assert (subpatns > 0);
 
 		double[] partialsAllPatterns = new double[subpatns * singlePartialSize];
-		boolean[] updated = null;
-		double[] logCompensates = null;
-		updated = new boolean[subpatns];
+		boolean[] updated = new boolean[subpatns];
 		Arrays.fill(updated, false);
-		logCompensates = new double[subpatns];
+		double[] logCompensates = new double[subpatns];
 
-		int left_t = node.getLeft().getNr() * patterns;
-		int right_t = node.getRight().getNr() * patterns;
 		for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
 			int subpatnid = patternIndex;
 			if (!node.isRoot()) {
 				subpatnid = patternMapSubpatternID[patternIndex]; // sub-pattern id
 			}
-			double[] logp_patn = new double[1];
-			logp_patn[0] = 0.0; // log-compensate for this pattern
+			double logpPatn; // log-compensate for this pattern
 			if (!updated[subpatnid]) {
 				// note: root always enters here
 				updated[subpatnid] = true;
-				int partialSizeLeft = numPlan * numRateBins_left;
-				int partialSizeRight = numPlan * numRateBins_right;
-				int leftPos = patternMapPerNode[left_t + patternIndex];
-				int rightPos = patternMapPerNode[right_t + patternIndex];
-				int currPos = patternMapPerNode[t + patternIndex];
-				double[] partialsLeft = new double[partialSizeLeft];
-				if (leftPos + partialSizeLeft > patternPartialsLeft.length) {
-					System.out.println("leftnode = " + node.getLeft().getNr());
-					System.out.println("left height = " + node.getLeft().getHeight());
-					System.out.println("patternIndex = " + patternIndex);
-					System.out.println("patterns = " + patterns);
-					System.out.println("left numRateBins = " + numRateBins_left);
-					System.out.println("leftPos = " + leftPos);
-					System.out.println("partialSizeLeft = " + partialSizeLeft);
-					System.out.println("patternPartialsLeft.length = " + patternPartialsLeft.length);
-				}
-				System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeLeft);
-				double[] partialsRight = new double[partialSizeRight];
-				if (rightPos + partialSizeRight > patternPartialsRight.length) {
-					System.out.println("rightnode = " + node.getRight().getNr());
-					System.out.println("right height = " + node.getRight().getHeight());
-					System.out.println("patternIndex = " + patternIndex);
-					System.out.println("patterns = " + patterns);
-					System.out.println("right numRateBins = " + numRateBins_right);
-					System.out.println("rightPos = " + rightPos);
-					System.out.println("partialSizeRight = " + partialSizeRight);
-					System.out.println("patternPartialsRight.length = " + patternPartialsRight.length);
-				}
-				System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeRight);
-				// propagate each child branch
-				// partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(),
-				// partialsLeft, logp_patn);
-				// partialsRight = computeSingleBranchLikelihood(node, node.getRight(),
-				// partialsRight, logp_patn);
-				partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft, logp_patn);
-				partialsRight = computeSingleBranchLikelihood(node, node.getRight(), partialsRight, logp_patn);
-				int k = 0;
-				for (int i = 0; i < numPlan; i++) {
-					for (int j = 0; j < numRateBins_curr; j++) {
-						if (i == 0) {
-							// E is topology independent
-							partialsAllPatterns[currPos + k] = partialsLeft[k];
-						} else {
-							if (j < numEntries_curr) {
-								// non padded elements
-								// D_left * D_right * lambda(x)
-								double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-								partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
-							} else {
-								// padded elements
-								partialsAllPatterns[currPos + k] = 0.0;
-							}
-						}
-						k++;
-					}
-				}
-				logCompensates[subpatnid] = logp_patn[0];
+				logpPatn = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft, patternPartialsRight, partialsAllPatterns);
+				logCompensates[subpatnid] = logpPatn;
 			} else {
-				logp_patn[0] = logCompensates[subpatnid];
+				logpPatn = logCompensates[subpatnid];
 			}
-			logPNode += logp_patn[0];
+			logPNode += logpPatn;
 		}
 
 		// set node partials
@@ -989,7 +997,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return sb.toString();
 	}
 
-	private boolean isLowResolution(Node node) {
+	protected boolean isLowResolution(Node node) {
 		if (node.isLeaf()) {
 			return false; // leaf always uses high resolution
 		} else if (node.isRoot() || node.getHeight() >= tc) {
