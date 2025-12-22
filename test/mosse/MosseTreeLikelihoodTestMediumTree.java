@@ -193,7 +193,7 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "resolution", Integer.toString(resolution)
         );
 
-        MosseTreeLikelihoodBuffered likelihood = new MosseTreeLikelihoodBuffered();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
@@ -203,7 +203,8 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "traits", traitsList,
                 "lambdaFunc", logFunc,
                 "muFunc", constFunc,
-                "tc", 0.299960627921
+                "tc", 0.299960627921,
+                "threads", 1
                 );
 
         // using observed root

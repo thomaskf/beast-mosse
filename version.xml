@@ -6,10 +6,10 @@
 	<service type="beast.base.core.BEASTInterface">
 		<provider classname="mosse.MosseTipLikelihood" />
 		<provider classname="mosse.MosseTreeLikelihood" />
+        <provider classname="mosse.MosseTreeLikelihoodBuffered" />
 		<provider classname="mosse.MosseDistribution" />
 		<provider classname="mosse.LogisticFunction" />
 		<provider classname="mosse.ConstantLinkFn" />
-        <provider classname="mosse.MosseTreeLikelihoodFast" />
 	</service>
 	
 </package>
