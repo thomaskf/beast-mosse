@@ -1,14 +1,14 @@
 package mosse;
 
+import java.lang.reflect.InvocationTargetException;
+
 import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.evolution.substitutionmodel.GeneralSubstitutionModel;
 
-import java.lang.reflect.InvocationTargetException;
-
 /**
- * @author Kylie Chen 
- * 
+ * @author Kylie Chen
+ *
  * setup custom Q matrix for testing Mosse Tree Likelihood
  *         only
  */
@@ -36,6 +36,7 @@ public class CustomSubstitutionModel extends GeneralSubstitutionModel {
 		rateMatrix = new double[nrOfStates][nrOfStates];
 	}
 
+	@Override
 	protected void setupRateMatrixUnnormalized() {
 		double[] customRatesValues = new double[nrOfStates * nrOfStates];
 		Function customRates = this.customRatesInput.get();

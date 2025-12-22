@@ -1,14 +1,14 @@
 package mosse;
 
-import beast.base.inference.parameter.RealParameter;
-import org.junit.Test;
-
-
 /**
  * @author Kylie Chen
  */
 
 import static junit.framework.Assert.assertEquals;
+
+import org.junit.Test;
+
+import beast.base.inference.parameter.RealParameter;
 
 public class MosseTipLikelihoodTest {
 

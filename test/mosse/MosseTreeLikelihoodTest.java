@@ -1,27 +1,18 @@
 package mosse;
 
-import beast.base.inference.parameter.RealParameter;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Test;
+
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.sitemodel.SiteModel;
-import beast.base.evolution.substitutionmodel.Frequencies;
-import beast.base.evolution.substitutionmodel.GTR;
-import beast.base.evolution.substitutionmodel.GeneralSubstitutionModel;
 import beast.base.evolution.substitutionmodel.JukesCantor;
-import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.Tree;
-
-import org.junit.Test;
-import test.beast.evolution.substmodel.GTRTest;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertNotNull;
+import beast.base.inference.parameter.RealParameter;
 
 
 /**
@@ -42,7 +33,7 @@ public class MosseTreeLikelihoodTest {
      */
     public Alignment getAlignment(int numLeaves, String[] names, String[] sequences) {
         List<Sequence> seqList = new ArrayList<>();
-        
+
         assert(names.length == sequences.length);
 
         for (int i = 0; i < numLeaves; i++) {
@@ -74,7 +65,7 @@ public class MosseTreeLikelihoodTest {
 //        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
 //        int numTraits = 1;
 //        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
-        
+
 //        int numLeaves = 3;
 //        String[] names = {"t0", "t1", "t2"};
 //        String[] sequences = {"AG", "CT", "GG"};
@@ -83,7 +74,7 @@ public class MosseTreeLikelihoodTest {
 //        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
-        
+
         // Parameters
         Double[] betasArray = {1.0};
         double meanSubst = 0.0; // mean substitution rate
@@ -96,18 +87,18 @@ public class MosseTreeLikelihoodTest {
         Double[] x0 = new Double[] { 0.0 };
         Double[] r = new Double[] { 2.5 };
         Double[] yValue = new Double[] { 0.03 }; // constant
-        
+
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
         double drift = 0.0;          // drift parameter
         double diffusion = 0.001;    // diffusion parameter
         double dt = 0.01;            // time interval dt
-        int width = 5;              
+        int width = 5;
         int resolution = 4;
         // boolean lowresolution = false;
 
         // Tree and Models Construction
-        
+
         Tree tree = new Tree(newick);
 
         JukesCantor JC = new JukesCantor();
@@ -134,7 +125,7 @@ public class MosseTreeLikelihoodTest {
                 "traitname", "trait1",
                 "taxa", new TaxonSet(alignment),
                 "value", trait1Values);
-        
+
         List<TraitSet> traitsList = new ArrayList<>(numTraits);
         traitsList.add(trait1);
 
@@ -156,7 +147,7 @@ public class MosseTreeLikelihoodTest {
         constFunc.initByName("yV", yValueRP);
 
         MosseDistribution mosseDist = new MosseDistribution();
-        
+
         mosseDist.initByName(
                 "tree", tree,
                 "nx", Integer.toString(numBins),           // number of bins for substitution rate
@@ -164,8 +155,8 @@ public class MosseTreeLikelihoodTest {
                 "drift", Double.toString(drift),           // drift parameter
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
-                "width", Integer.toString(width),          
-                "resolution", Integer.toString(resolution) 
+                "width", Integer.toString(width),
+                "resolution", Integer.toString(resolution)
         );
 
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();

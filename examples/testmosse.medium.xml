@@ -135,7 +135,7 @@
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
-                <distribution id="mossetreelikelihood"
+                <distribution id="mossetreelikelihoodBuffered"
                     spec="mosse.MosseTreeLikelihoodBuffered"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"

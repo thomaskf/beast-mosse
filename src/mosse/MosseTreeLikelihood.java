@@ -1,9 +1,14 @@
 package mosse;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+
+import org.jblas.DoubleMatrix;
+
 import beast.base.core.Description;
-import beast.base.inference.Distribution;
 import beast.base.core.Input;
-import beast.base.inference.parameter.IntegerParameter;
 import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
@@ -11,14 +16,8 @@ import beast.base.evolution.sitemodel.SiteModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.TreeInterface;
-import org.jblas.DoubleMatrix;
-
-import java.lang.UnsupportedOperationException;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
+import beast.base.inference.Distribution;
+import beast.base.inference.parameter.IntegerParameter;
 
 /**
  * @author Kylie Chen
@@ -285,7 +284,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// to store the pattern -> sub-pattern id
 			int[] patternMapSubpatternID = new int[patterncount];
 			// to map the state -> sub-pattern id
-			HashMap<Integer, Integer> state2subpatnid = new HashMap<Integer, Integer>();
+			HashMap<Integer, Integer> state2subpatnid = new HashMap<>();
 			// collect the number of sub-patterns and the mapping between global index to
 			// local partial index
 			int subpatns = 0;
@@ -366,6 +365,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		throw new UnsupportedOperationException();
 	}
 
+	@Override
 	protected void initCore() {
 		mosseLikelihoodCore.initialize(nodeCount, patterns, m_siteModel.getCategoryCount(), true,
 				m_useAmbiguities.get());
@@ -381,7 +381,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	/**
 	 * calculate log P without caching (for testing)
-	 * 
+	 *
 	 * @return log P
 	 */
 	public double calculateLogPFull() {
@@ -391,7 +391,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	/**
 	 * Compute the normalization (or log compensation)
-	 * 
+	 *
 	 * @param vars -- array to be normalized
 	 * @return log of scaling (i.e. lq)
 	 */
@@ -410,17 +410,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		double vsum = 0.0;
 		// ignore the first nx entries (i.e. first row)
-		for (int i = nx; i < totSize; i++)
+		for (int i = nx; i < totSize; i++) {
 			vsum += vars[i];
+		}
 		vsum *= dx;
-		for (int i = nx; i < totSize; i++)
+		for (int i = nx; i < totSize; i++) {
 			vars[i] /= vsum;
+		}
 		return Math.log(vsum);
 	}
 
 	/**
 	 * Compute the normalization (or log compensation)
-	 * 
+	 *
 	 * @param vars -- array to be normalized
 	 * @return log of scaling (i.e. lq)
 	 */
@@ -433,11 +435,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// normalize the values of vars
 		// ignore the first nx entries (i.e. first row)
 		double vsum = 0.0;
-		for (int i = nx; i < vars.length; i++)
+		for (int i = nx; i < vars.length; i++) {
 			vsum += vars[i];
+		}
 		vsum *= dx;
-		for (int i = nx; i < vars.length; i++)
+		for (int i = nx; i < vars.length; i++) {
 			vars[i] /= vsum;
+		}
 		return Math.log(vsum);
 	}
 
@@ -494,8 +498,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// if node has high resolution, then high resolution for the whole branch
 			lowResolution = false;
 			double branchTime = node.getHeight() - child.getHeight();
-			if (flatTransitionMatrices_h == null)
+			if (flatTransitionMatrices_h == null) {
 				flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+			}
 			logCompen[0] += normalization(lowResolution, partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
 					flatTransitionMatrices_h, lowResolution);
@@ -503,8 +508,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = node.getHeight() - child.getHeight();
-			if (flatTransitionMatrices_l == null)
+			if (flatTransitionMatrices_l == null) {
 				flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+			}
 			logCompen[0] += normalization(lowResolution, partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
 					flatTransitionMatrices_l, lowResolution);
@@ -513,12 +519,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// high resolutions between child.getHight() and t_mid
 			double branchTime;
 			double t_mid = tc;
-			if (node.getHeight() < tc)
+			if (node.getHeight() < tc) {
 				t_mid = node.getHeight();
+			}
 			branchTime = t_mid - child.getHeight();
 			lowResolution = false;
-			if (flatTransitionMatrices_h == null)
+			if (flatTransitionMatrices_h == null) {
 				flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+			}
 			logCompen[0] += normalization(lowResolution, partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
 					flatTransitionMatrices_h, lowResolution);
@@ -528,8 +536,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = true;
 			branchTime = node.getHeight() - t_mid;
 			if (branchTime > 0.0) {
-				if (flatTransitionMatrices_l == null)
+				if (flatTransitionMatrices_l == null) {
 					flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+				}
 				logCompen[0] += normalization(lowResolution, partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
 						flatTransitionMatrices_l, lowResolution);
@@ -543,7 +552,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	/**
 	 * traverse the subtree rooted at node
-	 * 
+	 *
 	 * @param node
 	 */
 	private void traverseFull(Node node) {
@@ -568,12 +577,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	/**
 	 * compute the partial likelihood array
-	 * 
+	 *
 	 * @param node
 	 */
 	protected void computePartialLikelihood(Node node) {
-		if (node.isLeaf())
+		if (node.isLeaf()) {
 			return;
+		}
 
 		// to store the pattern -> sub-pattern id
 		int[] patternMapSubpatternID = new int[patterns];
@@ -619,9 +629,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (!node.isRoot()) {
 			// collect the number of sub-patterns if it is not a root node
 			// and compute the mapping between global pattern index and local partial index
-			HashMap<ArrayList<Integer>, Integer> subpatn2subpatnid = new HashMap<ArrayList<Integer>, Integer>();
+			HashMap<ArrayList<Integer>, Integer> subpatn2subpatnid = new HashMap<>();
 			subpatns = 0;
-			ArrayList<Integer> subpattern = new ArrayList<Integer>();
+			ArrayList<Integer> subpattern = new ArrayList<>();
 			int s = node.getNr() * taxonCount; // starting pos in taxIndexUnderNode
 			for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
 				// get the subpattern
@@ -629,8 +639,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				int subpatnid;
 				int local_partial_pos;
 				for (int i = 0; i < data.getTaxonCount(); i++) {
-					if (taxaIndexUnderNode[s + i] == -1)
+					if (taxaIndexUnderNode[s + i] == -1) {
 						break;
+					}
 					int taxonIndex = taxaIndexUnderNode[s + i];
 					int stateCount = data.getPattern(taxonIndex, patternIndex);
 					subpattern.add(stateCount);
@@ -883,9 +894,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	private double getSum(double[][] array) {
 		double res = 0.0;
-		for (int i = 0; i < array.length; i++) {
+		for (double[] element : array) {
 			for (int j = 0; j < array[0].length; j++) {
-				res = res + array[i][j];
+				res = res + element[j];
 			}
 		}
 		return res;
@@ -934,6 +945,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return logP;
 	}
 
+	@Override
 	protected void calcLogP() {
 		logP = 0.0;
 		if (useAscertainedSitePatterns) {
@@ -961,8 +973,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (!n.isLeaf()) {
 			sb.append("(");
 			for (int i = 0; i < n.getChildCount(); i++) {
-				if (i > 0)
+				if (i > 0) {
 					sb.append(",");
+				}
 				sb.append(toNewick(n.getChild(i)));
 			}
 			sb.append(")");
@@ -977,12 +990,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	private boolean isLowResolution(Node node) {
-		if (node.isLeaf())
+		if (node.isLeaf()) {
 			return false; // leaf always uses high resolution
-		else if (node.isRoot() || node.getHeight() >= tc)
+		} else if (node.isRoot() || node.getHeight() >= tc) {
 			return true; // low resolution for root and the nodes on or above tc
-		else
+		} else {
 			return false; // high resolution for nodes lower than tc
+		}
 	}
 
 	private double[] reduceSize(double[] partials) {
@@ -1014,8 +1028,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = 0; i < nodeCount; i++) {
 			for (int j = 0; j < taxonCount; j++) {
 				if (taxaIndexUnderNode[k] != -1) {
-					if (j > 0)
+					if (j > 0) {
 						System.out.print(",");
+					}
 					System.out.print(taxaIndexUnderNode[k]);
 				} else {
 					System.out.print("-");
@@ -1037,7 +1052,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		System.out.println();
 	}
-	
+
 	/**
 	 * show the content of patternMapPerNode array
 	 */
@@ -1047,8 +1062,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = 0; i < nodeCount; i++) {
 			System.out.print(i + ": ");
 			for (int j = 0; j < patterns; j++) {
-				if (j > 0)
+				if (j > 0) {
 					System.out.print(",");
+				}
 				System.out.print(patternMapPerNode[k]);
 				k++;
 			}

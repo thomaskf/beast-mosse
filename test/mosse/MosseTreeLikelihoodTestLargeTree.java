@@ -1,27 +1,18 @@
 package mosse;
 
-import beast.base.inference.parameter.RealParameter;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.Test;
+
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.sitemodel.SiteModel;
-import beast.base.evolution.substitutionmodel.Frequencies;
-import beast.base.evolution.substitutionmodel.GTR;
-import beast.base.evolution.substitutionmodel.GeneralSubstitutionModel;
 import beast.base.evolution.substitutionmodel.JukesCantor;
-import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.Tree;
-
-import org.junit.Test;
-import test.beast.evolution.substmodel.GTRTest;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertNotNull;
+import beast.base.inference.parameter.RealParameter;
 
 
 /**
@@ -70,7 +61,7 @@ public class MosseTreeLikelihoodTestLargeTree {
 
         return alignment;
     }
-    
+
     /**
      * tests initialization of MosseTreeLikelihood does not throw any errors
      * using a simple two taxa tree (t0: 0.5, t1: 0.5) with tips "A" and "C"
@@ -106,13 +97,13 @@ public class MosseTreeLikelihoodTestLargeTree {
         // String trait0Values = "sp1=-0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=-0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
-        
+
         // Parameters
         Double[] betasArray = {1.0};
         double meanSubst = 0.0; // 0.05; // mean substitution rate
         double epsilon = 0.01;
         int numBins = 1024;
-        
+
         // Parameters for lambda and mu functions
         Double[] x0 = new Double[] { 0.0 };
         Double[] y1 = new Double[] { 0.2 };
@@ -125,7 +116,7 @@ public class MosseTreeLikelihoodTestLargeTree {
         double drift = 0.0;          // drift parameter
         double diffusion = 0.001;    // diffusion parameter
         double dt = 0.01;            // time interval dt
-        int width = 5;              
+        int width = 5;
         int resolution = 4;
 
         Tree tree = new Tree(newick);
@@ -154,7 +145,7 @@ public class MosseTreeLikelihoodTestLargeTree {
                 "value", trait0Values);
         List<TraitSet> traitsList = new ArrayList<>(numTraits);
         traitsList.add(trait0);
-        
+
         RealParameter y0rp = new RealParameter(y0);
         RealParameter y1rp = new RealParameter(y1);
         RealParameter x0rp = new RealParameter(x0);
@@ -170,7 +161,7 @@ public class MosseTreeLikelihoodTestLargeTree {
         constFunc.initByName("yV", yValueRP);
 
         MosseDistribution mosseDist = new MosseDistribution();
-        
+
         mosseDist.initByName(
                 "tree", tree,
                 "nx", Integer.toString(numBins),           // number of bins for substitution rate
@@ -178,10 +169,10 @@ public class MosseTreeLikelihoodTestLargeTree {
                 "drift", Double.toString(drift),           // drift parameter
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
-                "width", Integer.toString(width),          
-                "resolution", Integer.toString(resolution) 
+                "width", Integer.toString(width),
+                "resolution", Integer.toString(resolution)
         );
-        
+
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
