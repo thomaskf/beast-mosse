@@ -1,11 +1,12 @@
 package mosse;
 
-import beast.base.inference.CalculationNode;
+import org.apache.commons.math3.distribution.NormalDistribution;
+
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.inference.CalculationNode;
 import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.RealParameter;
-import org.apache.commons.math3.distribution.NormalDistribution;
 
 /**
  * @author Kylie Chen
@@ -36,7 +37,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * Returns P(tip rate | beta0, beta1, epsilon, trait0, trait1) ~ Gaussian(mean =
 	 * beta0 * trait0 + beta1 * trait1 + ... + mean, sd = epsilon) within the tip
 	 * rate interval (a,b)
-	 * 
+	 *
 	 * @param a      start value of tip rate interval
 	 * @param b      end value of tip rate interval
 	 * @param traits trait values

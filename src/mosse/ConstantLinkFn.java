@@ -38,16 +38,18 @@ public class ConstantLinkFn extends BEASTObject implements LinkFn {
 	@Override
 	public double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
 		boolean refreshedSomething = false;
-		if (!ignoreRefresh)
+		if (!ignoreRefresh) {
 			refreshedSomething = refreshParams();
+		}
 
 		/*
 		 * if either we don't care about refreshing, or we do and something was
 		 * refreshed, we repopulate y
 		 */
 		if (ignoreRefresh || refreshedSomething) {
-			if (x.length != y.length)
+			if (x.length != y.length) {
 				throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
+			}
 
 			for (int i = 0; i < x.length; i++) {
 				y[i] = yValue;

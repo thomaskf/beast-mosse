@@ -1,16 +1,14 @@
 package mosse;
 
+import java.util.List;
+import java.util.Random;
+
 import beast.base.core.Description;
 import beast.base.core.Input;
+import beast.base.evolution.tree.TreeDistribution;
 import beast.base.inference.State;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
-import beast.base.evolution.tree.TreeDistribution;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
-import java.lang.UnsupportedOperationException;
 
 /**
  * @author Kylie Chen
@@ -55,7 +53,7 @@ public class MosseDistribution extends TreeDistribution {
 
 	/**
 	 * initialize mosse C object
-	 * 
+	 *
 	 * @param nx       number of bins for substitution rate
 	 * @param dx       distance between xs
 	 * @param array_nd plan dimensions for FFTW3 integration
@@ -66,7 +64,7 @@ public class MosseDistribution extends TreeDistribution {
 
 	/**
 	 * destroy mosse C object
-	 * 
+	 *
 	 * @param obj_ptr mosse object pointer
 	 */
 	private native void mosseFinalize(long obj_ptr);
@@ -74,6 +72,7 @@ public class MosseDistribution extends TreeDistribution {
 	private native double[] doIntegrateMosse(long obj_ptr, double[] vars, double[] lambda, double[] mu, double drift,
 			double diffusion, double[] Q, int nt, double dt, int pad_left, int pad_right);
 
+	@Override
 	public void initAndValidate() {
 		if (resolutionInput.get() != null) {
 			resolution = resolutionInput.get().getValue();
@@ -129,15 +128,15 @@ public class MosseDistribution extends TreeDistribution {
 	 * public void calculateBranchLogP(double branchTime, double[] vars, double[]
 	 * lambda, double[] mu, double[] Q, double[] result, boolean lowResolution) { //
 	 * double logP = 0.0; // getting parameter values int[] nd = {5};
-	 * 
+	 *
 	 * int nt = (int) Math.ceil(branchTime / dt); double[] the_result;
-	 * 
+	 *
 	 * if (lowResolution) { the_result = doIntegration(nx, dx * resolution, nd,
 	 * FLAG_FFTW3_DEFAULT, vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l,
 	 * padRight_l); } else { the_result = doIntegration(nx * resolution, dx, nd,
 	 * FLAG_FFTW3_DEFAULT, vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h,
 	 * padRight_h); }
-	 * 
+	 *
 	 * System.arraycopy(the_result, 0, result, 0, the_result.length); }
 	 */
 
@@ -162,7 +161,7 @@ public class MosseDistribution extends TreeDistribution {
 
 	/**
 	 * perform integration along a single branch
-	 * 
+	 *
 	 * @param nx        number of bins for substitution rate
 	 * @param dx        distance between xs
 	 * @param nd        plan dimensions for FFT3 integration

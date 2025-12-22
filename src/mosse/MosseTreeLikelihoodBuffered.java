@@ -41,7 +41,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	/**
 	 * traverse tree with optimized caching
-	 * 
+	 *
 	 * @param node tree node
 	 * @return update flag
 	 */
@@ -140,7 +140,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		// System.out.println("Store!");
 
 		mosseLikelihoodCore.store();
-		
+
 		super.store(); // important: let the parent class store its state
 
 		System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
@@ -152,9 +152,9 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	@Override
 	public void restore() {
 		// System.out.println("Restore!");
-		
+
 		mosseLikelihoodCore.restore();
-		
+
 		super.restore(); // restore parent state (tree, partials, etc.)
 
 		int[] tmp;
