@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jblas.DoubleMatrix;
 
@@ -13,11 +14,15 @@ import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.sitemodel.SiteModel;
+import beast.base.evolution.sitemodel.SiteModelInterface.Base;
+import beast.base.evolution.substitutionmodel.HKY;
+import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.TreeInterface;
 import beast.base.inference.Distribution;
 import beast.base.inference.parameter.IntegerParameter;
+import beast.base.inference.parameter.RealParameter;
 
 /**
  * @author Kylie Chen
@@ -1067,4 +1072,48 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			System.out.println();
 		}
 	}
+
+    public void printSiteModelParameters() {
+
+        SubstitutionModel subst =
+                m_siteModel.substModelInput.get();
+
+        System.out.println("Substitution model: "
+                + subst.getClass().getSimpleName());
+
+        printBEASTObjectParameters(subst, "  ");
+    }
+
+    private void printBEASTObjectParameters(Object obj, String indent) {
+
+        if (!(obj instanceof beast.base.core.BEASTObject)) {
+            return;
+        }
+
+        Map<String, Input<?>> inputs =
+                ((beast.base.core.BEASTObject) obj).getInputs();
+
+        for (Map.Entry<String, Input<?>> e : inputs.entrySet()) {
+            Input<?> input = e.getValue();
+            Object value = input.get();
+
+            if (value == null) continue;
+
+            // Case 1: RealParameter
+            if (value instanceof RealParameter rp) {
+                System.out.print(indent + e.getKey() + " = ");
+                for (int i = 0; i < rp.getDimension(); i++) {
+                    System.out.print(rp.getValue(i) + " ");
+                }
+                System.out.println();
+            }
+
+            // Case 2: nested BEASTObject (e.g. Frequencies)
+            else if (value instanceof beast.base.core.BEASTObject) {
+                // System.out.println(indent + e.getKey() + ":");
+                // printBEASTObjectParameters(value, indent + "  ");
+            	printBEASTObjectParameters(value, "  ");
+            }
+        }
+    }
 }
