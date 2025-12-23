@@ -10,6 +10,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
 
+/**
+ * @author Thomas Wong
+ */
+
 @Description("MosseTreeLikelihoodBuffered with multi-threaded per-node computation")
 public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered {
 
