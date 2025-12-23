@@ -99,16 +99,13 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
-		// System.out.println("Before calculation");
-		// showPatternMapPerNodeArray();
+		printSiteModelParameters();
 		if (requiresRecalculation()) {
 			if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
 				calcLogP();
 			}
 		}
 		System.out.println("logP = " + logP);
-		// System.out.println("After calculation");
-		// showPatternMapPerNodeArray();
 		System.out.println();
 		return logP;
 	}

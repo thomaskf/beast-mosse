@@ -9,6 +9,8 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.alignment.Sequence;
 import beast.base.evolution.alignment.TaxonSet;
 import beast.base.evolution.sitemodel.SiteModel;
+import beast.base.evolution.substitutionmodel.Frequencies;
+import beast.base.evolution.substitutionmodel.HKY;
 import beast.base.evolution.substitutionmodel.JukesCantor;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.Tree;
@@ -125,13 +127,22 @@ public class MosseTreeLikelihoodTestLargeTree {
 
         Tree tree = new Tree(newick);
 
-        JukesCantor JC = new JukesCantor();
-
+        // For HKY model
+        RealParameter kappa = new RealParameter("2.0");
+        RealParameter freqsParam = new RealParameter("0.25 0.25 0.25 0.25");
+        Frequencies freqs = new Frequencies();
+        freqs.initByName("frequencies", freqsParam);
+        HKY hky = new HKY();
+        hky.initByName(
+        		"kappa", kappa,
+        		"frequencies", freqs
+        );
+        
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
                 "mutationRate", "1.0",
                 "gammaCategoryCount", 1,
-                "substModel", JC);
+                "substModel", hky);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
         tipModel.initByName(
