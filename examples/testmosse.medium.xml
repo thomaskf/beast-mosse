@@ -2,8 +2,8 @@
     namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood'>
 
     <!-- The sequence alignment                                                  -->
-    <!-- ntax=20 nchar=2000                                                      -->
-    <!-- npatterns=360                                                           -->
+    <!-- ntax=20 nchar=1000                                                      -->
+    <!-- npatterns=205                                                           -->
     <data
         id="alignment" dataType="nucleotide">
         <sequence taxon="sp1">
@@ -115,7 +115,7 @@
 
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dx="0.0001" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" />
+        nx="1024" dx="0.0001" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" threads="32" />
 
     <LogisticFunction
         id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
@@ -136,7 +136,7 @@
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihoodBuffered"
+                    spec="mosse.MosseTreeLikelihoodBufferedMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
