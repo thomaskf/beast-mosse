@@ -149,12 +149,14 @@
 
             <!-- START prior-->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
+                <!--
                 <distribution id="tree.prior" spec="beast.base.evolution.tree.coalescent.Coalescent">
                     <tree idref="tree"/>
                     <populationModel id="popModel" spec="ConstantPopulation">
                         <parameter id="popSize" name="popSize">1.0</parameter>
                     </populationModel>
-                </distribution>            
+                </distribution>
+                -->            
                 <!--
                 <distribution id="EpsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
                     <distr id="LogNormal.Epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" offset="0.0" meanInRealSpace="false">
@@ -169,7 +171,7 @@
         
         <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
 
-        <!-- SubtreeSlide: local node-height / branch-length move, no topology change -->
+        <!-- SubtreeSlide: local node-height / branch-length move, topology may change -->
         <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
 
         <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->

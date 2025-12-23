@@ -23,7 +23,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	final public Input<RealParameter> epsilonInput = new Input<>("epsilon", "error term of regression model",
 			Input.Validate.REQUIRED);
 	final public Input<BooleanParameter> logScaleInput = new Input<>("logscale",
-			"whether to use log scale for substitution rate (defaults to true)", Input.Validate.OPTIONAL);
+			"whether to use log scale for substitution rate (defaults to false)", Input.Validate.OPTIONAL);
 
 	private RealParameter beta;
 	private RealParameter meanSubstitution;
