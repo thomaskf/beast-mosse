@@ -16,7 +16,7 @@ import beast.base.inference.parameter.RealParameter;
  */
 
 @Description("Mosse tree model")
-public class MosseDistribution extends TreeDistribution {
+public class MosseDistribution extends TreeDistribution implements AutoCloseable {
 
 	final public Input<IntegerParameter> nxInput = new Input<>("nx", "number of bins for substitution rate",
 			new IntegerParameter("1024"));
@@ -53,8 +53,8 @@ public class MosseDistribution extends TreeDistribution {
 	
 	// number of threads
 	protected int numThreads;
-	protected long ptr_l; // ptr for low resolution
-	protected long ptr_h; // ptr for high resolution
+	protected long[] ptr_l; // ptr for low resolution
+	protected long[] ptr_h; // ptr for high resolution
 
 	static {
 		System.loadLibrary("test");
@@ -118,10 +118,14 @@ public class MosseDistribution extends TreeDistribution {
 
 		int[] nd = { 5 };
 		int flags = FLAG_FFTW3_DEFAULT;
-		ptr_l = makeMosseFFT(nx, dx * resolution, nd, flags);
-		ptr_h = makeMosseFFT(nx * resolution, dx, nd, flags);
+		ptr_l = new long[numThreads];
+		ptr_h = new long[numThreads];
+		for (int i = 0; i < numThreads; i++) {
+			ptr_l[i] = makeMosseFFT(nx, dx * resolution, nd, flags);
+			ptr_h[i] = makeMosseFFT(nx * resolution, dx, nd, flags);
+		}
 	}
-
+	
 	public int getPadLeft(boolean lowResolution) {
 		int padLeft = 0;
 		if (lowResolution) {
@@ -159,16 +163,16 @@ public class MosseDistribution extends TreeDistribution {
 	 */
 
 	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q,
-			boolean lowResolution) {
+			boolean lowResolution, int threadID) {
 		// double logP = 0.0;
 		// getting parameter values
 		int nt = (int) Math.ceil(branchTime / dt);
 		double[] result;
 
 		if (lowResolution) {
-			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 		return result;
 	}
@@ -190,14 +194,14 @@ public class MosseDistribution extends TreeDistribution {
 	 * @return partial probabilities
 	 */
 	public double[] doIntegration(double[] vars, double[] lambda, double[] mu, double drift, double diffusion, double[] Q, int nt,
-			double dt_max, int pad_left, int pad_right, boolean lowResolution) {
+			double dt_max, int pad_left, int pad_right, boolean lowResolution, int threadID) {
 
 		// make mosse fft object pointer
 		long ptr;
 		if (lowResolution)
-			ptr = ptr_l;
+			ptr = ptr_l[threadID];
 		else
-			ptr = ptr_h;
+			ptr = ptr_h[threadID];
 		
 		// long ptr = makeMosseFFT(nx, dx, nd, flags);
 
@@ -221,6 +225,16 @@ public class MosseDistribution extends TreeDistribution {
 	@Override
 	public void sample(State state, Random random) {
 		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	public void close() throws Exception {
+		// TODO Auto-generated method stub
+		for (int i = 0; i < numThreads; i++) {
+			// destroy obj pointers
+			mosseFinalize(ptr_l[i]);
+			mosseFinalize(ptr_h[i]);
+		}
 	}
 
 }

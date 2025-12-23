@@ -190,10 +190,11 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
-                "resolution", Integer.toString(resolution)
+                "resolution", Integer.toString(resolution),
+                "threads", 8                               // number of cpu threads
         );
 
-        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
+        MosseTreeLikelihoodBufferedMT likelihood = new MosseTreeLikelihoodBufferedMT();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
@@ -203,8 +204,7 @@ public class MosseTreeLikelihoodTestMediumTree {
                 "traits", traitsList,
                 "lambdaFunc", logFunc,
                 "muFunc", constFunc,
-                "tc", 0.299960627921,
-                "threads", 1
+                "tc", 0.29996062792
                 );
 
         // using observed root
