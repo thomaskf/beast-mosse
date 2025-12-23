@@ -1,5 +1,5 @@
 <beast version='2.0'
-    namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood'>
+    namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.base.core'>
 
     <!-- The sequence alignment                                                  -->
     <!-- ntax=20 nchar=2000                                                      -->
@@ -105,13 +105,20 @@
         <beta id="beta" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
 
-    <JukesCantor
-        id="JC" spec="beast.base.evolution.substitutionmodel.JukesCantor" />
+    <!-- Base frequencies -->
+    <parameter id="freqs" dimension="4" value="0.25 0.25 0.25 0.25"/>
+    
+    <frequencies id="estimatedFreqs" spec="Frequencies" frequencies="@freqs"/>
+    
+    <!-- HKY model -->
+    <parameter id="kappa" value="2.0"/>
+    
+    <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
 
     <SiteModel
         id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
-        mutationRate="1.0" substModel="@JC"
-        gammaCategoryCount="1.0" />
+        mutationRate="1.0" substModel="@hky"
+        gammaCategoryCount="1" />
 
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
@@ -130,6 +137,8 @@
         <state id="state" storeEvery="10000">
             <!-- <stateNode idref="epsilon" /> -->
             <stateNode idref="tree" />
+            <stateNode idref="kappa" />
+            <stateNode idref="freqs" />
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
@@ -149,6 +158,20 @@
 
             <!-- START prior-->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
+            
+                <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
+                    <distr id="LogNormalDistribution" spec="beast.base.inference.distribution.LogNormalDistributionModel">
+                        <parameter id="logNormalMean" spec="beast.base.inference.parameter.RealParameter" name="M" value="1.0" />
+                        <parameter id="logNormalStdev" spec="beast.base.inference.parameter.RealParameter" name="S" value="1.25" />
+                    </distr>
+                </distribution>
+                
+                <!--
+                <distribution id="freqsPrior" spec="beast.base.inference.distribution.Prior" x="@freqs">
+                    <Dirichlet id="Dirichlet.freqs" alpha="1.0 1.0 1.0 1.0"/>
+                </distribution>
+                -->
+            
                 <!--
                 <distribution id="tree.prior" spec="beast.base.evolution.tree.coalescent.Coalescent">
                     <tree idref="tree"/>
@@ -169,18 +192,42 @@
             <!-- END prior-->
         </distribution>
         
-        <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
-
-        <!-- SubtreeSlide: local node-height / branch-length move, topology may change -->
-        <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
-
-        <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
-        <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
-
-        <!--
-        <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-            scaleFactor="0.75" weight="3.0" />
-        -->
+        <!--<operators id="operators" spec="OperatorSchedule">-->
+        
+            <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
+    
+            <!-- SubtreeSlide: local node-height / branch-length move, topology may change -->
+            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
+    
+            <!-- HKY kappa operator -->
+            <operator id="KappaScaler"
+                      spec="ScaleOperator"
+                      parameter="@kappa"
+                      scaleFactor="0.75"
+                      weight="3.0"/>
+    
+            <!-- Base frequency operators (sum stays 1) -->
+            <operator id="FreqsDeltaExchange1"
+                      spec="DeltaExchangeOperator"
+                      parameter="@freqs"
+                      delta="0.01"
+                      weight="3.0"/>
+            
+            <operator id="FreqsDeltaExchange2"
+                      spec="DeltaExchangeOperator"
+                      parameter="@freqs"
+                      delta="0.05"
+                      weight="1.0"/>
+    
+    
+            <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
+            <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
+    
+            <!--
+            <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
+                scaleFactor="0.75" weight="3.0" />
+            -->
+        <!--</operators>-->
 
         <logger logEvery="1" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
