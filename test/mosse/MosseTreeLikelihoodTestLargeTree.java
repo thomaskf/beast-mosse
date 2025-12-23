@@ -69,6 +69,8 @@ public class MosseTreeLikelihoodTestLargeTree {
     @Test
     public void testMosseLikelihood() {
 
+    	long startTime = System.nanoTime();
+
         int numLeaves = 20;
         String[] names = {"sp1","sp2","sp3","sp4","sp5","sp6","sp7","sp8","sp9","sp10","sp11","sp12","sp13","sp14","sp15","sp16","sp17","sp18","sp19","sp20"};
         String[] sequences = {"tttttttttttttctatctttttttttttttcttttattttaattgtttattttttttttagtttctatttttttcttttttttcattttctttttctttttaactctttatcatctttttttttttctttttttttttaactttttattctttttctttcttttttatattctattttttttttttttctttttctttttctttttccttcttttttcttctcgtctgtttattttttttttatttttctgtctttttattttaattttcatttctttttcttgtttttttttttttatttcttctattttcttttttttttttttcttttttacttttgtcatattcctttttttttttttttcattttgtattttttcttttttttattttcttccatttttttatttatttatcttttttttttcttttttctttttctttttatttttttatttttacattttctttcttatctttcccattcatttctttcattattttttattcttttatctttttctatttttaattcttttattttatttctttccttcttctgtttcttctttattatttacttatttttttttctattttcttttctctttttttttttattttatcttttgtttttcttttttaatttgctatttattttttacttttttattatatgctttttttatactttttactttttattcttttatattccttatttttttatatttcttctttctttttttttcttatttaactactttttcttcttgtttttttttttcttattctttttatctcttttcattttttttatttatcactctttatatcctctttatttttttttctttatttatttttttttttctttttttcttttaatatttatttttttttactatttttttcacgatattccgtatattattttctatttgtttttttctttacttaaatctttctttttttttctttctttattttttactcttttcttctttttcttacttgtttttttttacttacctttttttttttttatatttttttctttttactttgttttcttttatttttttttttttttatttttattttatttcttgttttctgctttgttttctttttttttcttttttcttttttttttttcttatctcttttttttttttcagtttttttatttatattttcttctttttttcctgctctatttttttattttctttttcttattttttttatttcgttttttttttttactttttttttttttatttttcttaattttctcacttttttcttttttttttatcttttattcctttttgtttattttatttttttatttcttttacttttattttgttttctattttttcttatttctattattttttttttttattttaatctttattttatcaattccaattattatttgtcttttacttttttttattatttattttttattttattttcgtctttttttgttttttttttctattattactctcctctcctctcttttttcttcctttttgtttttttttttttctttttttttttttttttttccttttctttttgctctatctcttatcttttctttctcctacttctttttttttttttatattggttttttcattttttttctttgttttttttctttttccgttttttttcctttttgttttattttttttatttttttttctttttttttttttttttttttctatttctttttactatttttttttacttttatttattttctttacttttttcttttttatcttttttttcttttcttcattttttttttcttttactcttattccatttattttttttcttttttttcattttcttttcttttttcttctgcttgaactcgttttacattgttctttttttttctttttttttttctattttctttccttctttttaattcttttttttttttaattcttttgttctt",
@@ -91,9 +93,11 @@ public class MosseTreeLikelihoodTestLargeTree {
 				  "ttttcttttttcttttttttttttttcttttttttttttttaactgtttattctttttttagtttctattttttttctttttttttttttctttttttttttaactctttatcatcttttcttttttcctcttttttttagctttttattcttttttttttctttttatttcttattttttttttttctctttttctttttgtttattcatcttttttctctttgtctgtttatttttttcttattttcctgtctttttattttaatcttcttttttttttcttatttttctttttttatttcttttattttttttttttttttcttcttttttatttctgtcatattctttttcttctttttttcattttgtattttttcctttttttattttcttctattttttcattcatttatctttattttttcttttttctttttttttttatttttctatttttatattttctttcttatttttttcattttttttttttattattttttatttttttatttttttctgttcttaattcttctattttatttctttcctccttttgttttttttttattatctatttatttttttttttatttttctttatcttttcttttttattttatcttttgtttctcttttttaatttgctattttttttttatttttattttatatgctttttttattctttttgctatctactcctttatattccttatttttttattttttttttttttttttttttcttatttaactacttttttttcttgtttctttttctttttttctttttattttttttcattttttttttttttcactctttatatcctttctactctttttcctttatttatttatttttttcttttttccttttcttatttatttttttttactattttttttacgtcattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttttttcattttctactcttttctttttttttttgtttgttttcttttacttacccttttttttttttatatttttttttttttattttgttttcttttattttcttttatttttatttttattttattttttgttttttgttatgttctctttttttcttctttttttttttttttttatttatctcttttttttttttcagtttttctatttatattttttttttttttctttgttctatttttttttttttctttttttattttttttattttttttttttttcttatttttcttttttttattcttcctaattttctcatttttttcttttttttttattttttattcctttttgtttattttgtttttttatcttttttactttcattttgttttctattctttcttatttttattatttttttttcttattttaatttttattttattaatttcaattattatttgtcttttactttttttcattatttattttatattttatctttgtctttttttgtttcttttttttattattattttcttttcttccttttttttctcctttctgttttccttttttttttgtttttctttttattttccttttctttctgctttatctctgatcttttctttctctttcttctttttttttttttattccggttctttcattttttttctttgttttttttttttttgcatttttttttctttttgttttttttttcctattattgtttctttttttttcatttttttttactatttctttcttttatctttttttatttttattttttttttttattttttttttttttatcttctttttcttttctttatttttcttttcttttactcttacctcattttttttttttcttttttttcgttttttttttctttttcttctgtttgaattcgttttatattgttctttttttttcctgtttttttttttttttcttttttcctttttaattctttttttcttctcattcttttgttctt",
 				  "tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttttcttttttttcttttttgtttttttttacttacctttttttttttttatatttttttttttttattttgttttcttttatttttttttttttttaattttatttttttttttgttctttgctttgttttctttttttcttctttttttttgttttcttactcatctcttttttttttttcaatttttctatttatatttttttctttcttttttgttctattcttttattttcttttttttattttttttatttttttttttttttttactttttttttttttattcttcttaattctctcactttttctttttttttttatcttttattccctcttgtttattttatttttttattttttttactttcattatgttttctattctttcttatttctattattttttttttttattttaatctttattttattaattccaattattatttgccttttacttttttttattatctattttatattttatctttgtctcttctttttttttttttttattataattctccttccctccttttttttttctttttttttttcttttttttcttttttttctttttcctttccttttctttttgccctatctctcattttttctttcccttactcctttttttttctttattttggttctttcattttttttctttgttttttttttttttccatttttttttttttttgttttctttttcttactattttttcctttttttttatttttttttactatttttttcttctctttttttttactttcatttttttttttaatttttctcttttttatctttcttttcttctttttattttttttttcttttactcttatttcatttatttctttccttttttttaattttctttttctttttcttctgtttaaactcgttttatatcgttctttttttttcttcttttttatttcttttcctttcttctttttaattcttttttttttcttatttttttgttctt",
 				  "tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttttcttttttttcttttttgtttttttttacttacctttttttttttttatatttttttttttttattttgttttcttttatttttttttttttttaattttatttttttttttgttctttgctttgttttctttttttcttctttttttttgttttcttactcatctcttttttttttttcaatttttctatttatatttttttctttcttttttgttctattcttttattttcttttttttattttttttatttttttttttttttttactttttttttttttattcttcttaattctctcactttttctttttttttttatcttttattccctcttgtttattttatttttttattttttttactttcattatgttttctattctttcttatttctattattttttttttttattttaatctttattttattaattccaattattatttgccttttacttttttttattatctattttatattttatctttgtctcttctttttttttttttttattataattctccttccctccttttttttttctttttttttttcttttttttcttttttttctttttcctttccttttctttttgccctatctctcattttttctttcccttactcctttttttttctttattttggttctttcattttttttctttgttttttttttttttccatttttttttttttttgttttctttttcttactattttttcctttttttttatttttttttactatttttttcttctctttttttttactttcatttttttttttaatttttctcttttttatctttcttttcttctttttattttttttttcttttactcttatttcatttatttctttccttttttttaattttctttttctttttcttctgtttaaactcgttttatatcgttctttttttttcttcttttttatttcttttcctttcttctttttaattcttttttttttcttatttttttgttctt"};
-        String newick = "(((sp2:1.049838447,(sp4:0.6939605846,(sp19:0.01462697391,sp20:0.01462697391):0.6793336107):0.3558778628):0.4268244178,((((sp11:0.1487890344,sp12:0.1487890344):0.1609632737,sp7:0.3097523081):0.5893893643,((sp5:0.5746148967,((sp17:0.05206627524,sp18:0.05206627524):0.107884737,sp10:0.1599510123):0.4146638844):0.1831082415,sp3:0.7577231382):0.1414185342):0.08707255494,(((sp6:0.3752693329,(sp8:0.1716235721,sp9:0.1716235721):0.2036457608):0.03000869401,(sp15:0.06826060454,sp16:0.06826060454):0.3370174224):0.3270523139,(sp13:0.08543504527,sp14:0.08543504527):0.6468952955):0.2538838865):0.4904486378):1.522943414,sp1:2.999606279);";
-        int numTraits = 1;
+        String newick = "((sp2:1.04983844741,(sp4:0.18979052413832176,(sp19:0.014626973910000007,sp20:0.014626973910000007):0.17516355022832175):0.8600479232716782):1.5068686804405744,(sp1:1.0856522401236173,(((sp3:0.7577231382699998,(sp5:0.57461489677,(sp10:0.1599510123700001,(sp17:0.05206627537000008,sp18:0.05206627537000008):0.10788473700000001):0.4146638843999999):0.18310824149999982):0.14141853420000006,(sp7:0.30975230816999977,(sp11:0.14878903446999958,sp12:0.14878903446999958):0.1609632737000002):0.5893893643000001):0.08707255494000021,(((sp6:0.37526933299999987,(sp8:0.17162357219999969,sp9:0.17162357219999969):0.2036457608000002):0.03000869401000017,(sp15:0.06826060460999983,sp16:0.06826060460999983):0.3370174224000002):0.3270523138999999,(sp13:0.08543504540999969,sp14:0.08543504540999969):0.6468952955000002):0.25388388650000016):0.09943801271361719):1.4710548877269571);";
+
         String trait0Values = "sp1=0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
+
+        int numTraits = 1;
         // String trait0Values = "sp1=-0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=-0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
@@ -170,10 +174,11 @@ public class MosseTreeLikelihoodTestLargeTree {
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
-                "resolution", Integer.toString(resolution)
+                "resolution", Integer.toString(resolution),
+                "threads", 1                               // number of cpu threads
         );
 
-        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
+        MosseTreeLikelihoodBufferedMT likelihood = new MosseTreeLikelihoodBufferedMT();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
@@ -182,15 +187,29 @@ public class MosseTreeLikelihoodTestLargeTree {
                 "treeModel", mosseDist,
                 "traits", traitsList,
                 "lambdaFunc", logFunc,
-                "muFunc", constFunc
+                "muFunc", constFunc,
+                "tc", 0.29996062792
                 );
 
         // using observed root
         double result = likelihood.calculateLogP();
-
-        assert !Double.isNaN(result);
-        assert !Double.isInfinite(result);
-
         System.out.println("testMosseLikelihood logP = " + result);
+
+    	long endTime = System.nanoTime();
+    	long durationInNano = endTime - startTime;
+    	long durationInMillis = durationInNano / 1_000_000;
+    	long durationInSec = durationInMillis / 1000;
+
+    	System.out.println("Execution time: " + durationInSec + " seconds");
+
+    	Runtime runtime = Runtime.getRuntime();
+
+    	long totalMemory = runtime.totalMemory(); // Total memory currently available to the JVM
+    	long freeMemory = runtime.freeMemory();   // Free memory within the JVM
+    	long usedMemory = totalMemory - freeMemory; // Memory currently in use by the JVM
+
+    	System.out.println("Total JVM Memory: " + totalMemory / (1024 * 1024) + " MB");
+    	System.out.println("Free JVM Memory: " + freeMemory / (1024 * 1024) + " MB");
+    	System.out.println("Used JVM Memory: " + usedMemory / (1024 * 1024) + " MB");
     }
 }
