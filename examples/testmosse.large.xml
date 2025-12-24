@@ -197,28 +197,21 @@
             <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
     
             <!-- SubtreeSlide: local node-height / branch-length move, topology may change -->
-            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
+            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="1.0"/>
     
             <!-- HKY kappa operator -->
             <operator id="KappaScaler"
                       spec="ScaleOperator"
                       parameter="@kappa"
-                      scaleFactor="0.75"
-                      weight="3.0"/>
+                      scaleFactor="0.1"
+                      weight="1.0"/>
     
             <!-- Base frequency operators (sum stays 1) -->
-            <operator id="FreqsDeltaExchange1"
+            <operator id="FreqsDeltaExchange"
                       spec="DeltaExchangeOperator"
                       parameter="@freqs"
                       delta="0.01"
-                      weight="3.0"/>
-            
-            <operator id="FreqsDeltaExchange2"
-                      spec="DeltaExchangeOperator"
-                      parameter="@freqs"
-                      delta="0.05"
                       weight="1.0"/>
-    
     
             <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
             <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
