@@ -85,8 +85,10 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		}
 		update |= (update1 | update2);
 
-		// reset the flag
 		if (node.isRoot()) {
+			// compute the logP
+			calcLogP();
+			// reset the flag
 			updateTips = false;
 			updateSiteModel = false;
 		}
@@ -101,9 +103,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		System.out.println("tc = " + tc);
 		printSiteModelParameters();
 		if (requiresRecalculation()) {
-			if (traverse(tree.getRoot()) != Tree.IS_CLEAN) {
-				calcLogP();
-			}
+			traverse(tree.getRoot());
 		}
 		System.out.println("logP = " + logP);
 		System.out.println();
@@ -119,22 +119,20 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		boolean recalc = false;
 
 		// If site model changed, we must recompute all partials
-		if (m_siteModel.isDirtyCalculation() || updateSiteModel) {
+		if (m_siteModel.isDirtyCalculation()) {
 			updateSiteModel = true;
-			recalc = true;
 		}
 
 		// If tip model changed, we must recompute all leaf partials
-		if (tipModel.isDirtyCalculation() || updateTips) {
+		if (tipModel.isDirtyCalculation()) {
 			updateTips = true;
-			recalc = true;
 		}
 
 		// If nothing global changed, check whether the tree itself has dirty nodes
-		if (!recalc && treeInput.get().somethingIsDirty()) {
+		if (treeInput.get().somethingIsDirty() || updateSiteModel || updateTips) {
 			recalc = true;
 		}
-
+		
 		return recalc;
 	}
 

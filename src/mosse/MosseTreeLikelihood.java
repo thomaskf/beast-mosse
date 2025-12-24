@@ -939,6 +939,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
+		printSiteModelParameters();
 		traverseFull(tree.getRoot());
 		calcLogP();
 		System.out.println("logP = " + logP);
