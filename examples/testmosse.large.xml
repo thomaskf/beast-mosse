@@ -207,11 +207,13 @@
                       weight="1.0"/>
     
             <!-- Base frequency operators (sum stays 1) -->
+            <!--
             <operator id="FreqsDeltaExchange"
                       spec="DeltaExchangeOperator"
                       parameter="@freqs"
                       delta="0.01"
                       weight="1.0"/>
+            -->
     
             <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
             <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
