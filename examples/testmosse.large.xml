@@ -135,17 +135,18 @@
         chainLength="10" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
-            <!-- <stateNode idref="epsilon" /> -->
+            <stateNode idref="epsilon" />
+            <stateNode idref="beta" />
             <stateNode idref="tree" />
             <stateNode idref="kappa" />
-            <stateNode idref="freqs" />
+            <!--<stateNode idref="freqs" />-->
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihoodBufferedMT"
+                    spec="mosse.MosseTreeLikelihood"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
@@ -163,6 +164,20 @@
                     <distr id="LogNormalDistribution" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter id="logNormalMean" spec="beast.base.inference.parameter.RealParameter" name="M" value="1.0" />
                         <parameter id="logNormalStdev" spec="beast.base.inference.parameter.RealParameter" name="S" value="1.25" />
+                    </distr>
+                </distribution>
+                <distribution id="epsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
+                    <distr id="LogNormal.epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+                        <!-- median ~ exp(M) -->
+                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="-4.605170186" estimate="false"/>
+                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
+                    </distr>
+                </distribution>
+
+                <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
+                    <distr id="LogNormal.beta" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false"/>
+                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
                     </distr>
                 </distribution>
                 
@@ -206,6 +221,12 @@
                       scaleFactor="0.1"
                       weight="1.0"/>
     
+            <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
+                scaleFactor="0.75" weight="1.0" />
+            <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
+                scaleFactor="0.75" weight="1.0" />
+
+
             <!-- Base frequency operators (sum stays 1) -->
             <!--
             <operator id="FreqsDeltaExchange"
@@ -229,8 +250,8 @@
             <log idref='likelihood' />
             <log idref="mossetreelikelihood" />
             <log idref="tree" />
-            <!-- <log idref="beta" />
-            <log idref="epsilon" /> -->
+            <log idref="beta" />
+            <log idref="epsilon" />
         </logger>
     </run>
 

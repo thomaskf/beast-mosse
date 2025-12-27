@@ -61,6 +61,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			}
 			if (updateTips) {
 				// update all the partial for all leaves
+				// System.out.println("update the partials for all leaves");
 				setPartials(node, patterns);
 			}
 		}
@@ -78,7 +79,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		final int update2 = traverse(node.getRight());
 
 		// if either child was updated, we must recompute this node's partials
-		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel) {
+		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel || updateTips) {
 
 			mosseLikelihoodCore.setNodePartialsForUpdate(node.getNr());
 			// System.out.println("Invoke computePartialLikelihood for node " + node.getNr());
@@ -104,6 +105,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
 		printSiteModelParameters();
+		tipModel.printParams();
 		if (requiresRecalculation()) {
 			traverse(tree.getRoot());
 		}
