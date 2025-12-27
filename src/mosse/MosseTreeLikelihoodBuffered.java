@@ -20,6 +20,8 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	protected int[] storedPatternMapPerNode;
 	protected int[] storedNumRateBinsPerNode;
 	protected double[] storedLogCompensatesPerNode;
+	protected double[] storedFlatTransitionMatrices_h;
+	protected double[] storedFlatTransitionMatrices_l;
 
 	@Override
 	public void initAndValidate() {
@@ -148,6 +150,8 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		System.arraycopy(patternMapPerNode, 0, storedPatternMapPerNode, 0, patternMapPerNode.length);
 		System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
 		System.arraycopy(logCompensatesPerNode, 0, storedLogCompensatesPerNode, 0, logCompensatesPerNode.length);
+		storedFlatTransitionMatrices_h = flatTransitionMatrices_h;
+		storedFlatTransitionMatrices_l = flatTransitionMatrices_l;
 	}
 
 	@Override
@@ -176,6 +180,14 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		tmp2 = logCompensatesPerNode;
 		logCompensatesPerNode = storedLogCompensatesPerNode;
 		storedLogCompensatesPerNode = tmp2;
+		
+		tmp2 = flatTransitionMatrices_h;
+		flatTransitionMatrices_h = storedFlatTransitionMatrices_h;
+		storedFlatTransitionMatrices_h = tmp2;
+		
+		tmp2 = flatTransitionMatrices_l;
+		flatTransitionMatrices_l = storedFlatTransitionMatrices_l;
+		storedFlatTransitionMatrices_l = tmp2;
 	}
 
 	private void checkNodeStatus(final Node node) {
