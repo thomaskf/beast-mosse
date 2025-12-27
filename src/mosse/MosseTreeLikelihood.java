@@ -940,6 +940,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
 		printSiteModelParameters();
+		tipModel.printParams();
 		traverseFull(tree.getRoot());
 		calcLogP();
 		System.out.println("logP = " + logP);
