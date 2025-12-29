@@ -87,9 +87,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int numRateBins_h;
 	protected double dx_h;
 	protected double startSubsRate_h;
-	protected int numEntries_h; // number of non-zero elements in lambdas
-	protected int padLeft_h;
-	protected int padRight_h;
 	protected double[] lambdas_h;
 	protected double[] mus_h;
 	protected double[] flatTransitionMatrices_h;
@@ -98,9 +95,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int numRateBins_l;
 	protected double dx_l;
 	protected double startSubsRate_l;
-	protected int numEntries_l; // number of non-zero elements in lambdas
-	protected int padLeft_l;
-	protected int padRight_l;
 	protected double[] lambdas_l;
 	protected double[] mus_l;
 	protected double[] flatTransitionMatrices_l;
@@ -134,11 +128,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
 
 		// high resolution
-		numRateBins_h = treeModel.nx * resolution;
+		numRateBins_h = treeModel.numRateBins_h;
 		dx_h = treeModel.dx;
 		startSubsRate_h = dx_h;
 		// low resolution
-		numRateBins_l = treeModel.nx;
+		numRateBins_l = treeModel.numRateBins_l;
 		dx_l = treeModel.dx * resolution;
 		startSubsRate_l = dx_l;
 
@@ -188,12 +182,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins_max);
 
 		// compute the padLeft, padRight, and numEntries for low and high resolution
-		padLeft_l = treeModel.padLeft_l;
-		padRight_l = treeModel.padRight_l;
-		numEntries_l = numRateBins_l - padLeft_l - padRight_l - 1;
-		padLeft_h = treeModel.padLeft_h;
-		padRight_h = treeModel.padRight_h;
-		numEntries_h = numRateBins_h - padLeft_h - padRight_h - 1;
+		int padLeft_l = treeModel.padLeft_l;
+		int numEntries_l = treeModel.numEntries_l;
+		int padLeft_h = treeModel.padLeft_h;
+		int numEntries_h = treeModel.numEntries_h;
 
 		// get lambdas and mus
 		lambdas_h = new double[numEntries_h];
@@ -319,8 +311,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			boolean[] updated = new boolean[subpatns];
 			Arrays.fill(updated, false);
 			double subsInterval = startSubsRate_h;
-			double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_h,
-					startSubsRate_h + padLeft_h * subsInterval, subsInterval);
+			double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
+					startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
 			for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
 				// get the starting position of the partial likelihoods
@@ -340,7 +332,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 						if (stateSet[state]) {
 							// set likelihoods for nucleotide in data
 							for (int i = 0; i < numRateBins_h; i++) {
-								if (i < numEntries_h) {
+								if (i < treeModel.numEntries_h) {
 									partials[k++] = tipLikelihoods[i];
 								} else {
 									partials[k++] = 0.0; // within padding
@@ -459,12 +451,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int padLeft;
 		if (lowResolution) {
 			rate = treeModel.dxInput.get().getValue() * resolution;
-			numEntries = numEntries_l;
-			padLeft = padLeft_l;
+			numEntries = treeModel.numEntries_l;
+			padLeft = treeModel.padLeft_l;
 		} else {
 			rate = treeModel.dxInput.get().getValue();
-			numEntries = numEntries_h;
-			padLeft = padLeft_h;
+			numEntries = treeModel.numEntries_h;
+			padLeft = treeModel.padLeft_h;
 		}
 		int sqStateCount = stateCount * stateCount;
 		double[] transitionMatrix = new double[sqStateCount];
@@ -658,11 +650,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		// numRateBins, numEntries, lambdas
 		int numRateBins_curr = numRateBins_h;
-		int numEntries_curr = numEntries_h;
+		int numEntries_curr = treeModel.numEntries_h;
 		double[] lambdas_curr = lambdas_h;
 		if (isLowResolution(node)) {
 			numRateBins_curr = numRateBins_l;
-			numEntries_curr = numEntries_l;
+			numEntries_curr = treeModel.numEntries_l;
 			lambdas_curr = lambdas_l;
 		}
 		
@@ -792,7 +784,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		double[] eRoot = null;
 
-		double[] x = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l);
+		double[] x = getSubstitutionRates(treeModel.numEntries_l, startSubsRate_l, dx_l, treeModel.padLeft_l);
 		// root options
 		double[][] rootP = getRootProb(dRoot, x, nx, rootOption, rootFunc);
 

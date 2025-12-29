@@ -12,8 +12,9 @@ import beast.base.evolution.tree.Tree;
 @Description("Mosse likelihood class calculates the probability of sequence and trait data on a tree")
 public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
-	private boolean updateTips = true;
-	private boolean updateSiteModel = true;
+	private boolean updateTips;
+	private boolean updateSiteModel;
+	private boolean updateTreeModel;
 
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
@@ -34,6 +35,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		// initialize the flags
 		updateTips = true;
 		updateSiteModel = true;
+		updateTreeModel = true;
 
 		storedTaxaIndexUnderNode = new int[taxonCount * nodeCount];
 		storedPatternMapPerNode = new int[nodeCount * patterns];
@@ -51,15 +53,18 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	protected int traverse(final Node node) {
 
 		if (node.isRoot()) {
+			if (updateTreeModel) {
+				treeModel.computePadNumEntries(); // update the values of pads and numEntries
+			}
 			// taxon indices under all children of each node
 			setTaxonIndices(node);
-			if (updateSiteModel) {
+			if (updateSiteModel || updateTreeModel) {
 				boolean lowResolution = true;
 				flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
 				lowResolution = false;
 				flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
 			}
-			if (updateTips) {
+			if (updateTips || updateTreeModel) {
 				// update all the partial for all leaves
 				// System.out.println("update the partials for all leaves");
 				setPartials(node, patterns);
