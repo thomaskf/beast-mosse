@@ -54,7 +54,10 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		if (node.isRoot()) {
 			if (updateTreeModel) {
-				treeModel.computePadNumEntries(); // update the values of pads and numEntries
+				// update the values of pads and numEntries
+				treeModel.computePadNumEntries();
+				// compute lambda_h, lambda_l, mus_h, and mus_l
+				computeLambdaMus();
 			}
 			// taxon indices under all children of each node
 			setTaxonIndices(node);
@@ -107,16 +110,11 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	@Override
 	public double calculateLogP() {
-		String newickstr = toNewick(tree.getRoot()) + ";";
-		System.out.println(newickstr);
-		System.out.println("tc = " + tc);
-		printSiteModelParameters();
-		tipModel.printParams();
+		printParams();
 		if (requiresRecalculation()) {
 			traverse(tree.getRoot());
 		}
-		System.out.println("logP = " + logP);
-		System.out.println();
+		printLogP();
 		return logP;
 	}
 
