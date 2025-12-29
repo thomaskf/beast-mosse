@@ -47,14 +47,18 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	protected double drift;
 	protected double diffusion;
 	protected double dt;
-	protected double mean;
-	protected double sd;
 	protected int width;
 	
 	// number of threads
 	protected int numThreads;
 	protected long[] ptr_l; // ptr for low resolution
 	protected long[] ptr_h; // ptr for high resolution
+	
+	// for storing during mcmc
+	protected int storedPadLeft_h;
+	protected int storedPadLeft_l;
+	protected int storedPadRight_h;
+	protected int storedPadRight_l;
 
 	static {
 		System.loadLibrary("test");
@@ -103,14 +107,11 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		diffusion = diffusionInput.get().getValue();
 		dt = dtInput.get().getValue();
 
-		mean = drift * dt;
-		sd = Math.sqrt(diffusion * dt);
 		width = widthInput.get().getValue();
-
-		padLeft_h = getPadLeft(false); // padLeft for high resolution
-		padLeft_l = getPadLeft(true); // padLeft for low resolution
-		padRight_h = getPadRight(false); // padRight for high resolution
-		padRight_l = getPadRight(true); // padRight for low resolution
+		
+		// compute padLeft and padRight
+		computePadLeft();
+		computePadRight();
 		
 		if (threadsInput.get() != null) {
 			numThreads = threadsInput.get().intValue();
@@ -126,24 +127,22 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		}
 	}
 	
-	public int getPadLeft(boolean lowResolution) {
-		int padLeft = 0;
-		if (lowResolution) {
-			padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution);
-		} else {
-			padLeft = (int) Math.ceil(-(mean - width * sd) / dx / resolution) * resolution;
-		}
-		return Math.abs(padLeft);
+	public void computePadLeft() {
+		double mean = drift * dt;
+		double sd = Math.sqrt(diffusion * dt);
+		// low resolution
+		padLeft_l = Math.abs((int) Math.ceil(-(mean - width * sd) / dx / resolution));
+		// high resolution
+		padLeft_h = Math.abs((int) Math.ceil(-(mean - width * sd) / dx / resolution) * resolution);
 	}
 
-	public int getPadRight(boolean lowResolution) {
-		int padRight = 0;
-		if (lowResolution) {
-			padRight = (int) Math.ceil((mean + width * sd) / dx / resolution);
-		} else {
-			padRight = (int) Math.ceil((mean + width * sd) / dx / resolution) * resolution;
-		}
-		return Math.abs(padRight);
+	public void computePadRight() {
+		double mean = drift * dt;
+		double sd = Math.sqrt(diffusion * dt);
+		// low resolution
+		padRight_l = Math.abs((int) Math.ceil((mean + width * sd) / dx / resolution));
+		// high resolution
+		padRight_h = Math.abs((int) Math.ceil((mean + width * sd) / dx / resolution) * resolution);
 	}
 
 	/*
@@ -237,4 +236,20 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		}
 	}
 
+	@Override
+	public void store() {
+		storedPadLeft_h = padLeft_h;
+		storedPadLeft_l = padLeft_l;
+		storedPadRight_h = padRight_h;
+		storedPadRight_l = padRight_l;
+	}
+
+	@Override
+	public void restore() {
+		padLeft_h = storedPadLeft_h;
+		padLeft_l = storedPadLeft_l;
+		padRight_h = storedPadRight_h;
+		padRight_l = storedPadRight_l;
+	}
+	
 }
