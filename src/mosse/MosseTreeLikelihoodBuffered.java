@@ -99,6 +99,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			// reset the flag
 			updateTips = false;
 			updateSiteModel = false;
+			updateTreeModel = false;
 		}
 
 		return update;
@@ -126,19 +127,21 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		// checkNodeStatus(tree.getRoot());
 
 		boolean recalc = false;
+		
+		if (treeModel.isDirtyCalculation()) {
+			updateTreeModel = true;
+		}
+		
 
-		// If site model changed, we must recompute all partials
 		if (m_siteModel.isDirtyCalculation()) {
 			updateSiteModel = true;
 		}
 
-		// If tip model changed, we must recompute all leaf partials
 		if (tipModel.isDirtyCalculation()) {
 			updateTips = true;
 		}
 
-		// If nothing global changed, check whether the tree itself has dirty nodes
-		if (treeInput.get().somethingIsDirty() || updateSiteModel || updateTips) {
+		if (treeInput.get().somethingIsDirty() || updateTreeModel || updateSiteModel || updateTips) {
 			recalc = true;
 		}
 		
