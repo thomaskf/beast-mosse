@@ -109,6 +109,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int[] numRateBinsPerNode;
 	// for each node, store the log compensations
 	protected double[] logCompensatesPerNode;
+	
+	// counter
+	protected int count;
 
 	@Override
 	public void initAndValidate() {
@@ -180,25 +183,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		// set likelihood core number of states and number of rate bins
 		mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins_max);
-
-		// compute the padLeft, padRight, and numEntries for low and high resolution
-		int padLeft_l = treeModel.padLeft_l;
-		int numEntries_l = treeModel.numEntries_l;
-		int padLeft_h = treeModel.padLeft_h;
-		int numEntries_h = treeModel.numEntries_h;
-
-		// get lambdas and mus
-		lambdas_h = new double[numEntries_h];
-		lambdas_l = new double[numEntries_l];
-		mus_h = new double[numEntries_h];
-		mus_l = new double[numEntries_l];
-		double[] x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
-		double[] x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
-		lambdaFunc.getY(x_h, lambdas_h, true);
-		lambdaFunc.getY(x_l, lambdas_l, true);
-		muFunc.getY(x_h, mus_h, true);
-		muFunc.getY(x_l, mus_l, true);
-
+		
 		// logging likelihood class
 		String className = getClass().getSimpleName();
 		Log.info.println(className + "(" + getID() + ") uses " + mosseLikelihoodCore.getClass().getSimpleName());
@@ -223,7 +208,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 
 		// root partial array always use low resolution
-		m_fRootPartials = new double[patterns * stateCount * numRateBins_l];
+		// m_fRootPartials = new double[patterns * stateCount * numRateBins_l];
 		// storedfRootPartials = new double[patterns * stateCount * numRateBins_l];
 		// for each node, store indices of taxa under subtree rooted at the node
 		taxaIndexUnderNode = new int[taxonCount * nodeCount];
@@ -234,8 +219,30 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// for each node, store the log compensations
 		logCompensatesPerNode = new double[nodeCount];
 		Arrays.fill(logCompensatesPerNode, 0.0);
+		
+		count= 0;
 	}
 
+	protected void computeLambdaMus() {
+		// compute the padLeft, padRight, and numEntries for low and high resolution
+		int padLeft_l = treeModel.padLeft_l;
+		int numEntries_l = treeModel.numEntries_l;
+		int padLeft_h = treeModel.padLeft_h;
+		int numEntries_h = treeModel.numEntries_h;
+
+		// get lambdas and mus
+		lambdas_h = new double[numEntries_h];
+		lambdas_l = new double[numEntries_l];
+		mus_h = new double[numEntries_h];
+		mus_l = new double[numEntries_l];
+		double[] x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
+		double[] x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
+		lambdaFunc.getY(x_h, lambdas_h, true);
+		lambdaFunc.getY(x_l, lambdas_l, true);
+		muFunc.getY(x_h, mus_h, true);
+		muFunc.getY(x_l, mus_l, true);
+	}
+	
 	/**
 	 * set the taxon indices under all children of each node
 	 */
@@ -546,15 +553,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// nothing to do
 			return;
 		}
-
+		
 		if (node.isRoot()) {
 			// root node
+			// update the values of pads and numEntries
+			treeModel.computePadNumEntries();
+			// compute lambda_h, lambda_l, mus_h, and mus_l
+			computeLambdaMus();
+			// compute taxon indices under all children of each node
+			setTaxonIndices(node);
 			boolean lowResolution = true;
 			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
 			lowResolution = false;
 			flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
-			// compute taxon indices under all children of each node
-			setTaxonIndices(node);
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
 		}
@@ -928,16 +939,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	@Override
 	public double calculateLogP() {
+		traverseFull(tree.getRoot());
+		calcLogP();
+		printLogP();
+		return logP;
+	}
+	
+	protected void printParams() {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
 		printSiteModelParameters();
 		tipModel.printParams();
-		traverseFull(tree.getRoot());
-		calcLogP();
-		System.out.println("logP = " + logP);
+		treeModel.printParams();
+	}
+	
+	protected void printLogP() {
+		printParams();
+		count++;
+		System.out.println("#" + count + " logP = " + logP);
 		System.out.println();
-		return logP;
 	}
 
 	@Override

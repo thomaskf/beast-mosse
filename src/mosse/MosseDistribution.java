@@ -135,11 +135,25 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			ptr_h[i] = makeMosseFFT(nx * resolution, dx, nd, flags);
 		}
 	}
+
+	public void refreshParams() {
+
+		if (driftInput.get().somethingIsDirty()) {
+			drift = driftInput.get().getValue();
+		}
+
+		if (diffusionInput.get().somethingIsDirty()) {
+			diffusion = diffusionInput.get().getValue();
+		}
+	}
 	
 	public void computePadNumEntries() {
+		
+		refreshParams();
+		
 		double mean = drift * dt;
 		double sd = Math.sqrt(diffusion * dt);
-
+		
 		// low resolution
 		padLeft_l = Math.abs((int) Math.ceil(-(mean - width * sd) / dx / resolution));
 		padRight_l = Math.abs((int) Math.ceil((mean + width * sd) / dx / resolution));
@@ -259,6 +273,10 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		padRight_l = storedPadRight_l;
 		numEntries_h = storedNumEntries_h;
 		numEntries_l = storedNumEntries_l;
+	}
+	
+	public void printParams() {
+		System.out.println("drift = " + drift + "; diffusion = " + diffusion);
 	}
 	
 }
