@@ -112,7 +112,7 @@
     
     <!-- HKY model -->
     <parameter id="kappa" value="2.0"/>
-    
+   
     <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
 
     <SiteModel
@@ -122,7 +122,11 @@
 
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dx="0.0001" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" threads="32" />
+        nx="1024" dx="0.0001" dt="0.01" width="5" resolution="4" threads="32">
+        <drift id="drift" spec="parameter.RealParameter">0.0</drift>
+        <diffusion id="diffusion" spec="parameter.RealParameter">0.001</diffusion>
+    </MosseDistribution>
+        
 
     <LogisticFunction
         id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
@@ -132,13 +136,15 @@
         id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
 
     <run
-        chainLength="10" id="mcmc" spec="MCMC">
+        chainLength="5" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
             <stateNode idref="epsilon" />
             <stateNode idref="beta" />
             <stateNode idref="tree" />
             <stateNode idref="kappa" />
+            <stateNode idref="drift" />
+            <stateNode idref="diffusion" />
             <!--<stateNode idref="freqs" />-->
         </state>
 
@@ -146,7 +152,7 @@
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihood"
+                    spec="mosse.MosseTreeLikelihoodBuffered"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
@@ -181,6 +187,20 @@
                     </distr>
                 </distribution>
                 
+                <distribution id="driftPrior" spec="beast.base.inference.distribution.Prior" x="@drift">
+                    <distr id="Normal.drift" spec="beast.base.inference.distribution.Normal">
+                        <parameter name="mean" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false"/>
+                        <parameter name="sigma" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
+                    </distr>
+                </distribution>
+
+                <distribution id="diffusionPrior" spec="beast.base.inference.distribution.Prior" x="@diffusion">
+                    <distr id="LogNormal.diffusion" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+                        <!-- median ~ exp(M) = 0.001 -->
+                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="-6.907755278" estimate="false"/>
+                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
+                    </distr>
+                </distribution>
                 <!--
                 <distribution id="freqsPrior" spec="beast.base.inference.distribution.Prior" x="@freqs">
                     <Dirichlet id="Dirichlet.freqs" alpha="1.0 1.0 1.0 1.0"/>
@@ -195,14 +215,6 @@
                     </populationModel>
                 </distribution>
                 -->            
-                <!--
-                <distribution id="EpsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
-                    <distr id="LogNormal.Epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" offset="0.0" meanInRealSpace="false">
-                        <parameter name="M" value="1.0" estimate="false" />
-                        <parameter name="S" value="1.0" estimate="false" />
-                    </distr>
-                </distribution>
-                -->
             </distribution>
             <!-- END prior-->
         </distribution>
@@ -210,22 +222,26 @@
         <!--<operators id="operators" spec="OperatorSchedule">-->
         
             <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
+
+			<!--    
+            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
     
-            <!-- SubtreeSlide: local node-height / branch-length move, topology may change -->
-            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="1.0"/>
-    
-            <!-- HKY kappa operator -->
             <operator id="KappaScaler"
                       spec="ScaleOperator"
                       parameter="@kappa"
                       scaleFactor="0.1"
-                      weight="1.0"/>
+                      weight="3.0"/>
     
             <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
-                scaleFactor="0.75" weight="1.0" />
+                scaleFactor="0.75" weight="3.0" />
             <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-                scaleFactor="0.75" weight="1.0" />
+                scaleFactor="0.75" weight="3.0" />
+            -->
 
+            <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
+                scaleFactor="0.75" weight="3.0" />
+            <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
+                windowSize="0.1" weight="3.0" />
 
             <!-- Base frequency operators (sum stays 1) -->
             <!--
@@ -252,6 +268,8 @@
             <log idref="tree" />
             <log idref="beta" />
             <log idref="epsilon" />
+            <log idref="drift" />
+            <log idref="diffusion" />
         </logger>
     </run>
 
