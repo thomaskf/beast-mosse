@@ -136,7 +136,7 @@
         id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
 
     <run
-        chainLength="5" id="mcmc" spec="MCMC">
+        chainLength="20" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
             <stateNode idref="epsilon" />
@@ -152,7 +152,7 @@
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
-                    spec="mosse.MosseTreeLikelihoodBuffered"
+                    spec="mosse.MosseTreeLikelihoodBufferedMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
@@ -186,7 +186,6 @@
                         <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
                     </distr>
                 </distribution>
-                
                 <distribution id="driftPrior" spec="beast.base.inference.distribution.Prior" x="@drift">
                     <distr id="Normal.drift" spec="beast.base.inference.distribution.Normal">
                         <parameter name="mean" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false"/>
@@ -206,7 +205,6 @@
                     <Dirichlet id="Dirichlet.freqs" alpha="1.0 1.0 1.0 1.0"/>
                 </distribution>
                 -->
-            
                 <!--
                 <distribution id="tree.prior" spec="beast.base.evolution.tree.coalescent.Coalescent">
                     <tree idref="tree"/>
@@ -219,47 +217,39 @@
             <!-- END prior-->
         </distribution>
         
-        <!--<operators id="operators" spec="OperatorSchedule">-->
         
-            <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
+        <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
 
-			<!--    
-            <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
-    
-            <operator id="KappaScaler"
-                      spec="ScaleOperator"
-                      parameter="@kappa"
-                      scaleFactor="0.1"
-                      weight="3.0"/>
-    
-            <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
-                scaleFactor="0.75" weight="3.0" />
-            <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-                scaleFactor="0.75" weight="3.0" />
-            -->
+        <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
 
-            <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
-                scaleFactor="0.75" weight="3.0" />
-            <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-                windowSize="0.1" weight="3.0" />
+        <operator id="KappaScaler"
+                  spec="ScaleOperator"
+                  parameter="@kappa"
+                  scaleFactor="0.1"
+                  weight="3.0"/>
 
-            <!-- Base frequency operators (sum stays 1) -->
-            <!--
-            <operator id="FreqsDeltaExchange"
-                      spec="DeltaExchangeOperator"
-                      parameter="@freqs"
-                      delta="0.01"
-                      weight="1.0"/>
-            -->
-    
-            <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
-            <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
-    
-            <!--
-            <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-                scaleFactor="0.75" weight="3.0" />
-            -->
-        <!--</operators>-->
+        <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
+            scaleFactor="0.75" weight="3.0" />
+            
+        <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
+            scaleFactor="0.75" weight="3.0" />
+
+        <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
+            scaleFactor="0.75" weight="3.0" />
+        <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
+            windowSize="0.1" weight="3.0" />
+
+        <!-- Base frequency operators (sum stays 1) -->
+        <!--
+        <operator id="FreqsDeltaExchange"
+                  spec="DeltaExchangeOperator"
+                  parameter="@freqs"
+                  delta="0.01"
+                  weight="1.0"/>
+        -->
+
+        <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
+        <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
 
         <logger logEvery="1" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
