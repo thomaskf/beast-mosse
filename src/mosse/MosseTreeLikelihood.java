@@ -951,6 +951,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		printSiteModelParameters();
 		tipModel.printParams();
 		treeModel.printParams();
+		lambdaFunc.printParams();
+		muFunc.printParams();
 	}
 	
 	protected void printLogP() {
