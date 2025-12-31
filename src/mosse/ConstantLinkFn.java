@@ -64,4 +64,8 @@ public class ConstantLinkFn extends BEASTObject implements LinkFn {
 		return LINKFUNCTION;
 	}
 
+	@Override
+	public void printParams() {
+		System.out.println("yValue = " + yValue);
+	}
 }

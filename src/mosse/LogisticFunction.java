@@ -26,7 +26,7 @@ public class LogisticFunction extends BEASTObject implements LinkFn {
 	final public Input<RealParameter> logisticGrowthRateInput = new Input<>("logisticGrowthRate",
 			"Growth rate of logistic curve.", Input.Validate.REQUIRED);
 
-	private double y0, y1, x0, r, curveMaxMinusBaseValue;
+	private double y0, y1, x0, r;
 	private static final String LINKFUNCTION = "logistic";
 
 	@Override
@@ -83,7 +83,7 @@ public class LogisticFunction extends BEASTObject implements LinkFn {
 			}
 
 			for (int i = 0; i < x.length; i++) {
-				curveMaxMinusBaseValue = y1 - y0;
+				double curveMaxMinusBaseValue = y1 - y0;
 				y[i] = y0 + curveMaxMinusBaseValue / (1.0 + Math.exp(r * (x0 - x[i])));
 			}
 		}
@@ -96,4 +96,9 @@ public class LogisticFunction extends BEASTObject implements LinkFn {
 		return LINKFUNCTION;
 	}
 
+	@Override
+	public void printParams() {
+		// y0, y1, x0, r;
+		System.out.println("y0 = " + y0 + "; y1 = " + y1 + "; x0 = " + x0 + "; r = " + r);
+	}
 }

@@ -20,4 +20,5 @@ public interface LinkFn {
 
 	String getLinkFnName();
 
+	void printParams();
 }
