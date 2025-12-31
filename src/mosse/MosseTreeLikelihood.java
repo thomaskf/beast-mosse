@@ -38,7 +38,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	// tip model, species diversification model and trait model
 	final public Input<MosseTipLikelihood> tipModelInput = new Input<>("tipModel", "model of tip probabilities",
 			Input.Validate.REQUIRED);
-	final public Input<Distribution> treeModelInput = new Input<>("treeModel", "species diversification model",
+	final public Input<MosseDistribution> treeModelInput = new Input<>("treeModel", "species diversification model",
 			Input.Validate.REQUIRED);
 
 	// lambda and mu functions
@@ -126,7 +126,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		traits = traitListInput.get();
 		tipModel = tipModelInput.get();
-		treeModel = (MosseDistribution) treeModelInput.get();
+		treeModel = treeModelInput.get();
 		resolution = treeModel.resolution;
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
 
@@ -138,7 +138,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		numRateBins_l = treeModel.numRateBins_l;
 		dx_l = treeModel.dx * resolution;
 		startSubsRate_l = dx_l;
-
+				
 		// maximum value of numRateBins (always numRateBins_h)
 		numRateBins_max = numRateBins_h;
 
@@ -207,9 +207,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			useAscertainedSitePatterns = true;
 		}
 
-		// root partial array always use low resolution
-		// m_fRootPartials = new double[patterns * stateCount * numRateBins_l];
-		// storedfRootPartials = new double[patterns * stateCount * numRateBins_l];
 		// for each node, store indices of taxa under subtree rooted at the node
 		taxaIndexUnderNode = new int[taxonCount * nodeCount];
 		// for each node, map global pattern index -> local partial pos
@@ -224,6 +221,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	protected void computeLambdaMus() {
+		
 		// compute the padLeft, padRight, and numEntries for low and high resolution
 		int padLeft_l = treeModel.padLeft_l;
 		int numEntries_l = treeModel.numEntries_l;
@@ -457,11 +455,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int numEntries;
 		int padLeft;
 		if (lowResolution) {
-			rate = treeModel.dxInput.get().getValue() * resolution;
+			rate = dx_l;
 			numEntries = treeModel.numEntries_l;
 			padLeft = treeModel.padLeft_l;
 		} else {
-			rate = treeModel.dxInput.get().getValue();
+			rate = dx_h;
 			numEntries = treeModel.numEntries_h;
 			padLeft = treeModel.padLeft_h;
 		}
@@ -478,13 +476,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// multiplication of matrix
 			matrixTwo = matrixOne.mmul(matrixTwo);
 		}
-		int l = 0;
+		// int l = 0;
 		// update transitionMatrices
-		transitionMatrices[l] = matrixTwo.toArray();
-		for (int i = padLeft; i < numEntries + padLeft - 1; i++) {
+		transitionMatrices[0] = matrixTwo.toArray();
+		// for (int i = padLeft; i < numEntries + padLeft - 1; i++) {
+		for (int l = 1; l < numEntries; l++) {
 			// multiplication of matrix
 			matrixTwo = matrixOne.mmul(matrixTwo);
-			l++;
+			// l++;
 			transitionMatrices[l] = matrixTwo.toArray();
 		}
 

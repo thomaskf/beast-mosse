@@ -96,7 +96,7 @@ public class MosseTreeLikelihoodTestLargeTree {
 				  "tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttttcttttttttcttttttgtttttttttacttacctttttttttttttatatttttttttttttattttgttttcttttatttttttttttttttaattttatttttttttttgttctttgctttgttttctttttttcttctttttttttgttttcttactcatctcttttttttttttcaatttttctatttatatttttttctttcttttttgttctattcttttattttcttttttttattttttttatttttttttttttttttactttttttttttttattcttcttaattctctcactttttctttttttttttatcttttattccctcttgtttattttatttttttattttttttactttcattatgttttctattctttcttatttctattattttttttttttattttaatctttattttattaattccaattattatttgccttttacttttttttattatctattttatattttatctttgtctcttctttttttttttttttattataattctccttccctccttttttttttctttttttttttcttttttttcttttttttctttttcctttccttttctttttgccctatctctcattttttctttcccttactcctttttttttctttattttggttctttcattttttttctttgttttttttttttttccatttttttttttttttgttttctttttcttactattttttcctttttttttatttttttttactatttttttcttctctttttttttactttcatttttttttttaatttttctcttttttatctttcttttcttctttttattttttttttcttttactcttatttcatttatttctttccttttttttaattttctttttctttttcttctgtttaaactcgttttatatcgttctttttttttcttcttttttatttcttttcctttcttctttttaattcttttttttttcttatttttttgttctt",
 				  "tttttttttttttttttttttttttttttttttttttttttaactgtttattttttttttagtttttattttttttttttttctcattttctttttctttttaactctttatcatctttttttttttccttttttttttaactttttattctttttcttttttttttatattctatcttttttttttttctttttctttttctttatcctttttttttcttcttgtctgtttattttttctttattttcctgcttttttattttaattttcatttctttttcttatttttttttttttatttcttctattttttttttttttttcttctttttttcttttgtcatgttctttttctttttttcttcattttgtattttttcttttttttattttcttctatttttttattcatttatcttttttttttcttttttctctttttttttttttttctatttttacattttcttttttatcttttccatttatttcttttattattttttatttttttatctttttctgtttttaattcttttattttatttctctttttcttctgtttcttctttactatttacttatttttttttttatttttttttttctttttttttttattttatcttttgttttcttcttttaatttgttattttttttttatttttttattatatgctttttttattctttttactatttattcttttatattccttatttttttatattttttctttcttttttttttttatttaattacttttttttcttgtttctttttctcttattctttttaattcttttcatttcttttttttttctctctttatatcctctttatttttttttctttatttatttatttttttctttttttcttttattatttatttttttttattatttttttcacgacattctgtatattattttctatttgtttttttctttatttaaattcttcttttttttttttactttattttctacctttttcttttttttcttttttgtttttttttacttacctttttttttttttatatttttttttttttattttgttttcttttatttttttttttttttaattttatttttttttttgttctttgctttgttttctttttttcttctttttttttgttttcttactcatctcttttttttttttcaatttttctatttatatttttttctttcttttttgttctattcttttattttcttttttttattttttttatttttttttttttttttactttttttttttttattcttcttaattctctcactttttctttttttttttatcttttattccctcttgtttattttatttttttattttttttactttcattatgttttctattctttcttatttctattattttttttttttattttaatctttattttattaattccaattattatttgccttttacttttttttattatctattttatattttatctttgtctcttctttttttttttttttattataattctccttccctccttttttttttctttttttttttcttttttttcttttttttctttttcctttccttttctttttgccctatctctcattttttctttcccttactcctttttttttctttattttggttctttcattttttttctttgttttttttttttttccatttttttttttttttgttttctttttcttactattttttcctttttttttatttttttttactatttttttcttctctttttttttactttcatttttttttttaatttttctcttttttatctttcttttcttctttttattttttttttcttttactcttatttcatttatttctttccttttttttaattttctttttctttttcttctgtttaaactcgttttatatcgttctttttttttcttcttttttatttcttttcctttcttctttttaattcttttttttttcttatttttttgttctt"};
         // String newick = "((sp2:1.04983844741,(sp4:0.18979052413832176,(sp19:0.014626973910000007,sp20:0.014626973910000007):0.17516355022832175):0.8600479232716782):1.5068686804405744,(sp1:1.0856522401236173,(((sp3:0.7577231382699998,(sp5:0.57461489677,(sp10:0.1599510123700001,(sp17:0.05206627537000008,sp18:0.05206627537000008):0.10788473700000001):0.4146638843999999):0.18310824149999982):0.14141853420000006,(sp7:0.30975230816999977,(sp11:0.14878903446999958,sp12:0.14878903446999958):0.1609632737000002):0.5893893643000001):0.08707255494000021,(((sp6:0.37526933299999987,(sp8:0.17162357219999969,sp9:0.17162357219999969):0.2036457608000002):0.03000869401000017,(sp15:0.06826060460999983,sp16:0.06826060460999983):0.3370174224000002):0.3270523138999999,(sp13:0.08543504540999969,sp14:0.08543504540999969):0.6468952955000002):0.25388388650000016):0.09943801271361719):1.4710548877269571);";
-        String newick = "(sp1:2.491662989830072,((sp2:1.04983844741,(sp4:0.6939605846100001,(sp19:0.014626973910000007,sp20:0.014626973910000007):0.6793336107000001):0.3558778627999999):0.4268244178,(((sp6:0.37526933299999987,(sp8:0.17162357219999969,sp9:0.17162357219999969):0.2036457608000002):0.03000869401000017,(sp15:0.06826060460999983,sp16:0.06826060460999983):0.3370174224000002):1.0667875428016278,(((sp3:0.7577231382699998,(sp5:0.57461489677,(sp10:0.1599510123700001,(sp17:0.05206627537000008,sp18:0.05206627537000008):0.10788473700000001):0.4146638843999999):0.18310824149999982):0.14141853420000006,(sp7:0.30975230816999977,(sp11:0.14878903446999958,sp12:0.14878903446999958):0.1609632737000002):0.5893893643000001):0.08707255494000021,(sp13:0.08543504540999969,sp14:0.08543504540999969):0.9007791820000004):0.48585134240162775):0.00459729539837217):1.015000124620072):0.0";
+        String newick = "(sp1:2.99960627921,((sp2:1.04983844741,(sp4:0.6939605846100001,(sp19:0.014626973910000007,sp20:0.014626973910000007):0.6793336107000001):0.3558778627999999):0.34699974636154063,(((sp3:0.7577231382699998,(sp5:0.57461489677,(sp10:0.1599510123700001,(sp17:0.05206627537000008,sp18:0.05206627537000008):0.10788473700000001):0.4146638843999999):0.18310824149999982):0.14141853420000006,(sp7:0.30975230816999977,(sp11:0.14878903446999958,sp12:0.14878903446999958):0.1609632737000002):0.5893893643000001):0.08707255494000021,(((sp6:0.37526933299999987,(sp8:0.17162357219999969,sp9:0.17162357219999969):0.2036457608000002):0.03000869401000017,(sp15:0.06826060460999983,sp16:0.06826060460999983):0.3370174224000002):0.3270523138999999,(sp13:0.08543504540999969,sp14:0.08543504540999969):0.6468952955000002):0.25388388650000016):0.4106239663615405):1.6027680854384594):0.0";
 
         String trait0Values = "sp1=0.0682157376607991,sp2=0.0577309817155646,sp3=0.0876073021060713,sp4=0.0170916723535904,sp5=0.0643209355960926,sp6=0.0251726388225066,sp7=0.0594171378771152,sp8=0.0356801813381377,sp9=0.040185325654931,sp10=0.063514025003301,sp11=0.0622700484555567,sp12=0.0392252029579882,sp13=0.065881283213531,sp14=0.0840818215237834,sp15=0.0441763722344705,sp16=0.0350654003746295,sp17=0.083072022511891,sp18=0.077832673112264,sp19=0.0326603328779717,sp20=0.0207063844999307";
 
@@ -106,9 +106,9 @@ public class MosseTreeLikelihoodTestLargeTree {
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
-        Double[] betasArray = {1.0};
+        Double[] betasArray = {0.9086983477829726};
         double meanSubst = 0.0; // 0.05; // mean substitution rate
-        double epsilon = 0.01;
+        double epsilon = 0.008785257124779636;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
@@ -120,8 +120,8 @@ public class MosseTreeLikelihoodTestLargeTree {
 
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
-        double drift = 0.0;          // drift parameter
-        double diffusion = 0.001;    // diffusion parameter
+        Double[] drift = new Double[] { 0.0 };          // drift parameter
+        Double[] diffusion = new Double[] { 0.001 };    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
@@ -129,7 +129,7 @@ public class MosseTreeLikelihoodTestLargeTree {
         Tree tree = new Tree(newick);
 
         // For HKY model
-        RealParameter kappa = new RealParameter("3.349748956477101");
+        RealParameter kappa = new RealParameter("26.719518035770907");
         RealParameter freqsParam = new RealParameter("0.25 0.25 0.25 0.25");
         Frequencies freqs = new Frequencies();
         freqs.initByName("frequencies", freqsParam);
@@ -177,17 +177,20 @@ public class MosseTreeLikelihoodTestLargeTree {
         constFunc.initByName("yV", yValueRP);
 
         MosseDistribution mosseDist = new MosseDistribution();
+        
+        RealParameter driftrp = new RealParameter(drift);
+        RealParameter diffusionrp = new RealParameter(diffusion);
 
         mosseDist.initByName(
                 "tree", tree,
                 "nx", Integer.toString(numBins),           // number of bins for substitution rate
                 "dx", Double.toString(dx),                 // distance between xs
-                "drift", Double.toString(drift),           // drift parameter
-                "diffusion", Double.toString(diffusion),   // diffusion parameter
+                "drift", driftrp,           // drift parameter
+                "diffusion", diffusionrp,   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
                 "resolution", Integer.toString(resolution),
-                "threads", 1                               // number of cpu threads
+                "threads", 32                               // number of cpu threads
         );
 
         MosseTreeLikelihoodBufferedMT likelihood = new MosseTreeLikelihoodBufferedMT();
