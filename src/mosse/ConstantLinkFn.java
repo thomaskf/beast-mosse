@@ -3,13 +3,14 @@ package mosse;
 import beast.base.core.BEASTObject;
 import beast.base.core.Input;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.inference.CalculationNode;
 
 /*
  * Applies the same y (macroevol param) value to all x (qu trait) bins.
  * If you put a prior on the y value, it's the same as assuming y is
  * distributed according to that prior, and independent of x
  */
-public class ConstantLinkFn extends BEASTObject implements LinkFn {
+public class ConstantLinkFn extends CalculationNode implements LinkFn {
 
 	final public Input<RealParameter> yValueInput = new Input<>("yV",
 			"Constant value of dependent variable (quantitative trait).", Input.Validate.REQUIRED);
@@ -36,24 +37,13 @@ public class ConstantLinkFn extends BEASTObject implements LinkFn {
 	}
 
 	@Override
-	public double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
-		boolean refreshedSomething = false;
-		if (!ignoreRefresh) {
-			refreshedSomething = refreshParams();
+	public double[] getY(double[] x, double[] y) {
+		if (x.length != y.length) {
+			throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
 		}
 
-		/*
-		 * if either we don't care about refreshing, or we do and something was
-		 * refreshed, we repopulate y
-		 */
-		if (ignoreRefresh || refreshedSomething) {
-			if (x.length != y.length) {
-				throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
-			}
-
-			for (int i = 0; i < x.length; i++) {
-				y[i] = yValue;
-			}
+		for (int i = 0; i < x.length; i++) {
+			y[i] = yValue;
 		}
 
 		return y;
@@ -67,5 +57,11 @@ public class ConstantLinkFn extends BEASTObject implements LinkFn {
 	@Override
 	public void printParams() {
 		System.out.println("yValue = " + yValue);
+	}
+
+	@Override
+	protected boolean requiresRecalculation() {
+		refreshParams();
+		return true;
 	}
 }
