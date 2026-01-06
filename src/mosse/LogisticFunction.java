@@ -4,6 +4,7 @@ import beast.base.core.BEASTObject;
 import beast.base.core.Description;
 import beast.base.core.Input;
 import beast.base.inference.parameter.RealParameter;
+import beast.base.inference.CalculationNode;
 
 /**
  * This class implements a type of link function that is used by QuaSSE to
@@ -15,7 +16,7 @@ import beast.base.inference.parameter.RealParameter;
 
 @Description("Logistic link function for converting x into y, "
 		+ "where x is a continuous trait and y is a macroevolutionary" + "parameter.")
-public class LogisticFunction extends BEASTObject implements LinkFn {
+public class LogisticFunction extends CalculationNode implements LinkFn {
 
 	final public Input<RealParameter> curveYBaseValueInput = new Input<>("curveYBaseValue", "Curve y base value.",
 			Input.Validate.REQUIRED);
@@ -66,26 +67,14 @@ public class LogisticFunction extends BEASTObject implements LinkFn {
 	}
 
 	@Override
-	public double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
-		boolean refreshedSomething = false;
-		if (!ignoreRefresh) {
-			refreshedSomething = refreshParams(); // if something changed in deterministic function parameters, we need
-													// to repopulate macroevol arrays
+	public double[] getY(double[] x, double[] y) {
+		if (x.length != y.length) {
+			throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
 		}
 
-		/*
-		 * if either we don't care about refreshing, or we do and something was
-		 * refreshed, we repopulate y
-		 */
-		if (ignoreRefresh || refreshedSomething) {
-			if (x.length != y.length) {
-				throw new RuntimeException("Sizes of x (qu trait) and y (macroevol param) differ. Exiting...");
-			}
-
-			for (int i = 0; i < x.length; i++) {
-				double curveMaxMinusBaseValue = y1 - y0;
-				y[i] = y0 + curveMaxMinusBaseValue / (1.0 + Math.exp(r * (x0 - x[i])));
-			}
+		for (int i = 0; i < x.length; i++) {
+			double curveMaxMinusBaseValue = y1 - y0;
+			y[i] = y0 + curveMaxMinusBaseValue / (1.0 + Math.exp(r * (x0 - x[i])));
 		}
 
 		return y;
@@ -100,5 +89,11 @@ public class LogisticFunction extends BEASTObject implements LinkFn {
 	public void printParams() {
 		// y0, y1, x0, r;
 		System.out.println("y0 = " + y0 + "; y1 = " + y1 + "; x0 = " + x0 + "; r = " + r);
+	}
+
+	@Override
+	protected boolean requiresRecalculation() {
+		refreshParams();
+		return true;
 	}
 }

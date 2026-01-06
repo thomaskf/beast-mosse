@@ -9,12 +9,12 @@ public interface LinkFn {
 	boolean refreshParams();
 
 	// x = qu trait, y = macroevol parameter or D (in esDs)
-	default double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
+	default double[] getY(double[] x, double[] y) {
 		return y;
 	}
 
 	// x = qu trait, y = macroevol parameter or D (in esDs)
-	default double[] getY(double[] x, double[] y, int[] nLeftNRightFlanksHi, String spName, boolean ignoreRefresh) {
+	default double[] getY(double[] x, double[] y, int[] nLeftNRightFlanksHi, String spName) {
 		return y;
 	}
 

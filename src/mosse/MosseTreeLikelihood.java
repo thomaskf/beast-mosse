@@ -235,10 +235,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		mus_l = new double[numEntries_l];
 		double[] x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
 		double[] x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
-		lambdaFunc.getY(x_h, lambdas_h, true);
-		lambdaFunc.getY(x_l, lambdas_l, true);
-		muFunc.getY(x_h, mus_h, true);
-		muFunc.getY(x_l, mus_l, true);
+		lambdaFunc.getY(x_h, lambdas_h);
+		lambdaFunc.getY(x_l, lambdas_l);
+		muFunc.getY(x_h, mus_h);
+		muFunc.getY(x_l, mus_l);
 	}
 	
 	/**
@@ -870,7 +870,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			} else if (rootOption == ROOT_GIVEN) { // test this with an appropriate function
 				double[] y = new double[x.length];
 				if (rootFunc != null) {
-					y = rootFunc.getY(x, y, true);
+					y = rootFunc.getY(x, y);
 					for (int i = 0; i < numSubstBins; i++) {
 						for (int j = 0; j < ntypes; j++) {
 							p[i][j] = rootI[j] * y[i]; // mapply
