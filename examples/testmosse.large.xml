@@ -105,7 +105,7 @@
         <beta id="beta" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
 
-    <!-- Base frequencies -->
+    <!-- Base frequencies, either estimate them or set them to empirical frequencies -->
     <parameter id="freqs" dimension="4" value="0.25 0.25 0.25 0.25"/>
     
     <frequencies id="estimatedFreqs" spec="Frequencies" frequencies="@freqs"/>
@@ -120,23 +120,30 @@
         mutationRate="1.0" substModel="@hky"
         gammaCategoryCount="1" />
 
+    <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dx="0.0001" dt="0.01" width="5" resolution="4" threads="32">
+        nx="1024" dx="0.0001" dt="0.01" width="5" resolution="4" threads="8">
         <drift id="drift" spec="parameter.RealParameter">0.0</drift>
         <diffusion id="diffusion" spec="parameter.RealParameter">0.001</diffusion>
     </MosseDistribution>
-        
+
+    <!-- Link function parameters -->
+    <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.1</parameter>
+    <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.2</parameter>
+    <parameter id="sigmoidMidpoint" spec="beast.base.inference.parameter.RealParameter">0.0</parameter>
+    <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.5</parameter>
+    <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.03</parameter>
 
     <LogisticFunction
-        id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
-        curveMaxY="0.2" sigmoidMidpoint="0.0" logisticGrowthRate="2.5" />
+        id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="@curveYBaseValue"
+        curveMaxY="@curveMaxY" sigmoidMidpoint="@sigmoidMidpoint" logisticGrowthRate="@logisticGrowthRate" />
 
     <ConstantLinkFn
-        id="constfunc" spec="mosse.ConstantLinkFn" yV="0.03" />
+        id="constfunc" spec="mosse.ConstantLinkFn" yV="@yV" />
 
     <run
-        chainLength="20" id="mcmc" spec="MCMC">
+        chainLength="100" id="mcmc" spec="MCMC">
 
         <state id="state" storeEvery="10000">
             <stateNode idref="epsilon" />
@@ -145,11 +152,17 @@
             <stateNode idref="kappa" />
             <stateNode idref="drift" />
             <stateNode idref="diffusion" />
-            <!--<stateNode idref="freqs" />-->
+            <stateNode idref="curveYBaseValue" />
+            <stateNode idref="curveMaxY" />
+            <stateNode idref="sigmoidMidpoint" />
+            <stateNode idref="logisticGrowthRate" />
+            <stateNode idref="yV" />
+			<!--<stateNode idref="freqs" />-->
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
+            <!-- likelihood value -->
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood"
                     spec="mosse.MosseTreeLikelihoodBufferedMT"
@@ -163,7 +176,7 @@
                 </distribution>
             </distribution>
 
-            <!-- START prior-->
+            <!-- priors -->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
             
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
@@ -200,12 +213,45 @@
                         <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
                     </distr>
                 </distribution>
+                
+                
+            	<distribution id="curveYBaseValuePrior" spec="beast.base.inference.distribution.Prior" x="@curveYBaseValue">
+            		<distr id="LogNormal.curveYBaseValue" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+						<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
+						<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
+            		</distr>
+            	</distribution>
+            	<distribution id="curveMaxYPrior" spec="beast.base.inference.distribution.Prior" x="@curveMaxY">
+            		<distr id="LogNormal.curveMaxY" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
+            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
+            		</distr>
+            	</distribution>
+            	<distribution id="sigmoidMidpointPrior" spec="beast.base.inference.distribution.Prior" x="@sigmoidMidpoint">
+            		<distr id="Normal.sigmoidMidpoint" spec="beast.base.inference.distribution.Normal">
+            			<parameter name="mean" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
+            			<parameter name="sigma" spec="beast.base.inference.parameter.RealParameter" value="10.0" estimate="false" />
+            		</distr>
+            	</distribution>
+            	<distribution id="logisticGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@logisticGrowthRate">
+            		<distr id="LogNormal.logisticGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
+            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
+            		</distr>
+            	</distribution>
+            	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
+            		<distr id="LogNormal.yV" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
+            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
+            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
+            		</distr>
+            	</distribution>
+                
                 <!--
                 <distribution id="freqsPrior" spec="beast.base.inference.distribution.Prior" x="@freqs">
                     <Dirichlet id="Dirichlet.freqs" alpha="1.0 1.0 1.0 1.0"/>
                 </distribution>
                 -->
-                <!--
+                <!-- (We do not need the tree prior, from Xia)
                 <distribution id="tree.prior" spec="beast.base.evolution.tree.coalescent.Coalescent">
                     <tree idref="tree"/>
                     <populationModel id="popModel" spec="ConstantPopulation">
@@ -239,6 +285,18 @@
         <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
             windowSize="0.1" weight="3.0" />
 
+        <operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
+            scaleFactor="0.75" weight="1.0" />
+        <operator id="CurveMaxYScaler" spec="ScaleOperator" parameter="@curveMaxY"
+            scaleFactor="0.75" weight="1.0" />
+        <operator id="SigmoidMidpointRandomWalk" spec="RealRandomWalkOperator" parameter="@sigmoidMidpoint"
+            windowSize="0.1" weight="1.0" />
+        <operator id="LogisticGrowthRateScaler" spec="ScaleOperator" parameter="@logisticGrowthRate"
+            scaleFactor="0.75" weight="1.0" />
+        <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
+            scaleFactor="0.75" weight="1.0" />
+
+
         <!-- Base frequency operators (sum stays 1) -->
         <!--
         <operator id="FreqsDeltaExchange"
@@ -260,6 +318,12 @@
             <log idref="epsilon" />
             <log idref="drift" />
             <log idref="diffusion" />
+            <log idref="curveYBaseValue" />
+            <log idref="curveMaxY" />
+            <log idref="sigmoidMidpoint" />
+            <log idref="logisticGrowthRate" />
+            <log idref="yV" />
+
         </logger>
     </run>
 
