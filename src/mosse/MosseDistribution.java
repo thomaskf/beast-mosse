@@ -49,8 +49,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	protected int numEntries_h;
 	protected int numEntries_l;
 
-	protected RealParameter drift;
-	protected RealParameter diffusion;
+	protected double drift;
+	protected double diffusion;
 	protected double dt;
 	protected int width;
 	
@@ -60,6 +60,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	protected long[] ptr_h; // ptr for high resolution
 	
 	// for storing during mcmc
+	protected double storedrift;
+	protected double storedDiffusion;
 	protected int storedPadLeft_h;
 	protected int storedPadLeft_l;
 	protected int storedPadRight_h;
@@ -113,8 +115,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		numRateBins_h = nx * resolution;
 		numRateBins_l = nx;
 
-		drift = driftInput.get();
-		diffusion = diffusionInput.get();
+		drift = driftInput.get().getValue();
+		diffusion = diffusionInput.get().getValue();
 		dt = dtInput.get().getValue();
 
 		width = widthInput.get().getValue();
@@ -137,8 +139,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	}
 
 	public void computePadNumEntries() {
-		double mean = drift.getValue() * dt;
-		double sd = Math.sqrt(diffusion.getValue() * dt);
+		double mean = drift * dt;
+		double sd = Math.sqrt(diffusion * dt);
 		
 		// low resolution
 		padLeft_l = Math.abs((int) Math.ceil(-(mean - width * sd) / dx / resolution));
@@ -174,9 +176,9 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		double[] result;
 		
 		if (lowResolution) {
-			result = doIntegration(vars, lambda, mu, drift.getValue(), diffusion.getValue(), Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			result = doIntegration(vars, lambda, mu, drift.getValue(), diffusion.getValue(), Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
+			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 		return result;
 	}
@@ -247,6 +249,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	
 	public void store2() {
 		super.store();
+		storedrift = drift;
+		storedDiffusion = diffusion;
 		storedPadLeft_h = padLeft_h;
 		storedPadLeft_l = padLeft_l;
 		storedPadRight_h = padRight_h;
@@ -261,6 +265,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	
 	public void restore2() {
 		super.restore();
+		drift = storedrift;
+		diffusion = storedDiffusion;
 		padLeft_h = storedPadLeft_h;
 		padLeft_l = storedPadLeft_l;
 		padRight_h = storedPadRight_h;
@@ -270,11 +276,13 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	}
 	
 	public void printParams() {
-		System.out.println("drift = " + drift.getValue() + "; diffusion = " + diffusion.getValue());
+		System.out.println("drift = " + drift + "; diffusion = " + diffusion);
 	}
 	
 	@Override
 	protected boolean requiresRecalculation() {
+		drift = driftInput.get().getValue();
+		diffusion = diffusionInput.get().getValue();
 	    return true;
 	}
 }
