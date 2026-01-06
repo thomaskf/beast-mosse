@@ -557,7 +557,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// root node
 			// update the values of pads and numEntries
 			treeModel.computePadNumEntries();
-			// compute lambda_h, lambda_l, mus_h, and mus_l
+			// compute lambdas_h, lambdas_l, mus_h, and mus_l
 			computeLambdaMus();
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);

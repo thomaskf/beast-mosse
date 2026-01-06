@@ -3,6 +3,7 @@ package mosse;
 import beast.base.core.Description;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
+import beast.base.inference.CalculationNode;
 
 /**
  * @author Kylie Chen
@@ -15,6 +16,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	private boolean updateTips;
 	private boolean updateSiteModel;
 	private boolean updateTreeModel;
+	private boolean updateFunc;
 
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
@@ -37,6 +39,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		updateTips = true;
 		updateSiteModel = true;
 		updateTreeModel = true;
+		updateFunc = true;
 
 		storedTaxaIndexUnderNode = new int[taxonCount * nodeCount];
 		storedPatternMapPerNode = new int[nodeCount * patterns];
@@ -62,7 +65,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			treeModel.computePadNumEntries();
 			computeLambdaMus();
 			
-			if (updateSiteModel || updateTreeModel) {
+			if (updateSiteModel || updateTreeModel || updateFunc) {
 				// recompute all the transition matrices
 				boolean lowResolution = true;
 				flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
@@ -70,7 +73,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 				flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
 			}
 			
-			if (updateTips || updateTreeModel || updateSiteModel) {
+			if (updateTips || updateTreeModel || updateSiteModel || updateFunc) {
 				// update the partial of all leaves
 				setPartials(node, patterns);
 			}
@@ -89,7 +92,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		final int update2 = traverse(node.getRight());
 
 		// if either child was updated, we must recompute this node's partials
-		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel || updateTips || updateTreeModel) {
+		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel || updateTips || updateTreeModel || updateFunc) {
 
 			mosseLikelihoodCore.setNodePartialsForUpdate(node.getNr());
 			// System.out.println("Invoke computePartialLikelihood for node " + node.getNr());
@@ -105,6 +108,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			updateTips = false;
 			updateSiteModel = false;
 			updateTreeModel = false;
+			updateFunc = false;
 		}
 
 		return update;
@@ -138,8 +142,12 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		if (tipModel.isDirtyCalculation()) {
 			updateTips = true;
 		}
+		
+		if (((CalculationNode) lambdaFunc).isDirtyCalculation() || ((CalculationNode) muFunc).isDirtyCalculation()) {
+			updateFunc = true;
+		}
 
-		if (treeInput.get().somethingIsDirty() || updateTreeModel || updateSiteModel || updateTips) {
+		if (treeInput.get().somethingIsDirty() || updateTreeModel || updateSiteModel || updateTips || updateFunc) {
 			recalc = true;
 		}
 		
