@@ -245,9 +245,6 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void store() {
-	}
-	
-	public void store2() {
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
@@ -261,9 +258,6 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void restore() {
-	}
-	
-	public void restore2() {
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
