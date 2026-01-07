@@ -92,11 +92,16 @@
         <taxon id="sp20" spec="Taxon" />
     </taxonset>
 
+    <!-- Random initial tree will be generated at start of MCMC -->
+    <tree id="tree" spec="beast.base.evolution.tree.Tree"/>
+    
+    <!--
     <tree
         id='tree' spec='beast.base.evolution.tree.TreeParser'
         IsLabelledNewick='true'
         newick='(((sp2:1.049838447,(sp4:0.6939605846,(sp19:0.01462697391,sp20:0.01462697391)nd13:0.6793336107)nd5:0.3558778628)nd3:0.4268244178,((((sp11:0.1487890344,sp12:0.1487890344)nd18:0.1609632737,sp7:0.3097523081)nd8:0.5893893643,((sp5:0.5746148967,((sp17:0.05206627524,sp18:0.05206627524)nd19:0.107884737,sp10:0.1599510123)nd14:0.4146638844)nd10:0.1831082415,sp3:0.7577231382)nd9:0.1414185342)nd6:0.08707255494,(((sp6:0.3752693329,(sp8:0.1716235721,sp9:0.1716235721)nd17:0.2036457608)nd15:0.03000869401,(sp15:0.06826060454,sp16:0.06826060454)nd16:0.3370174224)nd11:0.3270523139,(sp13:0.08543504527,sp14:0.08543504527)nd12:0.6468952955)nd7:0.2538838865)nd4:0.4904486378)nd2:1.522943414,sp1:2.999606279)nd1'
         taxa='@alignment' />
+    -->
 
     <MosseTipLikelihood id="mossetiplikelihood"
         spec="mosse.MosseTipLikelihood"
@@ -145,6 +150,17 @@
     <run
         chainLength="100" id="mcmc" spec="MCMC">
 
+        <!-- Initialise the starting tree randomly -->
+		<init id="RandomTreeInit"
+		      spec="beast.base.evolution.tree.coalescent.RandomTree"
+		      taxonset="@taxonset"
+		      initial="@tree"
+		      rootHeight="3.0">
+		    <populationModel id="popModel" spec="beast.base.evolution.tree.coalescent.ConstantPopulation">
+		        <parameter id="popSize" name="popSize">1.0</parameter>
+		    </populationModel>
+		</init>
+      		        
         <state id="state" storeEvery="10000">
             <stateNode idref="epsilon" />
             <stateNode idref="beta" />
