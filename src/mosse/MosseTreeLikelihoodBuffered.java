@@ -157,7 +157,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	@Override
 	public void store() {
 		mosseLikelihoodCore.store();
-		treeModel.store2(); // no need, it will be called by BEAST when necessary
 
 		super.store(); // important: let the parent class store its state
 
@@ -173,7 +172,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	@Override
 	public void restore() {
 		mosseLikelihoodCore.restore();
-		treeModel.restore2(); // no need, it will be called by BEAST when necessary
 
 		super.restore(); // restore parent state (tree, partials, etc.)
 
