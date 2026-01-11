@@ -1,36 +1,48 @@
 package mosse;
 
 import beast.base.core.Description;
-import beast.base.core.Input;
 import beast.base.evolution.tree.Node;
 
 import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.IntStream;
+import java.util.concurrent.ForkJoinWorkerThread;
 
 /**
  * @author Thomas Wong
  */
 
 @Description("MosseTreeLikelihoodBuffered with multi-threaded per-node computation")
-public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered {
+public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered implements AutoCloseable {
 
     private ForkJoinPool pool;
     
-    private static final AtomicInteger THREAD_COUNTER = new AtomicInteger(0);
-    private static final ThreadLocal<Integer> THREAD_INDEX =
-        ThreadLocal.withInitial(() -> THREAD_COUNTER.getAndIncrement());
-
-    public static int threadIndex() {
-        return THREAD_INDEX.get();
+    static int threadIndexInPool() {
+        Thread t = Thread.currentThread();
+        if (t instanceof ForkJoinWorkerThread) {
+            return ((ForkJoinWorkerThread) t).getPoolIndex();
+        }
+        return 0;
     }
-
+    
     @Override
     public void initAndValidate() {
         super.initAndValidate();
         pool = (treeModel.numThreads == 1) ? null : new ForkJoinPool(treeModel.numThreads);
+    }
+
+    @Override
+    public void close() {
+        if (pool != null) {
+            pool.shutdownNow();
+            pool = null;
+        }
+    }    
+
+    @Override
+    protected void finalize() throws Throwable {
+        close();
     }
     
     @Override
@@ -90,7 +102,7 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered {
 	        Runnable job = () -> IntStream.range(0, subpatns).parallel().forEach(sid -> {
 	            int patternIndex = rep[sid];
 	            if (patternIndex >= 0) {
-	            	int threadID = threadIndex();
+	            	int threadID = threadIndexInPool();
 	            	logCompensates[sid] = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft, patternPartialsRight, partialsAllPatterns, threadID);
 	            }
 	        });

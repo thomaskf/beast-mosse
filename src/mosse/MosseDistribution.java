@@ -173,14 +173,18 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		// double logP = 0.0;
 		// getting parameter values
 		int nt = (int) Math.ceil(branchTime / dt);
-		double[] result;
+		double[] result_native;
 		
 		if (lowResolution) {
-			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
+			result_native = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			result = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
+			result_native = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
-		return result;
+		
+//		double[] result = new double[vars.length];
+//		System.arraycopy(result_native, 0, result, 0, vars.length);
+		
+		return result_native;
 	}
 
 	/**
@@ -233,15 +237,24 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		throw new UnsupportedOperationException();
 	}
 
+	private volatile boolean closed = false;
+
 	@Override
-	public void close() throws Exception {
-		// TODO Auto-generated method stub
-		for (int i = 0; i < numThreads; i++) {
-			// destroy obj pointers
-			mosseFinalize(ptr_l[i]);
-			mosseFinalize(ptr_h[i]);
-		}
+	public synchronized void close() throws Exception {
+	    if (closed) return;
+	    closed = true;
+	    for (int i = 0; i < numThreads; i++) {
+	        if (ptr_l[i] != 0) mosseFinalize(ptr_l[i]);
+	        if (ptr_h[i] != 0) mosseFinalize(ptr_h[i]);
+	        ptr_l[i] = 0;
+	        ptr_h[i] = 0;
+	    }
 	}
+	
+	@Override
+    protected void finalize() throws Throwable {
+        close();
+    }
 
 	@Override
 	public void store() {
