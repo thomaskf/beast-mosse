@@ -128,12 +128,13 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
 
   // PROTECT(ret = allocMatrix(REALSXP, obj->nx, nd));
   int size = obj->nx * nd;
-  double *result = (double*)malloc(sizeof(double) * size); 
-  qf_copy_x_mosse(obj, result, nd, 0); // copy obj to result
+  // double *result = (double*)malloc(sizeof(double) * size); 
+  // qf_copy_x_mosse(obj, result, nd, 0); // copy obj to result
 
   // copy to java array
   jdoubleArray j_result = (*env)->NewDoubleArray(env, size);
-  (*env)->SetDoubleArrayRegion(env, j_result, 0, size, result);
+  // (*env)->SetDoubleArrayRegion(env, j_result, 0, size, result);
+  (*env)->SetDoubleArrayRegion(env, j_result, 0, size, obj->x);
 
   // free memory
   free(c_lambda);
