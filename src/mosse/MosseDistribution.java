@@ -181,10 +181,10 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			result_native = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 		
-//		double[] result = new double[vars.length];
-//		System.arraycopy(result_native, 0, result, 0, vars.length);
+		double[] result = new double[vars.length];
+		System.arraycopy(result_native, 0, result, 0, vars.length);
 		
-		return result_native;
+		return result;
 	}
 
 	/**
@@ -258,6 +258,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void store() {
+		System.out.println("MosseDistribution.store()");
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
@@ -271,6 +272,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void restore() {
+		System.out.println("MosseDistribution.restore()");
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;

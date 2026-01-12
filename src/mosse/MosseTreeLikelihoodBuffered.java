@@ -156,6 +156,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	@Override
 	public void store() {
+		System.out.println("store");
 		mosseLikelihoodCore.store();
 
 		super.store(); // important: let the parent class store its state
@@ -171,6 +172,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	@Override
 	public void restore() {
+		System.out.println("restore");
 		mosseLikelihoodCore.restore();
 
 		super.restore(); // restore parent state (tree, partials, etc.)
