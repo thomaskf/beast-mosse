@@ -135,7 +135,7 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered i
 	                double[] partials = new double[singlePartialSize];
 	                System.arraycopy(partialsAllPatterns, startPos, partials, 0, singlePartialSize);
 	
-	                boolean conditionSurv = true;
+	                boolean conditionSurv = false; // runtime exception exists when this value is true;
 	                double pll = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 	                patternLogLikelihoods[p] = pll;
 	        	}
@@ -146,7 +146,7 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered i
 	                double[] partials = new double[singlePartialSize];
 	                System.arraycopy(partialsAllPatterns, startPos, partials, 0, singlePartialSize);
 	
-	                boolean conditionSurv = true;
+	                boolean conditionSurv = false; // runtime exception exists when this value is true;
 	                double pll = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 	                patternLogLikelihoods[p] = pll;
 	            });
