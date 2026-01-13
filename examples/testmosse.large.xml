@@ -324,12 +324,13 @@
 
         <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
         <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
-
-        <logger logEvery="1" fileName="examples/test.$(seed).log" model="@likelihood">
-            <log idref='posterior' />
-            <log idref='likelihood' />
+        
+        
+        <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
+            <log idref="posterior" />
+            <log idref="likelihood" />
+            <log idref="prior" /> <!-- optional but recommended -->
             <log idref="mossetreelikelihood" />
-            <log idref="tree" />
             <log idref="beta" />
             <log idref="epsilon" />
             <log idref="drift" />
@@ -339,7 +340,9 @@
             <log idref="sigmoidMidpoint" />
             <log idref="logisticGrowthRate" />
             <log idref="yV" />
-
+        </logger>
+        <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
+            <log idref="tree" />
         </logger>
     </run>
 
