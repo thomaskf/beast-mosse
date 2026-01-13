@@ -330,8 +330,7 @@
         <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
             <log idref="posterior" />
             <log idref="likelihood" />
-            <log idref="prior" /> <!-- optional but recommended -->
-            <log idref="mossetreelikelihood" />
+            <log idref="prior" />
             <log idref="beta" />
             <log idref="epsilon" />
             <log idref="drift" />
