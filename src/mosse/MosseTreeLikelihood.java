@@ -751,6 +751,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			logPNode += logpPatn;
 		}
+		
+        if (node.isRoot()) {
+        	System.out.println("### logPNode = " + logPNode);
+        }
 
 		// set node partials
 		mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
@@ -761,7 +765,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				double[] partials = new double[singlePartialSize];
 				System.arraycopy(partialsAllPatterns, startPos, partials, 0, singlePartialSize);
 
-				boolean conditionSurv = true;
+				boolean conditionSurv = false;
 				double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials,
 						conditionSurv);
 				patternLogLikelihoods[patternIndex] = patternLogLikelihood;
