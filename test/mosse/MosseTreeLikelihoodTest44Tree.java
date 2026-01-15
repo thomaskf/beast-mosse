@@ -121,7 +121,8 @@ public class MosseTreeLikelihoodTest44Tree {
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
         Double[] drift = new Double[] { 0.741654419915616 };          // drift parameter
-        Double[] diffusion = new Double[] { 2.4822873228905803E-4 };    // diffusion parameter
+        // Double[] diffusion = new Double[] { 2.4822873228905803E-4 };    // diffusion parameter
+        Double[] diffusion = new Double[] { 2.029151750633952E-4 };    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
