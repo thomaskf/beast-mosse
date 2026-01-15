@@ -255,12 +255,12 @@
             			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
             		</distr>
             	</distribution>
-            	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
-            		<distr id="LogNormal.yV" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
-            		</distr>
-            	</distribution>
+                <distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
+                    <distr id="Exponential.yV" spec="beast.base.inference.distribution.ExponentialDistributionModel">
+                        <parameter name="mean" spec="beast.base.inference.parameter.RealParameter"
+                                   value="0.5" estimate="false"/>
+                    </distr>
+                </distribution>
                 
                 <!--
                 <distribution id="freqsPrior" spec="beast.base.inference.distribution.Prior" x="@freqs">
