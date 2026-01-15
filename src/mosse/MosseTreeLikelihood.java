@@ -975,11 +975,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * data.getPatternWeight(i);
 			}
 		} else {
+			System.out.println("logp of each patterns");
 			for (int i = 0; i < patterns; i++) {
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
+				System.out.println(patternLogLikelihoods[i] + "[" + data.getPatternWeight(i) +"] = " + patternLogLikelihoods[i] * data.getPatternWeight(i));
 			}
 		}
+		System.out.println("before logCompensate = " + logP);
+		System.out.println("logCompensate = " + logCompensatesPerNode[tree.getRoot().getNr()]);
 		logP += logCompensatesPerNode[tree.getRoot().getNr()];
+		System.out.println("logP = " + logP);
 	}
 
 	@Override
