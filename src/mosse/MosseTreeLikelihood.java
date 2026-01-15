@@ -761,7 +761,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				double[] partials = new double[singlePartialSize];
 				System.arraycopy(partialsAllPatterns, startPos, partials, 0, singlePartialSize);
 
-				boolean conditionSurv = false; // runtime exception exists when this value is true;
+				boolean conditionSurv = true;
 				double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials,
 						conditionSurv);
 				patternLogLikelihoods[patternIndex] = patternLogLikelihood;
@@ -804,6 +804,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			for (int j = 0; j < stateCount; j++) {
 				for (int i = 0; i < lambdas_l.length; i++) {
 					double lambdaX = lambdas_l[i];
+					// sanity check
+					final double min_value = 1e-30;
+					if (1-eRoot[i] < min_value)
+						return Double.NEGATIVE_INFINITY;
 					// element-wise division of d column
 					dRoot[i][j] = dRoot[i][j] / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
 				}
