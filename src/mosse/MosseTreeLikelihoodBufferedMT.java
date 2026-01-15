@@ -123,6 +123,10 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered i
         } else {
             for (int p = 0; p < patterns; p++) logPNode += logCompensates[patternMapSubpatternID[p]];
         }
+        
+        if (node.isRoot()) {
+        	System.out.println("### logPNode = " + logPNode);
+        }
 
         mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
