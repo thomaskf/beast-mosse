@@ -730,9 +730,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		assert (subpatns > 0);
 
 		double[] partialsAllPatterns = new double[subpatns * singlePartialSize];
-		boolean[] updated = new boolean[subpatns];
-		Arrays.fill(updated, false);
+		int[] subpatnfreq = new int[subpatns];
+		Arrays.fill(subpatnfreq, 0);
 		double[] logCompensates = new double[subpatns];
+		Arrays.fill(logCompensates, 0.0);
 		int threadID = 0; // single-threaded
 
 		for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
@@ -740,22 +741,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (!node.isRoot()) {
 				subpatnid = patternMapSubpatternID[patternIndex]; // sub-pattern id
 			}
-			double logpPatn; // log-compensate for this pattern
-			if (!updated[subpatnid]) {
+			if (subpatnfreq[subpatnid] == 0) {
 				// note: root always enters here
-				updated[subpatnid] = true;
-				logpPatn = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft, patternPartialsRight, partialsAllPatterns, threadID);
-				logCompensates[subpatnid] = logpPatn;
-			} else {
-				logpPatn = logCompensates[subpatnid];
+				// log-compensate for this pattern
+				logCompensates[subpatnid] = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft, patternPartialsRight, partialsAllPatterns, threadID);
 			}
-			logPNode += logpPatn;
+			subpatnfreq[subpatnid]+= data.getPatternWeight(patternIndex);
+		}
+        // accumulate node log compensate across patterns
+		for (int subpatnid = 0; subpatnid < subpatns; subpatnid++) {
+			logPNode += logCompensates[subpatnid] * subpatnfreq[subpatnid];
 		}
 		
-        if (node.isRoot()) {
-        	System.out.println("### logPNode = " + logPNode);
-        }
-
 		// set node partials
 		mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
@@ -979,16 +976,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * data.getPatternWeight(i);
 			}
 		} else {
-			System.out.println("logp of each patterns");
 			for (int i = 0; i < patterns; i++) {
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
-				System.out.println(patternLogLikelihoods[i] + "[" + data.getPatternWeight(i) +"] = " + patternLogLikelihoods[i] * data.getPatternWeight(i));
 			}
 		}
-		System.out.println("before logCompensate = " + logP);
-		System.out.println("logCompensate = " + logCompensatesPerNode[tree.getRoot().getNr()]);
 		logP += logCompensatesPerNode[tree.getRoot().getNr()];
-		System.out.println("logP = " + logP);
 	}
 
 	@Override

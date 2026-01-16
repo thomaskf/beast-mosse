@@ -74,17 +74,23 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered i
 		assert (subpatns > 0);
 		
 		double[] partialsAllPatterns = new double[subpatns * singlePartialSize];
-        final int[] rep = new int[subpatns];
+		int[] freq = new int[subpatns];
+		Arrays.fill(freq, 0);
+        int[] rep = new int[subpatns];
         Arrays.fill(rep, -1);
 		double[] logCompensates = new double[subpatns];
 
         if (node.isRoot()) {
             // root: subpattern == patternIndex, so representative is itself
-            for (int p = 0; p < patterns; p++) rep[p] = p;
+            for (int p = 0; p < patterns; p++) {
+            	rep[p] = p;
+            	freq[p] = data.getPatternWeight(p);
+            }
         } else {
             for (int p = 0; p < patterns; p++) {
                 int sid = patternMapSubpatternID[p];
                 if (rep[sid] < 0) rep[sid] = p;
+                freq[sid] += data.getPatternWeight(p);
             }
         }
 
@@ -116,21 +122,12 @@ public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered i
             }
 		}
 		
-        // ---- accumulate node log compensate across patterns (single-thread) ----
-        if (node.isRoot()) {
-            // root: sid == patternIndex
-            for (int p = 0; p < patterns; p++) logPNode += logCompensates[p];
-        } else {
-            for (int p = 0; p < patterns; p++) logPNode += logCompensates[patternMapSubpatternID[p]];
-        }
+        // accumulate node log compensate across patterns
+        for (int p = 0; p < subpatns; p++) logPNode += logCompensates[p] * freq[p];
         
-        if (node.isRoot()) {
-        	System.out.println("### logPNode = " + logPNode);
-        }
-
         mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
-        // ---- Root pattern likelihoods ----
+        // Root pattern likelihoods
         if (node.isRoot()) {
 	        if (pool == null) {
 	        	// single thread
