@@ -25,9 +25,9 @@ public class MosseTipLikelihood extends CalculationNode {
 	final public Input<BooleanParameter> logScaleInput = new Input<>("logscale",
 			"whether to use log scale for substitution rate (defaults to false)", Input.Validate.OPTIONAL);
 
-	private RealParameter beta;
-	private RealParameter meanSubstitution;
-	private RealParameter epsilon;
+	public RealParameter beta;
+	public RealParameter meanSubstitution;
+	public RealParameter epsilon;
 
 	public MosseTipLikelihood() {
 
@@ -40,21 +40,9 @@ public class MosseTipLikelihood extends CalculationNode {
 	 *
 	 * @param a      start value of tip rate interval
 	 * @param b      end value of tip rate interval
-	 * @param traits trait values
 	 * @return tip likelihood between intervals a and b
 	 */
-	public double getTipLikelihood(double a, double b, double[] traits) {
-		double mean = meanSubstitution.getValue();
-		for (int i = 0; i < traits.length; i++) {
-			int numBetas = beta.getDimension();
-			if (numBetas != traits.length) {
-				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
-			}
-			mean += beta.getValue(i) * traits[i];
-		}
-		double sd = epsilon.getValue();
-		// Gaussian distribution
-		NormalDistribution normalDist = new NormalDistribution(mean, sd);
+	public double getTipLikelihood(double a, double b, NormalDistribution normalDist) {
 		double startProb = normalDist.cumulativeProbability(a);
 		double endProb = normalDist.cumulativeProbability(b);
 		return endProb - startProb;
@@ -69,11 +57,21 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double subsInterval) {
+		double mean = meanSubstitution.getValue();
+		for (int i = 0; i < traits.length; i++) {
+			int numBetas = beta.getDimension();
+			if (numBetas != traits.length) {
+				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+			}
+			mean += beta.getValue(i) * traits[i];
+		}
+		double sd = epsilon.getValue();
+		NormalDistribution normalDist = new NormalDistribution(mean, sd);
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
-			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
+			tipLikelihoods[i] = getTipLikelihood(a, b, normalDist);
 		}
 		// TODO make logscale consistent with TreeLikelihood
 
@@ -89,12 +87,22 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods2(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
+		double mean = meanSubstitution.getValue();
+		for (int i = 0; i < traits.length; i++) {
+			int numBetas = beta.getDimension();
+			if (numBetas != traits.length) {
+				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+			}
+			mean += beta.getValue(i) * traits[i];
+		}
+		double sd = epsilon.getValue();
+		NormalDistribution normalDist = new NormalDistribution(mean, sd);
 		double subsInterval = (endSubsRate - startSubsRate) / numBins;
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
-			tipLikelihoods[i] = getTipLikelihood(a, b, traits);
+			tipLikelihoods[i] = getTipLikelihood(a, b, normalDist);
 		}
 		return tipLikelihoods;
 	}

@@ -6,6 +6,7 @@ package mosse;
 
 import static junit.framework.Assert.assertEquals;
 
+import org.apache.commons.math3.distribution.NormalDistribution;
 import org.junit.Test;
 
 import beast.base.inference.parameter.RealParameter;
@@ -40,7 +41,17 @@ public class MosseTipLikelihoodTest {
         );
         tipLikelihood.initAndValidate();
 
-        double prob = tipLikelihood.getTipLikelihood(a, b, traits);
+		double mean = tipLikelihood.meanSubstitution.getValue();
+		for (int i = 0; i < traits.length; i++) {
+			int numBetas = tipLikelihood.beta.getDimension();
+			if (numBetas != traits.length) {
+				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+			}
+			mean += tipLikelihood.beta.getValue(i) * traits[i];
+		}
+		double sd = tipLikelihood.epsilon.getValue();
+		NormalDistribution normalDist = new NormalDistribution(mean, sd);
+        double prob = tipLikelihood.getTipLikelihood(a, b, normalDist);
 
         assertEquals(1.0, prob, DELTA);
     }
