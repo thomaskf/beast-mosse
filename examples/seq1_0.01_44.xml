@@ -150,7 +150,7 @@
         id="constfunc" spec="mosse.ConstantLinkFn" yV="@yV" />
 
     <run
-        chainLength="1000000" id="mcmc" spec="MCMC">
+        chainLength="100" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<init id="RandomTreeInit"
