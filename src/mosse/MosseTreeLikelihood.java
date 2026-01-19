@@ -1,5 +1,7 @@
 package mosse;
 
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -112,6 +114,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	
 	// counter
 	protected int count;
+	
+	// the format of the displayed log-likelihood value
+	DecimalFormat df = new DecimalFormat();
 
 	@Override
 	public void initAndValidate() {
@@ -217,6 +222,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		logCompensatesPerNode = new double[nodeCount];
 		Arrays.fill(logCompensatesPerNode, 0.0);
 		
+		// display format of the log-likelhood value
+		df.setMaximumFractionDigits(7);
+		df.setRoundingMode(RoundingMode.CEILING);
+		
 		count= 0;
 	}
 
@@ -313,6 +322,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 			double[] traitValues = getTraits(node);
 			double[] partials = new double[subpatns * singlePartialSize];
+			Arrays.fill(partials, 0.0);
 			boolean[] updated = new boolean[subpatns];
 			Arrays.fill(updated, false);
 			double subsInterval = startSubsRate_h;
@@ -320,34 +330,32 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
 			for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
-				// get the starting position of the partial likelihoods
-				int k = patternMapPerNode[node_s + patternIndex];
 				int subpatnid = patternMapSubpatternID[patternIndex]; // sub-pattern id
 				if (!updated[subpatnid]) {
 					// compute the partial likelihood for this sub pattern
 					updated[subpatnid] = true;
 					int stateid = data.getPattern(taxonIndex, patternIndex);
 					boolean[] stateSet = data.getStateSet(stateid);
-					// E initial values are zero
-					for (int i = 0; i < numRateBins_h; i++) {
-						partials[k++] = 0.0;
-					}
+					// get the starting position of the partial likelihoods
+					// and skip the first numRateBins_h positions because E initial values are zero
+					int k = patternMapPerNode[node_s + patternIndex] + numRateBins_h;
 					// D initial values
 					for (int state = 0; state < stateCount; state++) {
 						if (stateSet[state]) {
 							// set likelihoods for nucleotide in data
-							for (int i = 0; i < numRateBins_h; i++) {
-								if (i < treeModel.numEntries_h) {
+							if (numRateBins_h <= treeModel.numEntries_h) {
+								for (int i = 0; i < numRateBins_h; i++) {
 									partials[k++] = tipLikelihoods[i];
-								} else {
-									partials[k++] = 0.0; // within padding
 								}
+							} else {
+								for (int i = 0; i < treeModel.numEntries_h; i++) {
+									partials[k++] = tipLikelihoods[i];
+								}
+								k += (numRateBins_h - treeModel.numEntries_h);
 							}
 						} else {
-							// otherwise set likelihoods to zero
-							for (int i = 0; i < numRateBins_h; i++) {
-								partials[k++] = 0.0;
-							}
+							// otherwise leave likelihoods to zero
+							k += numRateBins_h;
 						}
 					}
 				}
@@ -963,7 +971,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected void printLogP() {
 		printParams();
 		count++;
-		System.out.println("#" + count + " logP = " + logP);
+		System.out.println("#" + count + " logP = " + df.format(logP));
 		System.out.println();
 	}
 
