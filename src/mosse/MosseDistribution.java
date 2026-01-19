@@ -150,11 +150,6 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		padLeft_h = Math.abs((int) Math.ceil(-(mean - width * sd) / dx / resolution) * resolution);
 		padRight_h = Math.abs((int) Math.ceil((mean + width * sd) / dx / resolution) * resolution);
 		numEntries_h = numRateBins_h - padLeft_h - padRight_h - 1;
-		// set the minimum value of padLeft and padRight to 1
-		if (padLeft_l < 1) padLeft_l = 1;
-		if (padRight_l < 1) padRight_l = 1;
-		if (padLeft_h < 1) padLeft_h = 1;
-		if (padRight_h < 1) padRight_h = 1;
 	}
 
 	/*
