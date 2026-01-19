@@ -677,23 +677,31 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		
 		int k = 0;
-		for (int i = 0; i < numPlan; i++) {
-			for (int j = 0; j < numRateBins_curr; j++) {
-				if (i == 0) {
-					// E is topology independent
-					partialsAllPatterns[currPos + k] = partialsLeft[k];
-				} else {
-					if (j < numEntries_curr) {
-						// non padded elements
-						// D_left * D_right * lambda(x)
-						double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-						partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
-					} else {
-						// padded elements
-						partialsAllPatterns[currPos + k] = 0.0;
-					}
+		// E is topology independent
+		System.arraycopy(partialsLeft, k, partialsAllPatterns, currPos + k, numRateBins_curr);
+		k += numRateBins_curr;
+		
+		if (numRateBins_curr <= numEntries_curr) {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numRateBins_curr; j++) {
+					// non padded elements
+					// D_left * D_right * lambda(x)
+					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+					partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					k++;
 				}
-				k++;
+			}
+		} else {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numEntries_curr; j++) {
+					// non padded elements
+					// D_left * D_right * lambda(x)
+					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+					partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					k++;
+				}
+				// leave the rest to zeros
+				k += (numRateBins_curr - numEntries_curr);
 			}
 		}
 		
@@ -738,6 +746,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		assert (subpatns > 0);
 
 		double[] partialsAllPatterns = new double[subpatns * singlePartialSize];
+		Arrays.fill(partialsAllPatterns, 0.0);
 		int[] subpatnfreq = new int[subpatns];
 		Arrays.fill(subpatnfreq, 0);
 		double[] logCompensates = new double[subpatns];
