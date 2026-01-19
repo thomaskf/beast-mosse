@@ -69,13 +69,9 @@ public class MosseTipLikelihood extends CalculationNode {
 		NormalDistribution normalDist = new NormalDistribution(mean, sd);
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
-			// normal distribution
-			// double x = startSubsRate + i * subsInterval;
-			// tipLikelihoods[i] = normalDist.density(x);
-			
-			// normal density (previous method)
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
+			// area between a and b under normal distribution
 			tipLikelihoods[i] = getTipLikelihood(a, b, normalDist);
 		}
 		// TODO make logscale consistent with TreeLikelihood
