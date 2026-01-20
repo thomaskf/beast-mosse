@@ -62,7 +62,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		if (node.isRoot()) {
 			// recalculate taxon indices under all children of each node
 			setTaxonIndices(node);
-			treeModel.computePadNumEntries();
+			// compute lambdas_h, lambdas_l, mus_h, and mus_l
 			computeLambdaMus();
 			
 			if (updateSiteModel || updateTreeModel || updateFunc) {
