@@ -124,6 +124,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
     
 	// the format of the displayed log-likelihood value
 	DecimalFormat df;
+	
+	// gamma distribution
+	protected int numCategories; // number of categories of the gamma distribution
+	protected double[] categoryRates; // rates for all categories
+	protected double[] categoryProps; // proportions for all categories
 
 	@Override
 	public void initAndValidate() {
@@ -236,6 +241,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		df.setMaximumFractionDigits(7);
 		df.setRoundingMode(RoundingMode.CEILING);
 		
+		// gamma distribution
+		numCategories = m_siteModel.getCategoryCount();
+		if (numCategories == 1) {
+			categoryRates = null;
+			categoryProps = null;
+		} else {
+			categoryRates = m_siteModel.getCategoryRates(null);
+			categoryProps = m_siteModel.getCategoryProportions(null);
+		}
+		showGammaParams();
+		
 		count= 0;
 	}
 
@@ -294,92 +310,113 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 	}
 
+	private void setLeafPartials(Node node, int patterncount) {
+		// for leaf, always use high resolution
+		numRateBinsPerNode[node.getNr()] = numRateBins_h;
+
+		int taxonIndex = data.getTaxonIndex(node.getID());
+		// to store the pattern -> sub-pattern id
+		int[] patternMapSubpatternID = new int[patterncount];
+		// to map the state -> sub-pattern id
+		HashMap<Integer, Integer> state2subpatnid = new HashMap<>();
+		// collect the number of sub-patterns and the mapping between global index to
+		// local partial index
+		int subpatns = 0;
+		int singlePartialSize = (stateCount + 1) * numRateBins_h;
+		int node_s = node.getNr() * patterncount; // starting pos in patternMapPerNode
+		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
+			int stateid = data.getPattern(taxonIndex, patternIndex);
+			int subpatnid;
+			int local_partial_pos;
+			if (!state2subpatnid.containsKey(stateid)) {
+				state2subpatnid.put(stateid, subpatns);
+				subpatnid = subpatns;
+				subpatns++;
+			} else {
+				subpatnid = state2subpatnid.get(stateid);
+			}
+			// mapping: pattern -> sub-pattern id
+			patternMapSubpatternID[patternIndex] = subpatnid;
+			// save the mapping: pattern -> local partial pos
+			local_partial_pos = subpatnid * singlePartialSize;
+			patternMapPerNode[node_s + patternIndex] = local_partial_pos;
+		}
+		assert (subpatns > 0);
+
+		double[] traitValues = getTraits(node);
+		double[] partials = new double[subpatns * singlePartialSize * numCategories];
+		Arrays.fill(partials, 0.0);
+		boolean[] updated = new boolean[subpatns];
+		Arrays.fill(updated, false);
+		double subsInterval = startSubsRate_h;
+		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
+				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
+
+		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
+			int subpatnid = patternMapSubpatternID[patternIndex]; // sub-pattern id
+			if (!updated[subpatnid]) {
+				// compute the partial likelihood for this sub pattern
+				updated[subpatnid] = true;
+				int stateid = data.getPattern(taxonIndex, patternIndex);
+				boolean[] stateSet = data.getStateSet(stateid);
+				// get the starting position of the partial likelihoods
+				// and skip the first numRateBins_h positions because E initial values are zero
+				int k = patternMapPerNode[node_s + patternIndex] + numRateBins_h;
+				// D initial values
+				for (int state = 0; state < stateCount; state++) {
+					if (stateSet[state]) {
+						// set likelihoods for nucleotide in data
+						if (numRateBins_h <= treeModel.numEntries_h) {
+							for (int i = 0; i < numRateBins_h; i++) {
+								partials[k++] = tipLikelihoods[i];
+							}
+						} else {
+							for (int i = 0; i < treeModel.numEntries_h; i++) {
+								partials[k++] = tipLikelihoods[i];
+							}
+							k += (numRateBins_h - treeModel.numEntries_h);
+						}
+					} else {
+						// otherwise leave likelihoods to zero
+						k += numRateBins_h;
+					}
+				}
+			}
+		}
+		mosseLikelihoodCore.setNodePartials(node.getNr(), partials);
+		// set the corresponding log-compensate to zeros
+		int node_e = (node.getNr() + 1) * patterncount; // ending pos in patternLogCompensatePerNode
+		Arrays.fill(patternLogCompensatePerNode, node_s, node_e, 0.0);
+	}
+	
 	/**
 	 * set leaf partials using tip GLM likelihood model *
 	 */
 	@Override
 	protected void setPartials(Node node, int patterncount) {
 		// assume the array taxaIndexUpdateNode has been updated
-		if (node.isLeaf()) {
-			// for leaf, always use high resolution
-			numRateBinsPerNode[node.getNr()] = numRateBins_h;
-
-			int taxonIndex = data.getTaxonIndex(node.getID());
-			// to store the pattern -> sub-pattern id
-			int[] patternMapSubpatternID = new int[patterncount];
-			// to map the state -> sub-pattern id
-			HashMap<Integer, Integer> state2subpatnid = new HashMap<>();
-			// collect the number of sub-patterns and the mapping between global index to
-			// local partial index
-			int subpatns = 0;
-			int singlePartialSize = (stateCount + 1) * numRateBins_h;
-			int node_s = node.getNr() * patterncount; // starting pos in patternMapPerNode
-			for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
-				int stateid = data.getPattern(taxonIndex, patternIndex);
-				int subpatnid;
-				int local_partial_pos;
-				if (!state2subpatnid.containsKey(stateid)) {
-					state2subpatnid.put(stateid, subpatns);
-					subpatnid = subpatns;
-					subpatns++;
-				} else {
-					subpatnid = state2subpatnid.get(stateid);
+		if (node.isRoot()) {
+			List<Node> leaves = tree.getExternalNodes();
+			
+			if (pool == null) {
+				// single thread
+				for (int sid = 0; sid < leaves.size(); sid++) {
+					setLeafPartials(leaves.get(sid), patterncount);
 				}
-				// mapping: pattern -> sub-pattern id
-				patternMapSubpatternID[patternIndex] = subpatnid;
-				// save the mapping: pattern -> local partial pos
-				local_partial_pos = subpatnid * singlePartialSize;
-				patternMapPerNode[node_s + patternIndex] = local_partial_pos;
+			} else {
+				// multiple threads
+		        Runnable job = () -> IntStream.range(0, leaves.size()).parallel().forEach(sid -> {
+					setLeafPartials(leaves.get(sid), patterncount);
+		        });
+	            try {
+	                pool.submit(job).get();
+	            } catch (InterruptedException e) {
+	                Thread.currentThread().interrupt();
+	                throw new RuntimeException(e);
+	            } catch (ExecutionException e) {
+	                throw new RuntimeException(e.getCause());
+	            }
 			}
-			assert (subpatns > 0);
-
-			double[] traitValues = getTraits(node);
-			double[] partials = new double[subpatns * singlePartialSize];
-			Arrays.fill(partials, 0.0);
-			boolean[] updated = new boolean[subpatns];
-			Arrays.fill(updated, false);
-			double subsInterval = startSubsRate_h;
-			double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
-					startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
-
-			for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
-				int subpatnid = patternMapSubpatternID[patternIndex]; // sub-pattern id
-				if (!updated[subpatnid]) {
-					// compute the partial likelihood for this sub pattern
-					updated[subpatnid] = true;
-					int stateid = data.getPattern(taxonIndex, patternIndex);
-					boolean[] stateSet = data.getStateSet(stateid);
-					// get the starting position of the partial likelihoods
-					// and skip the first numRateBins_h positions because E initial values are zero
-					int k = patternMapPerNode[node_s + patternIndex] + numRateBins_h;
-					// D initial values
-					for (int state = 0; state < stateCount; state++) {
-						if (stateSet[state]) {
-							// set likelihoods for nucleotide in data
-							if (numRateBins_h <= treeModel.numEntries_h) {
-								for (int i = 0; i < numRateBins_h; i++) {
-									partials[k++] = tipLikelihoods[i];
-								}
-							} else {
-								for (int i = 0; i < treeModel.numEntries_h; i++) {
-									partials[k++] = tipLikelihoods[i];
-								}
-								k += (numRateBins_h - treeModel.numEntries_h);
-							}
-						} else {
-							// otherwise leave likelihoods to zero
-							k += numRateBins_h;
-						}
-					}
-				}
-			}
-			mosseLikelihoodCore.setNodePartials(node.getNr(), partials);
-			// set the corresponding log-compensate to zeros
-			int node_e = (node.getNr() + 1) * patterncount; // ending pos in patternLogCompensatePerNode
-			Arrays.fill(patternLogCompensatePerNode, node_s, node_e, 0.0);
-		} else {
-			setPartials(node.getLeft(), patterncount);
-			setPartials(node.getRight(), patterncount);
 		}
 	}
 
@@ -1164,6 +1201,30 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			System.out.println();
 		}
+	}
+	
+	/**
+	 * show the parameters associated with gamma distribution
+	 */
+	protected void showGammaParams() {
+		System.out.print("Gamma # of categories: " + numCategories);
+		if (categoryRates != null) {
+			System.out.print("; Rates: ");
+			for (int i = 0; i < categoryRates.length; i++) {
+				if (i > 0)
+					System.out.print(",");
+				System.out.print(categoryRates[i]);
+			}
+		}
+		if (categoryProps != null) {
+			System.out.print("; Proportions: ");
+			for (int i = 0; i < categoryProps.length; i++) {
+				if (i > 0)
+					System.out.print(",");
+				System.out.print(categoryProps[i]);
+			}
+		}
+		System.out.println();
 	}
 
     public void printSiteModelParameters() {

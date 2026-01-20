@@ -39,13 +39,6 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 		this.nrOfMatrices = matrixCount; // matrix count should be 1
 		this.integrateCategories = integrateCategories;
 
-		if (matrixCount > 1) {
-			throw new IllegalArgumentException("Gamma rate categories greater than 1 not supported");
-		}
-
-		// do use need gamma rate categories
-		partialsSize = patternCount * (nrOfStates + 1) * numRateBins;
-
 		partials = new double[2][nodeCount][];
 
 		currentMatrixIndex = new int[nodeCount];
@@ -61,10 +54,6 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 			partials[1][i] = null;
 			states[i] = null;
 		}
-
-		matrixSize = nrOfStates * nrOfStates;
-
-		matrices = new double[2][nodeCount][matrixCount * matrixSize];
 	}
 
 	@Override
