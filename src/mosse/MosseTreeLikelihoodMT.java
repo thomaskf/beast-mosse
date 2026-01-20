@@ -13,8 +13,8 @@ import java.util.concurrent.ForkJoinWorkerThread;
  * @author Thomas Wong
  */
 
-@Description("MosseTreeLikelihoodBuffered with multi-threaded per-node computation")
-public class MosseTreeLikelihoodBufferedMT extends MosseTreeLikelihoodBuffered implements AutoCloseable {
+@Description("MosseTreeLikelihood with multi-threaded per-node computation")
+public class MosseTreeLikelihoodMT extends MosseTreeLikelihood implements AutoCloseable {
 
 	@Override
     protected int threadIndexInPool() {
