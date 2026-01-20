@@ -10,6 +10,7 @@
         <provider classname="mosse.MosseDistribution"/>
         <provider classname="mosse.MosseTipLikelihood"/>
         <provider classname="mosse.MosseTreeLikelihood"/>
+        <provider classname="mosse.MosseTreeLikelihoodMT"/>
         <provider classname="mosse.MosseTreeLikelihoodBuffered"/>
         <provider classname="mosse.MosseTreeLikelihoodBufferedMT"/>
     </service>

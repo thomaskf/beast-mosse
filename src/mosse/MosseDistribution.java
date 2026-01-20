@@ -62,12 +62,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	// for storing during mcmc
 	protected double storedrift;
 	protected double storedDiffusion;
-	protected int storedPadLeft_h;
-	protected int storedPadLeft_l;
-	protected int storedPadRight_h;
-	protected int storedPadRight_l;
-	protected int storedNumEntries_h;
-	protected int storedNumEntries_l;
+//	protected int storedPadLeft_h;
+//	protected int storedPadLeft_l;
+//	protected int storedPadRight_h;
+//	protected int storedPadRight_l;
+//	protected int storedNumEntries_h;
+//	protected int storedNumEntries_l;
 
 	static {
 		System.loadLibrary("test");
@@ -262,12 +262,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
-		storedPadLeft_h = padLeft_h;
-		storedPadLeft_l = padLeft_l;
-		storedPadRight_h = padRight_h;
-		storedPadRight_l = padRight_l;
-		storedNumEntries_h = numEntries_h;
-		storedNumEntries_l = numEntries_l;
+//		storedPadLeft_h = padLeft_h;
+//		storedPadLeft_l = padLeft_l;
+//		storedPadRight_h = padRight_h;
+//		storedPadRight_l = padRight_l;
+//		storedNumEntries_h = numEntries_h;
+//		storedNumEntries_l = numEntries_l;
 	}
 
 	@Override
@@ -276,12 +276,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
-		padLeft_h = storedPadLeft_h;
-		padLeft_l = storedPadLeft_l;
-		padRight_h = storedPadRight_h;
-		padRight_l = storedPadRight_l;
-		numEntries_h = storedNumEntries_h;
-		numEntries_l = storedNumEntries_l;
+//		padLeft_h = storedPadLeft_h;
+//		padLeft_l = storedPadLeft_l;
+//		padRight_h = storedPadRight_h;
+//		padRight_l = storedPadRight_l;
+//		numEntries_h = storedNumEntries_h;
+//		numEntries_l = storedNumEntries_l;
 	}
 	
 	public void printParams() {
