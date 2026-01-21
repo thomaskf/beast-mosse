@@ -404,8 +404,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		mosseLikelihoodCore.setNodePartials(node.getNr(), partials);
 		// set the corresponding log-compensate to zeros
-		int node_e = (node.getNr() + 1) * patterncount; // ending pos in patternLogCompensatePerNode
-		Arrays.fill(patternLogCompensatePerNode, node_s, node_e, 0.0);
+		int startbase = node_s * numCategories; // starting pos in patternLogCompensatePerNode
+		int endbase = startbase + patterncount * numCategories; // ending pos in patternLogCompensatePerNode
+		Arrays.fill(patternLogCompensatePerNode, startbase, endbase, 0.0);
 	}
 	
 	/**
