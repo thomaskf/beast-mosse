@@ -98,6 +98,9 @@ public class MosseTreeLikelihoodTest44Tree {
         		"tttttttgcatctttttgtctttttcttcttctcatttttctttcttttatatttttatttttattttttttttttttttttctttaccttatttttttccttactttttttttttttctactttattattttctttcattttatttatttttcctttttgttctttttttttttttttttttttttttttttttctcttttcctttcttttttccttatcttttttttttttgtttcttgttttttcattcttttttttttttttttttttttcttttactacttttcttttttctcttttatcttttttctctctttcttatgttttcgtattttcttttttttttatttttcatattttcttaatttttcctttaattttttattttctttttattttgttttcttttttatatctcttttttttctttacttgttttggcttttttttccttcttttttttttttctttttatattttttcattattttttctttttttttttattttctttttttgttttttaaatttttttttatctactttttcttttttcttttttttttttttttcaattttagattctcttttttttattcttttttttattttttattttctttttttttctttttttttttctttttttttttttttttttttttttttctttttctttactttcgttcctttttgttgtgtttttaatttttttctttttttctctattttttttttccttattttttttattttcttttaatttagtttttttctttttctatcttcttttgtttttttatttttctttttttactttttgcaatttaatatttgttcctattctatgtttttctgtttttaattcctttattacttttttttattattttatttattgtcttattcttattatttttatttttttgttttatatttctttaatttttcttctttctctttttcttctttttttttttttaatatttttcgtcttttttttttcttttttcctttttttctttgttccttttctttttttactttttttaattttttttcctttttatttttttatttccttttatctttttttttttttttttttttttttcttttttttttatttttttttttctcttattttttttttcgttttttctttttttcttctttttgtattctatttatgttttattttttttttcttttattatttttcttcttcttttttcttattcttttttttttatttttattactctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttatttttttcttctttcttttctccctatttttacttctttactttctcgttttttttttcctttcctttttattttcattactttattttctctatttttttttcttttagatttttatattctttcttacctcttttacattttattttttttttttctattgtcttctttttttttttcttttttttttctttttttcccattctttcacttcttttctttttttcttatattttttattatcttttttaactttttctttccttttttttttttttttaatttttttttttctttattatttctacattttctttctttttcttcttttttacatatttatctcttctgttattctttttttttttatttttcatttgtttttttttcttttacttttttatttttttttattcttatgattttatttctttttcgttttttattatttttttcattcttcttttatactttctttttcttttttcctttttattttcattttatatcttttcttatctttttttttttcccttttttactatttttttttacattttttttgttcatatctttattttaaattttttcataatttttcttttctttttttttttatttatctttagcttctttcatttttttttctaatattatatt"};
 
         String newick = "((sp3:0.6674472878618588,(sp5:0.5629472981251116,(((sp18:0.025299055725057452,sp20:0.025299055725057452):0.07944385083080943,(sp13:0.04639307073242002,sp2:0.04639307073242002):0.058349835823446855):0.44649876786381887,((sp15:0.10443532107141376,sp14:0.10443532107141376):0.0063326764759882165,sp17:0.11076799754740198):0.4404736768722838):0.011705623705425827):0.10449998973674723):0.13564478768896382,(sp7:0.31677198404337015,((sp12:4.765841607785927E-5,sp9:4.765841607785927E-5):0.2700024847683562,(sp4:0.14568142054982366,((((sp11:0.03745121525922087,(sp8:0.027161707109862626,sp1:0.027161707109862626):0.010289508149358244):8.888025454808005E-4,sp16:0.03834001780470167):0.0665882575484902,(sp19:1.372578865039241E-4,sp6:1.372578865039241E-4):0.10479101746668794):0.02955714695064772,sp10:0.13448542230383959):0.011195998245984079):0.12436872263461038):0.0467218408589361):0.4863200915074525):0.0;";
+        
+        // category 1 -- rate: 0.0290777544277847
+        // String newick = "((sp3:0.01940786537,(sp5:0.0163692408,(((sp18:0.0007356396176,sp20:0.0007356396176):0.002310048433,(sp13:0.001349006112,sp2:0.001349006112):0.001696681939):0.01298317955,((sp15:0.003036744157,sp14:0.003036744157):0.0001841399834,sp17:0.003220884141):0.01280798346):0.0003403731997):0.003038624577):0.003944245225,(sp7:0.009211016559,((sp12:1.385799508e-06,sp9:1.385799508e-06):0.007851064751,(sp4:0.004236087926,((((sp11:0.001088997075,(sp8:0.0007898013289,sp1:0.0007898013289):0.0002991957456):2.584437822e-05,sp16:0.001114841453):0.001936236706,(sp19:3.991150509e-06,sp6:3.991150509e-06):0.003047087008):0.0008594553297,sp10:0.003910533488):0.000325554438):0.003616362625):0.001358566008):0.01414109404):0;";
 
         String trait0Values = "sp1=0.0387876829138803988,sp2=-0.0261650640045382014,sp3=0.0000780613211212051,sp4=0.0640955976744835010,sp5=0.0631755463800323935,sp6=0.0175265726505994986,sp7=0.0285494149210851998,sp8=0.0034181730917631800,sp9=0.0381431935689817980,sp10=0.0429503413943981976,sp11=0.0322004948111379030,sp12=0.0470716865963385980,sp13=0.0547267264548012972,sp14=0.0392330272674960984,sp15=-0.0039068533176126897,sp16=0.0182309457961658990,sp17=0.0801855614646413001,sp18=0.0790165878526876003,sp19=0.0521209102564738000,sp20=0.0470196223928652998";
 
@@ -121,8 +124,8 @@ public class MosseTreeLikelihoodTest44Tree {
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
         Double[] drift = new Double[] { 0.741654419915616 };          // drift parameter
-        // Double[] diffusion = new Double[] { 2.4822873228905803E-4 };    // diffusion parameter
-        Double[] diffusion = new Double[] { 2.029151750633952E-4 };    // diffusion parameter
+        Double[] diffusion = new Double[] { 2.4822873228905803E-4 };    // diffusion parameter
+        // Double[] diffusion = new Double[] { 2.029151750633952E-4 };    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
@@ -143,7 +146,9 @@ public class MosseTreeLikelihoodTest44Tree {
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
                 "mutationRate", "1.0",
-                "gammaCategoryCount", 1,
+                "gammaCategoryCount", "4",
+                "shape", "0.5",
+//                "gammaCategoryCount", "1",
                 "substModel", hky);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
@@ -194,7 +199,7 @@ public class MosseTreeLikelihoodTest44Tree {
                 "threads", 16                               // number of cpu threads
         );
 
-        MosseTreeLikelihoodBufferedMT likelihood = new MosseTreeLikelihoodBufferedMT();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
