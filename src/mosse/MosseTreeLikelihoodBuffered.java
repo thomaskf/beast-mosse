@@ -136,6 +136,11 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		}
 
 		if (m_siteModel.isDirtyCalculation()) {
+			// update RHAS information
+			if (numCategories > 1) {
+				categoryRates = m_siteModel.getCategoryRates(null);
+				categoryProps = m_siteModel.getCategoryProportions(null);
+			}
 			updateSiteModel = true;
 		}
 
