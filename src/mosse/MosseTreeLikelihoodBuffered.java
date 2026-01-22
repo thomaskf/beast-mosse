@@ -20,9 +20,8 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
-	protected int[] storedPatternMapPerNode;
+	protected int[] storedPattern2SubpatnPerNode;
 	protected int[] storedNumRateBinsPerNode;
-	protected double[][] storedPatternLogCompensatePerNode;
 	protected double[] storedFlatTransitionMatrices_h;
 	protected double[] storedFlatTransitionMatrices_l;
 	protected double[] storedPatternLogLikelihoods;
@@ -41,10 +40,9 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		updateTreeModel = true;
 		updateFunc = true;
 
-		storedTaxaIndexUnderNode = new int[taxonCount * nodeCount];
-		storedPatternMapPerNode = new int[nodeCount * patterns];
+		storedTaxaIndexUnderNode = new int[nodeCount * taxonCount];
+		storedPattern2SubpatnPerNode = new int[nodeCount * patterns];
 		storedNumRateBinsPerNode = new int[nodeCount];
-		storedPatternLogCompensatePerNode = new double[numCategories][nodeCount * patterns];
 		storedPatternLogLikelihoods = new double[patterns];
 	}
 
@@ -167,15 +165,11 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		super.store(); // important: let the parent class store its state
 
 		System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
-		System.arraycopy(patternMapPerNode, 0, storedPatternMapPerNode, 0, patternMapPerNode.length);
+		System.arraycopy(pattern2SubpatnPerNode, 0, storedPattern2SubpatnPerNode, 0, pattern2SubpatnPerNode.length);
 		System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
 		System.arraycopy(patternLogLikelihoods, 0, storedPatternLogLikelihoods, 0, patternLogLikelihoods.length);
 		storedFlatTransitionMatrices_h = flatTransitionMatrices_h;
 		storedFlatTransitionMatrices_l = flatTransitionMatrices_l;
-		
-		for (int c = 0; c < numCategories; c++) {
-			System.arraycopy(patternLogCompensatePerNode[c], 0, storedPatternLogCompensatePerNode[c], 0, patternLogCompensatePerNode[c].length);
-		}
 	}
 
 	@Override
@@ -187,15 +181,14 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		int[] tmp;
 		double[] tmp2;
-		double[][] tmp3;
 
 		tmp = taxaIndexUnderNode;
 		taxaIndexUnderNode = storedTaxaIndexUnderNode;
 		storedTaxaIndexUnderNode = tmp;
 
-		tmp = patternMapPerNode;
-		patternMapPerNode = storedPatternMapPerNode;
-		storedPatternMapPerNode = tmp;
+		tmp = pattern2SubpatnPerNode;
+		pattern2SubpatnPerNode = storedPattern2SubpatnPerNode;
+		storedPattern2SubpatnPerNode = tmp;
 
 		tmp = numRateBinsPerNode;
 		numRateBinsPerNode = storedNumRateBinsPerNode;
@@ -212,10 +205,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		tmp2 = flatTransitionMatrices_l;
 		flatTransitionMatrices_l = storedFlatTransitionMatrices_l;
 		storedFlatTransitionMatrices_l = tmp2;
-
-		tmp3 = patternLogCompensatePerNode;
-		patternLogCompensatePerNode = storedPatternLogCompensatePerNode;
-		storedPatternLogCompensatePerNode = tmp3;
 	}
 
 	private void checkNodeStatus(final Node node) {

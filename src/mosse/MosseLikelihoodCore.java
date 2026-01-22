@@ -17,6 +17,8 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 	
 	protected double[][][][] mossePartials;
 
+	protected double[][][][] mosseCompensates;
+	
 	public MosseLikelihoodCore(int nrOfStates, int numRateBins) {
 		super(nrOfStates);
 		this.numRateBins = numRateBins;
@@ -42,6 +44,7 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 		this.integrateCategories = integrateCategories;
 
 		mossePartials = new double[2][nodeCount][matrixCount][];
+		mosseCompensates = new double[2][nodeCount][matrixCount][];
 
 		currentMatrixIndex = new int[nodeCount];
 		storedMatrixIndex = new int[nodeCount];
@@ -55,6 +58,8 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 			for (int c = 0; c < matrixCount; c++) {
 				mossePartials[0][i][c] = null;
 				mossePartials[1][i][c] = null;
+				mosseCompensates[0][i][c] = null;
+				mosseCompensates[1][i][c] = null;
 			}
 			states[i] = null;
 		}
@@ -74,5 +79,22 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 
 	public double[] getNodeMossePartials(int nodeIndex, int categoryIndex) {
 		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
+	}
+
+	
+	public void setNodeMosseCompensates(int nodeIndex, double[][] compensatesIn) {
+		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex] = compensatesIn;
+	}
+
+	public double[][] getNodeMosseCompensates(int nodeIndex) {
+		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex];
+	}
+
+	public void setNodeMosseCompensates(int nodeIndex, int categoryIndex, double[] compensatesIn) {
+		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = compensatesIn;
+	}
+
+	public double[] getNodeMosseCompensates(int nodeIndex, int categoryIndex) {
+		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
 	}
 }
