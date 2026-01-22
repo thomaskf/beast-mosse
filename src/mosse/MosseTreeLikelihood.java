@@ -213,7 +213,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			calcConstantPatternIndices(patterns, stateCount);
 		}
 
-		// gamma distribution
+		// RHAS
 		numCategories = m_siteModel.getCategoryCount();
 		if (numCategories == 1) {
 			categoryRates = null;
@@ -222,7 +222,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			categoryRates = m_siteModel.getCategoryRates(null);
 			categoryProps = m_siteModel.getCategoryProportions(null);
 		}
-		showGammaParams();
+		showRHASParams();
 
 		// set up likelihood core and initialize partials
 		this.initCore();
@@ -626,6 +626,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			computeLambdaMus();
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
+			// update RHAS information
+			if (numCategories > 1) {
+				categoryRates = m_siteModel.getCategoryRates(null);
+				categoryProps = m_siteModel.getCategoryProportions(null);
+			}
 			boolean lowResolution = true;
 			flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
 			lowResolution = false;
@@ -918,21 +923,29 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        
 	        // compute patternLogLikelihoods
 	        if (categoryProps != null) {
-	        	// gamma model is used
-		        double logCatProp = Math.log(categoryProps[0]); // proportions of all categories should be the same
+	        	// RHAS model is used
+	        	double[] logProps = new double[numCategories];
+	        	for (int c = 0; c < numCategories; c++)
+	        		logProps[c] = Math.log(categoryProps[c]);
 		        if (pool == null) {
 		        	// single thread
 		        	for (int p = 0; p < patterns; p++) {
 		        		double[] catLogLikes = new double[numCategories];
-		        		System.arraycopy(patternCatLogLikes, p * numCategories, catLogLikes, 0, numCategories);
-		        		patternLogLikelihoods[p] = logSumExp(catLogLikes) + logCatProp;
+		        		int s = p * numCategories;
+		        		for (int c = 0; c < numCategories; c++) {
+		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        		}
+		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
 		        	}
 		        } else {
 		        	// multi-threaded
 		            Runnable rootJob = () -> IntStream.range(0, patterns).parallel().forEach(p -> {
 		        		double[] catLogLikes = new double[numCategories];
-		        		System.arraycopy(patternCatLogLikes, p * numCategories, catLogLikes, 0, numCategories);
-		        		patternLogLikelihoods[p] = logSumExp(catLogLikes) + logCatProp;
+		        		int s = p * numCategories;
+		        		for (int c = 0; c < numCategories; c++) {
+		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        		}
+		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
 		            });
 		            try { pool.submit(rootJob).get(); }
 		            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
@@ -1129,6 +1142,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		treeModel.printParams();
 		lambdaFunc.printParams();
 		muFunc.printParams();
+		showRHASParams();
 	}
 
 	protected void printSiteCatLikes(double[] arr, int num_cats) {
@@ -1279,8 +1293,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	/**
 	 * show the parameters associated with gamma distribution
 	 */
-	protected void showGammaParams() {
-		System.out.print("Gamma # of categories: " + numCategories);
+	protected void showRHASParams() {
+		System.out.print("RHAS: " + m_siteModel.toString());
+		/*
 		if (categoryRates != null) {
 			System.out.print("; Rates: ");
 			for (int i = 0; i < categoryRates.length; i++) {
@@ -1296,7 +1311,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					System.out.print(",");
 				System.out.print(categoryProps[i]);
 			}
-		}
+		}*/
 		System.out.println();
 	}
 
