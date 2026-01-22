@@ -14,6 +14,8 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 	protected int numRateBins;
 
 	protected int lambdaSize;
+	
+	protected double[][][][] mossePartials;
 
 	public MosseLikelihoodCore(int nrOfStates, int numRateBins) {
 		super(nrOfStates);
@@ -39,7 +41,7 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 		this.nrOfMatrices = matrixCount; // matrix count should be 1
 		this.integrateCategories = integrateCategories;
 
-		partials = new double[2][nodeCount][];
+		mossePartials = new double[2][nodeCount][matrixCount][];
 
 		currentMatrixIndex = new int[nodeCount];
 		storedMatrixIndex = new int[nodeCount];
@@ -50,28 +52,27 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 		states = new int[nodeCount][];
 
 		for (int i = 0; i < nodeCount; i++) {
-			partials[0][i] = null;
-			partials[1][i] = null;
+			for (int c = 0; c < matrixCount; c++) {
+				mossePartials[0][i][c] = null;
+				mossePartials[1][i][c] = null;
+			}
 			states[i] = null;
 		}
 	}
 
-	@Override
-	public void setNodePartials(int nodeIndex, double[] partialsIn) {
-//        if (this.partials[0][nodeIndex] == null || this.partials[0][nodeIndex].length < partialsIn.length) {
-//            this.partials[0][nodeIndex] = new double[partialsIn.length];
-//            this.partials[1][nodeIndex] = new double[partialsIn.length];
-//        }
-
-		this.partials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
-		// System.arraycopy(partialsIn, 0,
-		// this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0,
-		// partialsIn.length);
+	public void setNodeMossePartials(int nodeIndex, double[][] partialsIn) {
+		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
 	}
 
-	public double[] getNodePartials(int nodeIndex) {
-		return partials[currentPartialsIndex[nodeIndex]][nodeIndex];
-		// System.arraycopy(partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0,
-		// partialsOut, 0, partialsOut.length);
+	public double[][] getNodeMossePartials(int nodeIndex) {
+		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex];
+	}
+
+	public void setNodeMossePartials(int nodeIndex, int categoryIndex, double[] partialsIn) {
+		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = partialsIn;
+	}
+
+	public double[] getNodeMossePartials(int nodeIndex, int categoryIndex) {
+		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
 	}
 }
