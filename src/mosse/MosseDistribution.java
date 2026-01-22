@@ -258,7 +258,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void store() {
-		System.out.println("MosseDistribution.store()");
+		// System.out.println("MosseDistribution.store()");
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
@@ -272,7 +272,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	@Override
 	public void restore() {
-		System.out.println("MosseDistribution.restore()");
+		// System.out.println("MosseDistribution.restore()");
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
