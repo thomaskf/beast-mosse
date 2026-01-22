@@ -1294,7 +1294,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * show the parameters associated with gamma distribution
 	 */
 	protected void showRHASParams() {
-		System.out.print("RHAS: " + m_siteModel.toString());
+		System.out.print("Number of categories: " + numCategories);
+		
+		if (m_siteModel instanceof SiteModel) {
+		    SiteModel siteModel = (SiteModel) m_siteModel;
+		    RealParameter shapeParam = siteModel.shapeParameterInput.get();
+		    if (shapeParam != null) {
+		        double alpha = shapeParam.getValue();
+		        System.out.print("; Gamma shape (alpha) = " + alpha);
+		    }
+		}
+		
+		// if (numCategories > 0)
+		//	System.out.print("; alpha: " + m_siteModel.Base.shapeParameterInput );
 		/*
 		if (categoryRates != null) {
 			System.out.print("; Rates: ");
