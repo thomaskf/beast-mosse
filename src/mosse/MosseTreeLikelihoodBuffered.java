@@ -1,5 +1,7 @@
 package mosse;
 
+import java.util.List;
+
 import beast.base.core.Description;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.Tree;
@@ -21,7 +23,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
 	protected int[] storedPattern2SubpatnPerNode;
-	protected int[] storedNumRateBinsPerNode;
 	protected double[] storedFlatTransitionMatrices_h;
 	protected double[] storedFlatTransitionMatrices_l;
 	protected double[] storedPatternLogLikelihoods;
@@ -42,7 +43,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		storedTaxaIndexUnderNode = new int[nodeCount * taxonCount];
 		storedPattern2SubpatnPerNode = new int[nodeCount * patterns];
-		storedNumRateBinsPerNode = new int[nodeCount];
 		storedPatternLogLikelihoods = new double[patterns];
 	}
 
@@ -72,6 +72,12 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			}
 			
 			if (updateTips || updateTreeModel || updateSiteModel || updateFunc) {
+
+				List<Node> leaves = tree.getExternalNodes();
+				for (int sid = 0; sid < leaves.size(); sid++) {
+					mosseLikelihoodCore.setNodePartialsForUpdate(leaves.get(sid).getNr());
+				}
+				
 				// update the partial of all leaves
 				setPartials(node, patterns);
 			}
@@ -81,7 +87,16 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		// -------- leaf --------
 		if (node.isLeaf()) {
-			// nothing else to do for a leaf
+			if (update != Tree.IS_CLEAN) {
+				if (updateTips || updateTreeModel || updateSiteModel || updateFunc) {
+					return update;
+				} else {
+	            	int threadID = 0;
+	    			mosseLikelihoodCore.setNodePartialsForUpdate(node.getNr());
+	    			// update the partial for that leaf
+					setLeafPartials(node, patterns, threadID);
+				}
+			}
 			return update;
 		}
 
@@ -90,7 +105,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		final int update2 = traverse(node.getRight());
 
 		// if either child was updated, we must recompute this node's partials
-		if (update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel || updateTips || updateTreeModel || updateFunc) {
+		if (update != Tree.IS_CLEAN || update1 != Tree.IS_CLEAN || update2 != Tree.IS_CLEAN || updateSiteModel || updateTips || updateTreeModel || updateFunc) {
 
 			mosseLikelihoodCore.setNodePartialsForUpdate(node.getNr());
 			// System.out.println("Invoke computePartialLikelihood for node " + node.getNr());
@@ -166,7 +181,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		System.arraycopy(taxaIndexUnderNode, 0, storedTaxaIndexUnderNode, 0, taxaIndexUnderNode.length);
 		System.arraycopy(pattern2SubpatnPerNode, 0, storedPattern2SubpatnPerNode, 0, pattern2SubpatnPerNode.length);
-		System.arraycopy(numRateBinsPerNode, 0, storedNumRateBinsPerNode, 0, numRateBinsPerNode.length);
 		System.arraycopy(patternLogLikelihoods, 0, storedPatternLogLikelihoods, 0, patternLogLikelihoods.length);
 		storedFlatTransitionMatrices_h = flatTransitionMatrices_h;
 		storedFlatTransitionMatrices_l = flatTransitionMatrices_l;
@@ -190,10 +204,6 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		pattern2SubpatnPerNode = storedPattern2SubpatnPerNode;
 		storedPattern2SubpatnPerNode = tmp;
 
-		tmp = numRateBinsPerNode;
-		numRateBinsPerNode = storedNumRateBinsPerNode;
-		storedNumRateBinsPerNode = tmp;
-	
 		tmp2 = patternLogLikelihoods;
 		patternLogLikelihoods = storedPatternLogLikelihoods;
 		storedPatternLogLikelihoods = tmp2;
