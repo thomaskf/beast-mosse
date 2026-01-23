@@ -3,11 +3,7 @@
 
     <!-- The sequence alignment                                                  -->
     <!-- ntax=20 nchar=2000 -->
-    <!-- npatterns=360                                                           -->
-        <!-- The sequence alignment                                                  -->
-    <!-- ntax=20 nchar=2000 -->
-    <data
-        id="alignment" dataType="nucleotide">
+    <data id="alignment" dataType="nucleotide">
         <sequence taxon="sp1">
         tttttttgcatctttttctccttttcttcttcttatttttcttttttttatatttttatttttattttttttctttttttttctttaccttatttttttctttactttttttttttttctactttattattttcttttatcttatttatttttctttttagtttttttttctttttttttttttttttttttttttttttttcctatctttttttcttattttttttttttttgtttcttgttttttcattctttttttttttttttctttttttttttactacttttcttttttctcttccaccttttttttctctttcttttgttctcgtatttctctttttttttattttttatattcttttaatttttcttttaattttattttcttttttcattttgttttcttttttatatctcttttttttctttatttgttttggctttattttcctttttttttatttttctttttatatttttttattatttttttttttttcttttatcttctttttttattttttaaattttttcttatctacttttttctttttttcttttttttttttttcaattttagatcttcttttttttattcttttttttattttttattttctttttttttctttttttttctttttttttttttttttattttttttttcttttttctttacttttgttcttttttgttgtgtttttaatttttttctttttttctctaattttattttccttattttttttattttcttttaatttagtttttttctttttctatcttcttttgtttttttatctttctttttttacttttttcaatttaatatatgtttttattctatgtttttttgtttttaactttttcattatttttttttactattttatttattgctttatttttattatttttatttttttgttttatatttctttaatttttcttctttcttttttttttctttttttttttttaacattttttgtattttttttttcttttttctttttcttctttgtcctttaccttttcttactttttttaattttttttcctttttatttttttatttccttttatcttttttttttttttttttttttttttttcttcttttatttttttttttctcttattttttttttcattttttctttttttcttctttttatattctatttacgttttatttttttttttttttattattttttttcctcttttttcttattcttttttttttatttttatttctctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttttttctctcttctttcttttctccctatttttatttctctattttctcgttttttttttccttctttttttattttcattactttattttctctatttttttttcttctagatttttatattctcttctaccttttttatattttattttttttttttctattgtcgcttttttttttttcttttttttttcttttttttctattctttcacttctttctttttttttttatatcttttattattttttttaactttttttttttttccttttttttttctaacttttttttctctttattatttctacactttctctctttttcttcttttttatatatttatttcttctgttattctttttttttttatttttcatttgtttttttttcttttatttttttatttttttttattcctgtgattttatttccttttcgttttttattatttttttcattccttctctatattttcttctttttttttccctttcatcttcactttatatctttttttatttttttttttttcctttttatattattttttctttcattttttttgttcatatctttattttatatttttacataattttttttttctttttttttttatttacttttagtttttttcatttttttttctaatattatatt
         </sequence>
@@ -70,8 +66,7 @@
         </sequence>
     </data>
 
-        <taxonset
-        id="taxonset" spec="beast.base.evolution.alignment.TaxonSet">
+    <taxonset id="taxonset" spec="beast.base.evolution.alignment.TaxonSet">
         <taxon id="sp1" spec="Taxon" />
         <taxon id="sp2" spec="Taxon" />
         <taxon id="sp3" spec="Taxon" />
@@ -97,10 +92,8 @@
     <!-- Random initial tree will be generated at start of MCMC -->
     <!-- <tree id="tree" spec="beast.base.evolution.tree.Tree"/> -->
     
-    <tree
-        id='tree' spec='beast.base.evolution.tree.TreeParser'
-        IsLabelledNewick='true'
-	newick='(((((((sp17:0.00752537038,sp18:0.00752537038):0.2150978341,sp7:0.2226232044):0.01309131701,sp8:0.2357145214):0.1608744885,(sp14:0.03681410631,(sp19:0.009792640346,sp20:0.009792640346):0.02702146597):0.3597749036):0.2463453125,sp3:0.6429343224):0.2830104553,(sp4:0.59018105,(sp5:0.5331196216,(sp6:0.4877101602,(sp12:0.1249786027,sp13:0.1249786027):0.3627315575):0.04540946143):0.05706142841):0.3357637278):0.1741568553,(sp1:0.9831050076,(sp2:0.567695062,(sp9:0.09928392763,((sp10:0.09141177869,(sp15:0.0174662197,sp16:0.0174662197):0.07394555899):0.00784947891,sp11:0.09926125759):2.26700366e-05):0.4684111343):0.4154099456):0.1169966255);'
+    <tree id='tree' spec='beast.base.evolution.tree.TreeParser' IsLabelledNewick='true'
+		newick='((sp1:0.723770403,((sp3:0.3768379524,(((sp7:0.1342294805,(sp17:0.004728156396,sp18:0.004728156396):0.1295013241):0.007425034876,sp8:0.1416545154):0.09251618703,(sp14:0.02138015536,(sp19:0.005772871756,sp20:0.005772871756):0.0156072836):0.2127905471):0.14266725):0.1664170832,(sp4:0.3427124182,(sp5:0.3081816906,(sp6:0.2810623705,(sp12:0.07143388823,sp13:0.07143388823):0.2096284823):0.02711932003):0.03453072763):0.2005426174):0.1805153674):0.276229597,(sp2:1,(sp9:0.1550717556,((sp10:0.1416198826,(sp15:0.0268458655,sp16:0.0268458655):0.1147740171):0.01340873571,sp11:0.1550286184):4.313721231e-05):0.8449282444):7.993605777e-15);'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood"
@@ -121,8 +114,7 @@
    
     <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
 
-    <SiteModel
-        id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
+    <SiteModel id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
         mutationRate="1.0" substModel="@hky"
         gammaCategoryCount="4" shape="@alpha" />
 
@@ -137,7 +129,7 @@
     <!-- Link function parameters -->
     <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.1</parameter>
     <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.2</parameter>
-    <parameter id="sigmoidMidpoint" spec="beast.base.inference.parameter.RealParameter">0.0</parameter>
+    <parameter id="sigmoidMidpoint" spec="beast.base.inference.parameter.RealParameter">0.19735</parameter> <!--XH:change the initial value to be the midpoint of the substitution bins-->
     <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.5</parameter>
     <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.03</parameter>
 
@@ -148,8 +140,15 @@
     <ConstantLinkFn
         id="constfunc" spec="mosse.ConstantLinkFn" yV="@yV" />
 
+	<RPNcalculator id="curveYDiff"
+    	spec="beast.base.inference.util.RPNcalculator"
+    	expression="curveMaxY curveYBaseValue -">
+    	<parameter idref="curveMaxY"/>
+    	<parameter idref="curveYBaseValue"/>
+	</RPNcalculator>
+
     <run
-        chainLength="100" id="mcmc" spec="MCMC">
+        chainLength="500" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<!--<init id="RandomTreeInit"
@@ -198,76 +197,80 @@
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
             
                 <distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
-                    <distr spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="true">
+                    <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter name="M" spec="parameter.RealParameter" value="1.0"/>
-                        <parameter name="S" spec="parameter.RealParameter" value="1.0"/>
-                    </distr>
+                        <parameter name="S" spec="parameter.RealParameter" value="10.0"/>
+                    </distr> <!--XH:increase sd=10-->
                 </distribution>
+                
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
-                    <distr id="LogNormalDistribution" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-                        <parameter id="logNormalMean" spec="beast.base.inference.parameter.RealParameter" name="M" value="1.0" />
-                        <parameter id="logNormalStdev" spec="beast.base.inference.parameter.RealParameter" name="S" value="1.25" />
-                    </distr>
+                    <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
+                        <parameter name="M" spec="parameter.RealParameter" value="1.0" />
+                        <parameter name="S" spec="parameter.RealParameter" value="10.0" />
+                    </distr> <!--XH:increase sd=10-->
                 </distribution>
+                
                 <distribution id="epsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
-                    <distr id="LogNormal.epsilon" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-                        <!-- median ~ exp(M) -->
-                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="-4.605170186" estimate="false"/>
-                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
-                    </distr>
+                    <distr id="Exponential.epsilon" spec="beast.base.inference.distribution.Exponential">
+                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+                    </distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
                 </distribution>
 
                 <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
-                    <distr id="LogNormal.beta" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false"/>
-                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
-                    </distr>
+                    <distr id="Normal.beta" spec="beast.base.inference.distribution.Normal">
+                        <parameter name="mean" spec="parameter.RealParameter" value="0.0" estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="10.0" estimate="false"/>
+                    </distr>  <!--XH:change to normal, with mean=0, sd=10-->
                 </distribution>
+                
                 <distribution id="driftPrior" spec="beast.base.inference.distribution.Prior" x="@drift">
                     <distr id="Normal.drift" spec="beast.base.inference.distribution.Normal">
-                        <parameter name="mean" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false"/>
-                        <parameter name="sigma" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
+                        <parameter name="mean" spec="parameter.RealParameter" value="0.0" estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="1.0" estimate="false"/>
                     </distr>
                 </distribution>
 
                 <distribution id="diffusionPrior" spec="beast.base.inference.distribution.Prior" x="@diffusion">
-                    <distr id="LogNormal.diffusion" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-                        <!-- median ~ exp(M) = 0.001 -->
-                        <parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="-6.907755278" estimate="false"/>
-                        <parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="1.0" estimate="false"/>
-                    </distr>
+                    <distr id="Exponential.diffusion" spec="beast.base.inference.distribution.Exponential">
+                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+                    </distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
                 </distribution>
                 
-                
             	<distribution id="curveYBaseValuePrior" spec="beast.base.inference.distribution.Prior" x="@curveYBaseValue">
-            		<distr id="LogNormal.curveYBaseValue" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-						<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-						<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
-            		</distr>
+            		<distr id="Exponential.curveYBaseValue" spec="beast.base.inference.distribution.Exponential">
+                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+            		</distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
             	</distribution>
+            	
+            	<!--
             	<distribution id="curveMaxYPrior" spec="beast.base.inference.distribution.Prior" x="@curveMaxY">
-            		<distr id="LogNormal.curveMaxY" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
+            		<distr id="LogNormal.curveMaxY" spec="beast.base.inference.distribution.Exponential">
+                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
             		</distr>
             	</distribution>
+            	-->
+            	<!--XH:change to difference between max and min; use exponential with rate =0.5-->
+            	
+				<distribution id="curveYDiffPrior" spec="beast.base.inference.distribution.Prior" x="@curveYDiff">
+					<distr id="Exponential.curveYDiff" spec="beast.base.inference.distribution.Exponential">
+						<parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+					</distr>
+				</distribution>
+            	
             	<distribution id="sigmoidMidpointPrior" spec="beast.base.inference.distribution.Prior" x="@sigmoidMidpoint">
-            		<distr id="Normal.sigmoidMidpoint" spec="beast.base.inference.distribution.Normal">
-            			<parameter name="mean" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="sigma" spec="beast.base.inference.parameter.RealParameter" value="10.0" estimate="false" />
-            		</distr>
+            		<distr id="Uniform.sigmoidMidpoint" spec="beast.base.inference.distribution.Uniform" lower="0.0001" upper="0.3946" />
+            		<!--XH:uniform betweem min (i.e. 0.0001) and max (i.e. 0.3946) of the substitution rate bins-->
             	</distribution>
             	<distribution id="logisticGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@logisticGrowthRate">
-            		<distr id="LogNormal.logisticGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
-            		</distr>
+            		<distr id="LogNormal.logisticGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
+            			<parameter name="M" spec="parameter.RealParameter" value="0.0" estimate="false" />
+            			<parameter name="S" spec="parameter.RealParameter" value="10.0" estimate="false" />
+            		</distr> <!--XH:increase sd=10-->
             	</distribution>
             	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
-            		<distr id="LogNormal.yV" spec="beast.base.inference.distribution.LogNormalDistributionModel" meanInRealSpace="false">
-            			<parameter name="M" spec="beast.base.inference.parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="S" spec="beast.base.inference.parameter.RealParameter" value="2.0" estimate="false" />
-            		</distr>
+            		<distr id="Exponential.yV" spec="beast.base.inference.distribution.Exponential">
+                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+            		</distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
             	</distribution>
                 
                 <!--

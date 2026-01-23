@@ -937,6 +937,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
 	        }
 	        
+	        /*
 	        // show the patternCatLogLikes array
 	        System.out.println("patternCatLogLikes:");
 	        int k = 0;
@@ -947,7 +948,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        		System.out.print(patternCatLogLikes[k++]);
 	        	}
 	        	System.out.println();
-	        }
+	        }*/
 	        
 	        // compute patternLogLikelihoods
 	        if (categoryProps != null) {
