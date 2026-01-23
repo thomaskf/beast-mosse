@@ -108,7 +108,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	// for each node, map global pattern index -> local sub-pattern index
 	protected int[] pattern2SubpatnPerNode;
 	// for each node, store numRateBins
-	protected int[] numRateBinsPerNode;
+	// protected int[] numRateBinsPerNode;
 	
 	// counter
 	protected int count;
@@ -234,7 +234,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// for each node, map global pattern index -> local sub-pattern index
 		pattern2SubpatnPerNode = new int[nodeCount * patterns];
 		// for each node, store numRateBins
-		numRateBinsPerNode = new int[nodeCount];
+		// numRateBinsPerNode = new int[nodeCount];
 		
 		// for this class, always single-threaded
 		pool = null;
@@ -302,9 +302,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 	}
 
-	private void setLeafPartials(Node node, int patterncount) {
-		// for leaf, always use high resolution
-		numRateBinsPerNode[node.getNr()] = numRateBins_h;
+	protected void setLeafPartials(Node node, int patterncount, int threadID) {
+		// for leaf only
 
 		int taxonIndex = data.getTaxonIndex(node.getID());
 		// obtain the mapping: the pattern -> sub-pattern id
@@ -313,7 +312,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// collect the number of sub-patterns and the mapping between global index to
 		// local partial index
 		int subpatns = 0;
-		int singlePartialSize = (stateCount + 1) * numRateBins_h;
 		int s = node.getNr() * patterncount;
 		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
 			int stateid = data.getPattern(taxonIndex, patternIndex);
@@ -330,54 +328,95 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		assert (subpatns > 0);
 
+		// for leaf, always use high resolution to begin with
+		int singlePartialSizeLeaf = (stateCount + 1) * numRateBins_h;
+		
+		// the size of the partials is based on its parent
+		int numRateBins_parent = numRateBins_h;
+		if (isLowResolution(node.getParent())) {
+			// assume all leaves should have a parent
+			numRateBins_parent = numRateBins_l;
+		}
+		int singlePartialSizeParent = (stateCount + 1) * numRateBins_parent;
+		double[][] partials = new double[numCategories][subpatns * singlePartialSizeParent];
+		double[][] compensates = new double[numCategories][subpatns];
+		
 		double[] traitValues = getTraits(node);
-		double[] partials = new double[subpatns * singlePartialSize];
-		Arrays.fill(partials, 0.0);
-		double[] compensates = new double[subpatns];
-		Arrays.fill(compensates, 0.0);
 		boolean[] updated = new boolean[subpatns];
 		Arrays.fill(updated, false);
+		
 		double subsInterval = startSubsRate_h;
 		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
 				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
+		// compute the partial likelihood for single sub-pattern with categories
+		double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
+		// the first numRateBins_h positions are zeros for E initial values
+		int k = 0;
+		for (int c = 0; c < numCategories; c++) {
+			for (int i = 0; i < numRateBins_h; i++) {
+				patnPartials[c][k++] = 0.0;
+			}
+		}
 		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
 			int subpatnid = pattern2SubpatnPerNode[s + patternIndex];
 			if (!updated[subpatnid]) {
-				// compute the partial likelihood for this sub pattern
 				updated[subpatnid] = true;
 				int stateid = data.getPattern(taxonIndex, patternIndex);
 				boolean[] stateSet = data.getStateSet(stateid);
-				// get the starting position of the partial likelihoods
-				// and skip the first numRateBins_h positions because E initial values are zero
-				int k = subpatnid * singlePartialSize + numRateBins_h;
+				
+				k = numRateBins_h;
 				// D initial values
 				for (int state = 0; state < stateCount; state++) {
 					if (stateSet[state]) {
 						// set likelihoods for nucleotide in data
 						if (numRateBins_h <= treeModel.numEntries_h) {
 							for (int i = 0; i < numRateBins_h; i++) {
-								partials[k++] = tipLikelihoods[i];
+								patnPartials[0][k++] = tipLikelihoods[i];
 							}
 						} else {
 							for (int i = 0; i < treeModel.numEntries_h; i++) {
-								partials[k++] = tipLikelihoods[i];
+								patnPartials[0][k++] = tipLikelihoods[i];
 							}
-							k += (numRateBins_h - treeModel.numEntries_h);
+							// set to zeros for the rest
+							for (int i = treeModel.numEntries_h; i < numRateBins_h; i++) {
+								patnPartials[0][k++] = 0.0;
+							}
 						}
 					} else {
 						// otherwise leave likelihoods to zero
-						k += numRateBins_h;
+						for (int i = 0; i < numRateBins_h; i++) {
+							patnPartials[0][k++] = 0.0;
+						}
 					}
+				}
+				// copy the same to the other categories
+				int copy_size = stateCount * numRateBins_h;
+				for (int c = 1; c < numCategories; c++) {
+					System.arraycopy(patnPartials[0], numRateBins_h, patnPartials[c], numRateBins_h, copy_size);
+				}
+				for (int c = 0; c < numCategories; c++) {
+					// propagate along the parent branch
+					double[] logp_patn = new double[1];
+					logp_patn[0] = 0.0; // log-compensate for this pattern
+					double rate = 1.0;
+					if (categoryRates != null) {
+						rate = categoryRates[c];
+					}
+					double[] patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartials[c], logp_patn, rate, threadID);
+					
+					// to make sure the array length is correct
+					assert(patnPartialsResult.length == singlePartialSizeParent);
+					int st = subpatnid * singlePartialSizeParent;
+					System.arraycopy(patnPartialsResult, 0, partials[c], st, singlePartialSizeParent);
+					compensates[c][subpatnid] = logp_patn[0];
 				}
 			}
 		}
-		
-		// the likelihoods and log-compensates are same for all categories
-		for (int c = 0; c < numCategories; c++) {
-			mosseLikelihoodCore.setNodeMossePartials(node.getNr(), c, partials);
-			mosseLikelihoodCore.setNodeMosseCompensates(node.getNr(), c, compensates);
-		}
+
+		// store the partials and compensates
+		mosseLikelihoodCore.setNodeMossePartials(node.getNr(), partials);
+		mosseLikelihoodCore.setNodeMosseCompensates(node.getNr(), compensates);
 	}
 	
 	/**
@@ -392,12 +431,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (pool == null) {
 				// single thread
 				for (int sid = 0; sid < leaves.size(); sid++) {
-					setLeafPartials(leaves.get(sid), patterncount);
+	            	int threadID = 0;
+					setLeafPartials(leaves.get(sid), patterncount, threadID);
 				}
 			} else {
 				// multiple threads
 		        Runnable job = () -> IntStream.range(0, leaves.size()).parallel().forEach(sid -> {
-					setLeafPartials(leaves.get(sid), patterncount);
+	            	int threadID = threadIndexInPool();
+					setLeafPartials(leaves.get(sid), patterncount, threadID);
 		        });
 	            try {
 	                pool.submit(job).get();
@@ -475,17 +516,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return Math.log(vsum);
 	}
 
-	/**
-	 * Compute the normalization (or log compensation)
-	 *
-	 * @param vars -- array to be normalized
-	 * @return log of scaling (i.e. lq)
-	 */
-	public double normalization(Node node, double[] vars) {
-		// normalize the values of vars
-		return normalization(isLowResolution(node), vars);
-	}
-
+	/*
 	public double normalization(double[] vars, int nx, double dx) {
 		// normalize the values of vars
 		// ignore the first nx entries (i.e. first row)
@@ -498,7 +529,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			vars[i] /= vsum;
 		}
 		return Math.log(vsum);
-	}
+	}*/
 
 	/**
 	 * create a flatTransitionMatrice
@@ -550,6 +581,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		boolean lowResolution;
 		double[] partialsOut;
 
+		logCompen[0] = 0.0;
 		if (!isLowResolution(node)) {
 			// if node has high resolution, then high resolution for the whole branch
 			lowResolution = false;
@@ -631,10 +663,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	/**
-	 * compute the mapping between the global pattern array and local subpattern array
+	 * compute the mapping between the global pattern array and local subpattern-id
 	 * return the number of subpatterns
 	 */
-	 protected int computeMapGlobal2Subpattern(Node node, int singlePartialSize) {
+	 protected int computeMapGlobal2SubpatternID(Node node) {
 
 		int subpatns = patterns;
 		int startPos = node.getNr() * patterns; // starting pos in patternMapPerNode
@@ -687,32 +719,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 protected double computePartialLikelihoodPattern(int patternIndex, Node node, double[] patternPartialsLeft, double[] patternPartialsRight,
 			 double[] partialsAllPatterns, double[] patternCompensatesLeft, double[] patternCompensatesRight, double rate, int categoryID, int threadID) {
 		 
-		double[] logp_patn = new double[1];
-		logp_patn[0] = 0.0; // log-compensate for this pattern
-
-		// obtain the numRateBins for left and right children
-		int numRateBins_left = numRateBinsPerNode[node.getLeft().getNr()];
-		int numRateBins_right = numRateBinsPerNode[node.getRight().getNr()];
-		int left_t = node.getLeft().getNr() * patterns;
-		int right_t = node.getRight().getNr() * patterns;
-		int curr_t = node.getNr() * patterns; // starting pos in patternMapPerNode
-		
-		int partialSizeLeft = numPlan * numRateBins_left;
-		int partialSizeRight = numPlan * numRateBins_right;
-		int leftSubpatn = pattern2SubpatnPerNode[left_t + patternIndex]; 
-		int rightSubpatn = pattern2SubpatnPerNode[right_t + patternIndex]; 
-		int leftPos = leftSubpatn * partialSizeLeft;
-		int rightPos = rightSubpatn * partialSizeRight;
-		
-		double[] partialsLeft = new double[partialSizeLeft];
-		System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeLeft);
-		double[] partialsRight = new double[partialSizeRight];
-		System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeRight);
-
-		// propagate each child branch
-		partialsLeft = computeSingleBranchLikelihood(node, node.getLeft(), partialsLeft, logp_patn, rate, threadID);
-		partialsRight = computeSingleBranchLikelihood(node, node.getRight(), partialsRight, logp_patn, rate, threadID);
-		
 		// numRateBins, numEntries, lambdas
 		int numRateBins_curr = numRateBins_h;
 		int numEntries_curr = treeModel.numEntries_h;
@@ -722,13 +728,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			numEntries_curr = treeModel.numEntries_l;
 			lambdas_curr = lambdas_l;
 		}
-		
 		int partialSizeCurr = numPlan * numRateBins_curr;
-		int currPos = pattern2SubpatnPerNode[curr_t + patternIndex] * partialSizeCurr;
-		int k = 0;
 		
+		// pos in pattern2SubpatnPerNode
+		int left_t = node.getLeft().getNr() * patterns;
+		int right_t = node.getRight().getNr() * patterns;
+		
+		int leftSubpatn = pattern2SubpatnPerNode[left_t + patternIndex]; 
+		int rightSubpatn = pattern2SubpatnPerNode[right_t + patternIndex]; 
+		int leftPos = leftSubpatn * partialSizeCurr;
+		int rightPos = rightSubpatn * partialSizeCurr;
+		
+		double[] partialsLeft = new double[partialSizeCurr];
+		System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeCurr);
+		double[] partialsRight = new double[partialSizeCurr];
+		System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeCurr);
+		double[] patnPartials = new double[partialSizeCurr];
+
+		int k = 0;
 		// E is topology independent
-		System.arraycopy(partialsLeft, k, partialsAllPatterns, currPos + k, numRateBins_curr);
+		System.arraycopy(partialsLeft, k, patnPartials, k, numRateBins_curr);
 		k += numRateBins_curr;
 		
 		if (numRateBins_curr <= numEntries_curr) {
@@ -737,7 +756,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					// non padded elements
 					// D_left * D_right * lambda(x)
 					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-					partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
 					k++;
 				}
 			}
@@ -747,13 +766,44 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					// non padded elements
 					// D_left * D_right * lambda(x)
 					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-					partialsAllPatterns[currPos + k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
 					k++;
 				}
 				// leave the rest to zeros
-				k += (numRateBins_curr - numEntries_curr);
+				for (int j = numEntries_curr; j <  numRateBins_curr; j++) {
+					patnPartials[k++] = 0.0;
+				}
 			}
 		}
+		
+		double[] logp_patn = new double[1];
+		logp_patn[0] = 0.0; // log-compensate for this pattern
+		double[] patnPartialsResult;
+		int singlePartialSizeParent;
+		
+		if (node.isRoot()) {
+			patnPartialsResult = patnPartials;
+			singlePartialSizeParent = partialSizeCurr;
+		} else {
+		
+			// propagate along the parent branch
+			patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp_patn, rate, threadID);
+
+			// the size of the resulting partials is based on its parent
+			int numRateBins_parent = numRateBins_h;
+			if (isLowResolution(node.getParent())) {
+				// assume all leaves should have a parent
+				numRateBins_parent = numRateBins_l;
+			}
+			singlePartialSizeParent = numPlan * numRateBins_parent;
+		
+			// to make sure the array length is correct
+			assert(patnPartialsResult.length == singlePartialSizeParent);
+		}
+		int curr_t = node.getNr() * patterns;
+		int subpatnid = pattern2SubpatnPerNode[curr_t + patternIndex];
+		int st = subpatnid * singlePartialSizeParent;
+		System.arraycopy(patnPartialsResult, 0, partialsAllPatterns, st, singlePartialSizeParent);
 		
 		double leftCompensate = patternCompensatesLeft[leftSubpatn];
 		double rightCompensate = patternCompensatesRight[rightSubpatn];
@@ -774,14 +824,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] patternCompensatesLeft = mosseLikelihoodCore.getNodeMosseCompensates(node.getLeft().getNr());
 		double[][] patternCompensatesRight = mosseLikelihoodCore.getNodeMosseCompensates(node.getRight().getNr());
 		 
-		// numRateBins, numEntries, lambdas
+		// the resulting partial size of single pattern is based on parents
 		int numRateBins_curr = numRateBins_h;
-		if (isLowResolution(node)) {
+		if (node.isRoot() || isLowResolution(node.getParent())) {
 			numRateBins_curr = numRateBins_l;
 		}
-		numRateBinsPerNode[node.getNr()] = numRateBins_curr;
 		int singlePartialSize = numPlan * numRateBins_curr;
-		int subpatns = computeMapGlobal2Subpattern(node, singlePartialSize);
+		int subpatns = computeMapGlobal2SubpatternID(node);
 
 		assert (subpatns > 0);
 		
@@ -886,6 +935,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	            try { pool.submit(rootJob).get(); }
 	            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
 	            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
+	        }
+	        
+	        // show the patternCatLogLikes array
+	        System.out.println("patternCatLogLikes:");
+	        int k = 0;
+	        for (int i = 0; i < 4; i++) {
+	        	for (int j = 0; j < 10; j++) {
+	        		if (j > 0)
+	        			System.out.print(",");
+	        		System.out.print(patternCatLogLikes[k++]);
+	        	}
+	        	System.out.println();
 	        }
 	        
 	        // compute patternLogLikelihoods
