@@ -143,7 +143,8 @@ public class MosseTreeLikelihoodTest44Tree {
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
                 "mutationRate", "1.0",
-                "gammaCategoryCount", 1,
+                "gammaCategoryCount", "4",
+                "shape", "0.5",
                 "substModel", hky);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
@@ -191,10 +192,10 @@ public class MosseTreeLikelihoodTest44Tree {
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
                 "resolution", Integer.toString(resolution),
-                "threads", 16                               // number of cpu threads
+                "threads", 32                               // number of cpu threads
         );
 
-        MosseTreeLikelihoodBufferedMT likelihood = new MosseTreeLikelihoodBufferedMT();
+        MosseTreeLikelihoodMT likelihood = new MosseTreeLikelihoodMT();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
