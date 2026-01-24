@@ -937,19 +937,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
 	        }
 	        
-	        /*
-	        // show the patternCatLogLikes array
-	        System.out.println("patternCatLogLikes:");
-	        int k = 0;
-	        for (int i = 0; i < 4; i++) {
-	        	for (int j = 0; j < 10; j++) {
-	        		if (j > 0)
-	        			System.out.print(",");
-	        		System.out.print(patternCatLogLikes[k++]);
-	        	}
-	        	System.out.println();
-	        }*/
-	        
 	        // compute patternLogLikelihoods
 	        if (categoryProps != null) {
 	        	// RHAS model is used
@@ -963,8 +950,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        		int s = p * numCategories;
 		        		for (int c = 0; c < numCategories; c++) {
 		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        			// System.out.print("," + catLogLikes[c]);
 		        		}
 		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
+		        		// System.out.println("," + patternLogLikelihoods[p]);
 		        	}
 		        } else {
 		        	// multi-threaded
@@ -981,6 +970,33 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
 		        }
 	        }
+	        
+	        // show the patternCatLogLikes array
+	        System.out.println("patternCatLogLikes:");
+	        int k;
+	        for (int i = 0; i < numCategories; i++) {
+	        	System.out.print("Cat " + (i+1));
+	        	k = i;
+	        	for (int j = 0; j < patterns; j++) {
+	        		System.out.print("," + patternCatLogLikes[k]);
+	        		k += numCategories;
+	        	}
+	        	System.out.println();
+	        }
+	        
+	        // show the overall log likelihood
+        	System.out.print("Overall");
+	        for (int j = 0; j < patterns; j++) {
+	        	System.out.print("," + patternLogLikelihoods[j]);
+	        }
+	        System.out.println();
+
+	        // show the frequencies of the patterns
+        	System.out.print("Freq");
+	        for (int j = 0; j < patterns; j++) {
+	        	System.out.print("," + data.getPatternWeight(j));
+	        }
+	        System.out.println();
         }
 	}
 
@@ -1293,7 +1309,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		    }
 		}
 		
-		/*
 		if (categoryRates != null) {
 			System.out.print("; Rates: ");
 			for (int i = 0; i < categoryRates.length; i++) {
@@ -1309,7 +1324,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					System.out.print(",");
 				System.out.print(categoryProps[i]);
 			}
-		}*/
+		}
 		
 		System.out.println();
 	}
