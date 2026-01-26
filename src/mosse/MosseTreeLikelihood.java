@@ -906,31 +906,40 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	// gamma model is used
             	patternCatLogLikes = new double[totaljobs];
             }
+            
 	        if (pool == null) {
 	        	// single thread
 	        	for (int jobid = 0; jobid < totaljobs; jobid++) {
 	        		int p = jobid / numCategories; // pattern-id
 	        		int c = jobid % numCategories; // category-id
-	                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
-	                double[] partials = new double[singlePartialSize];
-	                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
-	
-	                boolean conditionSurv = false;
-	                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
-	                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY) {
+	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
+	        		} else {
+		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
+		                double[] partials = new double[singlePartialSize];
+		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
+		
+		                boolean conditionSurv = false;
+		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
+		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		}
 	        	}
 	        } else {
 	        	// multi-threaded
 	            Runnable rootJob = () -> IntStream.range(0, totaljobs).parallel().forEach(jobid -> {
 	        		int p = jobid / numCategories; // pattern-id
 	        		int c = jobid % numCategories; // category-id
-	                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
-	                double[] partials = new double[singlePartialSize];
-	                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
-	
-	                boolean conditionSurv = false;
-	                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
-	                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY) {
+	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
+	        		} else {
+		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
+		                double[] partials = new double[singlePartialSize];
+		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
+		
+		                boolean conditionSurv = false;
+		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
+		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		}
 	            });
 	            try { pool.submit(rootJob).get(); }
 	            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
@@ -1389,4 +1398,35 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         return max + Math.log(sum);
     }
 
+	protected void show1DArray(double[] array, String desc) {
+		System.out.println(desc);
+		boolean error_found = false;
+		int max_num_per_line = 30;
+		for (int i = 0; i < array.length; i++) {
+			if (i % max_num_per_line == 0)
+				System.out.println();
+			System.out.print("," + array[i]);
+			if (Double.isNaN(array[i]))
+				error_found = true;
+		}
+		System.out.println();
+		if (error_found)
+			System.exit(1);
+	}
+	
+	protected void show2DArray(double[][] array, String desc) {
+		System.out.println(desc);
+		boolean error_found = false;
+		for (int i = 0; i < array.length; i++) {
+			for (int j = 0; j < array[0].length; j++) {
+				System.out.print("," + array[i][j]);
+				if (Double.isNaN(array[i][j]))
+					error_found = true;
+			}
+			System.out.println();
+		}
+		if (error_found)
+			System.exit(1);
+	}
+    
 }
