@@ -69,7 +69,7 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 			if (x[i] < 0.0) {
 				y[i] = y0;
 			} else {
-				y[i] = r * x[i];
+				y[i] = y0 + r * x[i];
 				if (y[i] > y1) {
 					y[i] = y1;
 				}
