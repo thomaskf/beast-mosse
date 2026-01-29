@@ -100,7 +100,7 @@ public class MosseTreeLikelihoodTest44Tree {
         
         // String[] sequences = {"t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t"};
 
-        String newick = "((sp17:0.05391814556505734,sp18:0.05391814556505734):5.089992221003879,(((sp2:0.0937152824894831,((sp9:0.08267983147863275,sp11:0.08267983147863275):0.00999535064933571,(sp10:0.025613953537109626,(sp15:0.010669163727410776,sp16:0.010669163727410776):0.01494478980969885):0.06706122859085883):0.0010401003615146398):0.0020742040107897264,(sp4:0.0880904918540311,(sp5:0.07335694472565049,((sp12:0.046269680111896846,sp13:0.046269680111896846):0.0020795687699585175,sp6:0.048349248881855364):0.025007695843795127):0.014733547128380611):0.0076989946462417275):4.628206499151462,((sp3:0.09470804884488554,sp1:0.09470804884488554):0.003346548684087014,((sp7:0.06445152071649365,sp8:0.06445152071649365):5.492586348332801E-4,(sp14:0.027505916773577783,(sp19:0.005772871759999965,sp20:0.005772871759999965):0.02173304501357782):0.03749486257774915):0.03305381817764562):4.6259413881227625):0.41991438091720124):0.0;";
+        String newick = "((sp2:0.867649347,(((sp10:0.08825410416,sp11:0.08825410416)nd18:0.02260170376,sp9:0.1108558079)nd16:0.01324025227,(sp15:0.02634405161,sp16:0.02634405161)nd17:0.09775200859)nd5:0.7435532868)nd2:0.2288886382,(((sp3:0.5518912086,(((sp19:0.003563648002,sp20:0.003563648002)nd19:0.04504967338,sp14:0.04504967338)nd12:0.2605015266,((sp7:0.2008079444,sp8:0.2008079444)nd14:0.02914856703,(sp17:0.008737631817,sp18:0.008737631817)nd15:0.2212188796)nd13:0.07559468856)nd8:0.2463400086)nd6:0.0859801983,(sp4:0.4347198176,(((sp12:0.05564818837,sp13:0.05564818837)nd11:0.2683882218,sp6:0.3240364101)nd10:0.05856112955,sp5:0.3825975397)nd9:0.05212227791)nd7:0.2031515893)nd4:0.2995745,sp1:0.9374459069)nd3:0.1590920783)nd1;";
 
         String trait0Values = "sp1=0.0387876829138803988,sp2=-0.0261650640045382014,sp3=0.0000780613211212051,sp4=0.0640955976744835010,sp5=0.0631755463800323935,sp6=0.0175265726505994986,sp7=0.0285494149210851998,sp8=0.0034181730917631800,sp9=0.0381431935689817980,sp10=0.0429503413943981976,sp11=0.0322004948111379030,sp12=0.0470716865963385980,sp13=0.0547267264548012972,sp14=0.0392330272674960984,sp15=-0.0039068533176126897,sp16=0.0182309457961658990,sp17=0.0801855614646413001,sp18=0.0790165878526876003,sp19=0.0521209102564738000,sp20=0.0470196223928652998";
 
@@ -109,24 +109,22 @@ public class MosseTreeLikelihoodTest44Tree {
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
-        Double[] betasArray = {0.015113526940818621};
-        double meanSubst = 0.0; // 0.05; // mean substitution rate
-        double epsilon = 5.1088403724508E-4;
+        Double[] betasArray = {1.0};
+        double meanSubst = 0.015; // 0.05; // mean substitution rate
+        double epsilon = 0.01;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
-        Double[] y0 = new Double[] { 44.730801240753244 };
-        Double[] y1 = new Double[] { 47.898678682564345 };
-        Double[] x0 = new Double[] { 0.241763409230814 };
-        Double[] r = new Double[] { 0.07766772901135348 };
-        Double[] yValue = new Double[] { 0.007135666057670194 };
+        Double[] y0 = new Double[] { 0.0 };
+        Double[] y1 = new Double[] { 2.25 }; // speciation rate
+        Double[] r = new Double[] { 30.0 };
+        Double[] yValue = new Double[] { 0.0046 }; // extinction rate
 
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
-        Double[] drift = new Double[] { 0.4426330214516401 };          // drift parameter
-        // Double[] drift = new Double[] { 0.4182108713468564 };          // drift parameter
+        Double[] drift = new Double[] { 0.0 };          // drift parameter
         
-        Double[] diffusion = new Double[] { 4.792131992349599E-5 };    // diffusion parameter
+        Double[] diffusion = new Double[] { 0.001};    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
@@ -134,7 +132,7 @@ public class MosseTreeLikelihoodTest44Tree {
         Tree tree = new Tree(newick);
 
         // For HKY model
-        RealParameter kappa = new RealParameter("5.799360316678531");
+        RealParameter kappa = new RealParameter("6.5739");
         RealParameter freqsParam = new RealParameter("0.099225 0.11265 0.02075 0.767375");
         Frequencies freqs = new Frequencies();
         freqs.initByName("frequencies", freqsParam);
@@ -148,7 +146,7 @@ public class MosseTreeLikelihoodTest44Tree {
         siteModel.initByName(
                 "mutationRate", "1.0",
                 "gammaCategoryCount", "4",
-                "shape", "0.0168492728052438",
+                "shape", "20",
                 "substModel", hky);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
@@ -170,12 +168,10 @@ public class MosseTreeLikelihoodTest44Tree {
 
         RealParameter y0rp = new RealParameter(y0);
         RealParameter y1rp = new RealParameter(y1);
-        RealParameter x0rp = new RealParameter(x0);
         RealParameter rrp = new RealParameter(r);
-        LogisticFunction logFunc = new LogisticFunction();
-        logFunc.initByName( "curveYBaseValue",
+        LinearFunction linearFunc = new LinearFunction();
+        linearFunc.initByName( "curveYBaseValue",
                 y0rp, "curveMaxY", y1rp,
-                "sigmoidMidpoint", x0rp,
                 "logisticGrowthRate", rrp);
         // constant
         RealParameter yValueRP = new RealParameter(yValue);
@@ -207,7 +203,7 @@ public class MosseTreeLikelihoodTest44Tree {
                 "tipModel", tipModel,
                 "treeModel", mosseDist,
                 "traits", traitsList,
-                "lambdaFunc", logFunc,
+                "lambdaFunc", linearFunc,
                 "muFunc", constFunc,
                 "tc", 0.100000000006
                 );

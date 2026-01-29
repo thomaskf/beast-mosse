@@ -75,7 +75,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double deltaT;
 	protected int numPlan;
 
-	protected int rootOption = 3; // default to ROOT_EQUI
+	protected int rootOption = 2; // default to ROOT_OBS
 
 	protected LinkFn rootFunc;
 	protected LinkFn lambdaFunc;
