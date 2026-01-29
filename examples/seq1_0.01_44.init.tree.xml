@@ -147,7 +147,7 @@
 	</RPNcalculator>
 
     <run
-        chainLength="500" id="mcmc" spec="MCMC">
+        chainLength="2000000" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<!--<init id="RandomTreeInit"
