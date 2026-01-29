@@ -7,6 +7,7 @@
         <provider classname="mosse.ConstantLinkFn"/>
         <provider classname="mosse.CustomSubstitutionModel"/>
         <provider classname="mosse.LogisticFunction"/>
+        <provider classname="mosse.LinearFunction"/>
         <provider classname="mosse.MosseDistribution"/>
         <provider classname="mosse.MosseTipLikelihood"/>
         <provider classname="mosse.MosseTreeLikelihood"/>
