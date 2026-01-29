@@ -98,7 +98,7 @@
 
     <MosseTipLikelihood id="mossetiplikelihood"
         spec="mosse.MosseTipLikelihood"
-        subst="0.0" logscale="false">
+        subst="0.015" logscale="false">
         <epsilon id="epsilon" spec="parameter.RealParameter">0.01</epsilon>
         <beta id="beta" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
