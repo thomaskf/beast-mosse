@@ -93,13 +93,13 @@
     <!-- <tree id="tree" spec="beast.base.evolution.tree.Tree"/> -->
     
     <tree id='tree' spec='beast.base.evolution.tree.TreeParser' IsLabelledNewick='true'
-		newick='((sp1:0.723770403,((sp3:0.3768379524,(((sp7:0.1342294805,(sp17:0.004728156396,sp18:0.004728156396):0.1295013241):0.007425034876,sp8:0.1416545154):0.09251618703,(sp14:0.02138015536,(sp19:0.005772871756,sp20:0.005772871756):0.0156072836):0.2127905471):0.14266725):0.1664170832,(sp4:0.3427124182,(sp5:0.3081816906,(sp6:0.2810623705,(sp12:0.07143388823,sp13:0.07143388823):0.2096284823):0.02711932003):0.03453072763):0.2005426174):0.1805153674):0.276229597,(sp2:1,(sp9:0.1550717556,((sp10:0.1416198826,(sp15:0.0268458655,sp16:0.0268458655):0.1147740171):0.01340873571,sp11:0.1550286184):4.313721231e-05):0.8449282444):7.993605777e-15);'
+		newick='((sp2:0.867649347,(((sp10:0.08825410416,sp11:0.08825410416)nd18:0.02260170376,sp9:0.1108558079)nd16:0.01324025227,(sp15:0.02634405161,sp16:0.02634405161)nd17:0.09775200859)nd5:0.7435532868)nd2:0.2288886382,(((sp3:0.5518912086,(((sp19:0.003563648002,sp20:0.003563648002)nd19:0.04504967338,sp14:0.04504967338)nd12:0.2605015266,((sp7:0.2008079444,sp8:0.2008079444)nd14:0.02914856703,(sp17:0.008737631817,sp18:0.008737631817)nd15:0.2212188796)nd13:0.07559468856)nd8:0.2463400086)nd6:0.0859801983,(sp4:0.4347198176,(((sp12:0.05564818837,sp13:0.05564818837)nd11:0.2683882218,sp6:0.3240364101)nd10:0.05856112955,sp5:0.3825975397)nd9:0.05212227791)nd7:0.2031515893)nd4:0.2995745,sp1:0.9374459069)nd3:0.1590920783)nd1;'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood"
-        spec="mosse.MosseTipLikelihood"
-        subst="0.015" logscale="false">
+        spec="mosse.MosseTipLikelihood" logscale="false">
         <epsilon id="epsilon" spec="parameter.RealParameter">0.01</epsilon>
+        <subst id="subst" spec="parameter.RealParameter">0.015</subst>
         <beta id="beta" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
 
@@ -109,8 +109,8 @@
     <frequencies id="estimatedFreqs" spec="Frequencies" frequencies="@freqs"/>
     
     <!-- HKY + G model -->
-    <parameter id="kappa" value="2.0"/>
-    <parameter id="alpha" value="0.5"/>
+    <parameter id="kappa" value="6.5739"/>
+    <parameter id="alpha" value="20"/>
    
     <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
 
@@ -127,15 +127,14 @@
     </MosseDistribution>
 
     <!-- Link function parameters -->
-    <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.1</parameter>
-    <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.2</parameter>
-    <parameter id="sigmoidMidpoint" spec="beast.base.inference.parameter.RealParameter">0.19735</parameter> <!--XH:change the initial value to be the midpoint of the substitution bins-->
-    <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.5</parameter>
-    <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.03</parameter>
+    <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0</parameter>
+    <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.25</parameter>
+    <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">30</parameter>
+    <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.0046</parameter>
 
-    <LogisticFunction
-        id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="@curveYBaseValue"
-        curveMaxY="@curveMaxY" sigmoidMidpoint="@sigmoidMidpoint" logisticGrowthRate="@logisticGrowthRate" />
+    <LinearFunction
+        id="linearfunc" spec="mosse.LinearFunction" curveYBaseValue="@curveYBaseValue"
+        curveMaxY="@curveMaxY" logisticGrowthRate="@logisticGrowthRate" />
 
     <ConstantLinkFn
         id="constfunc" spec="mosse.ConstantLinkFn" yV="@yV" />
@@ -164,6 +163,7 @@
         <state id="state" storeEvery="100">
             <stateNode idref="epsilon" />
             <stateNode idref="beta" />
+            <stateNode idref="subst" />
             <stateNode idref="alpha" />
             <stateNode idref="tree" />
             <stateNode idref="kappa" />
@@ -171,7 +171,6 @@
             <stateNode idref="diffusion" />
             <stateNode idref="curveYBaseValue" />
             <stateNode idref="curveMaxY" />
-            <stateNode idref="sigmoidMidpoint" />
             <stateNode idref="logisticGrowthRate" />
             <stateNode idref="yV" />
 			<!--<stateNode idref="freqs" />-->
@@ -185,7 +184,7 @@
                     spec="mosse.MosseTreeLikelihoodMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    lambdaFunc="@logfunc" muFunc="@constfunc">
+                    lambdaFunc="@linearfunc" muFunc="@constfunc">
                     <traits id="traitset"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
@@ -195,6 +194,17 @@
 
             <!-- priors -->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
+
+                <distribution id="rootHeightPrior"
+                              spec="beast.base.evolution.tree.MRCAPrior"
+                              tree="@tree"
+                              monophyletic="false">
+                    <taxonset idref="taxonset"/>
+                    <distr id="Normal.rootHeight" spec="beast.base.inference.distribution.Normal">
+                        <parameter name="mean"  spec="parameter.RealParameter" value="1.0965"  estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="1e-6" estimate="false"/>
+                    </distr>
+                </distribution>
             
                 <distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
                     <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
@@ -223,6 +233,13 @@
                     </distr>  <!--XH:change to normal, with mean=0, sd=10-->
                 </distribution>
                 
+                <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
+                    <distr id="LogNormal.subst" spec="beast.base.inference.distribution.LogNormalDistributionModel">
+                        <parameter name="M" spec="parameter.RealParameter" value="-4.0" estimate="false" />
+                        <parameter name="S" spec="parameter.RealParameter" value="1.0" estimate="false" />
+                    </distr>
+                </distribution>
+
                 <distribution id="driftPrior" spec="beast.base.inference.distribution.Prior" x="@drift">
                     <distr id="Normal.drift" spec="beast.base.inference.distribution.Normal">
                         <parameter name="mean" spec="parameter.RealParameter" value="0.0" estimate="false"/>
@@ -257,10 +274,6 @@
 					</distr>
 				</distribution>
             	
-            	<distribution id="sigmoidMidpointPrior" spec="beast.base.inference.distribution.Prior" x="@sigmoidMidpoint">
-            		<distr id="Uniform.sigmoidMidpoint" spec="beast.base.inference.distribution.Uniform" lower="0.0001" upper="0.3946" />
-            		<!--XH:uniform betweem min (i.e. 0.0001) and max (i.e. 0.3946) of the substitution rate bins-->
-            	</distribution>
             	<distribution id="logisticGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@logisticGrowthRate">
             		<distr id="LogNormal.logisticGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
             			<parameter name="M" spec="parameter.RealParameter" value="0.0" estimate="false" />
@@ -293,37 +306,33 @@
         
         <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
         
-        <operator id="alphaScale" spec="ScaleOperator" parameter="@alpha" scaleFactor="0.5" weight="3.0"/>
-
         <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
 
-        <operator id="KappaScaler"
-                  spec="ScaleOperator"
-                  parameter="@kappa"
-                  scaleFactor="0.1"
-                  weight="3.0"/>
+        <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
+            scaleFactor="0.75" weight="3.0"/>
+        <operator id="alphaScale" spec="ScaleOperator" parameter="@alpha"
+            scaleFactor="0.75" weight="3.0"/>
 
         <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
             scaleFactor="0.75" weight="3.0" />
-            
+        <operator id="SubstScaler" spec="ScaleOperator" parameter="@subst"
+            scaleFactor="0.75" weight="3.0" />
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
             scaleFactor="0.75" weight="3.0" />
 
         <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
             scaleFactor="0.75" weight="3.0" />
-        <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-            windowSize="0.1" weight="3.0" />
+        <operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
+            scaleFactor="0.75" weight="3.0" />
 
         <operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
-            scaleFactor="0.75" weight="1.0" />
+            scaleFactor="0.75" weight="3.0" />
         <operator id="CurveMaxYScaler" spec="ScaleOperator" parameter="@curveMaxY"
-            scaleFactor="0.75" weight="1.0" />
-        <operator id="SigmoidMidpointRandomWalk" spec="RealRandomWalkOperator" parameter="@sigmoidMidpoint"
-            windowSize="0.1" weight="1.0" />
+            scaleFactor="0.75" weight="3.0" />
         <operator id="LogisticGrowthRateScaler" spec="ScaleOperator" parameter="@logisticGrowthRate"
-            scaleFactor="0.75" weight="1.0" />
+            scaleFactor="0.75" weight="3.0" />
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
-            scaleFactor="0.75" weight="1.0" />
+            scaleFactor="0.75" weight="3.0" />
 
 
         <!-- Base frequency operators (sum stays 1) -->
@@ -345,11 +354,12 @@
             <log idref="alpha" />
             <log idref="beta" />
             <log idref="epsilon" />
+            <log idref="subst" />
             <log idref="drift" />
             <log idref="diffusion" />
+            <log idref="kappa" />
             <log idref="curveYBaseValue" />
             <log idref="curveMaxY" />
-            <log idref="sigmoidMidpoint" />
             <log idref="logisticGrowthRate" />
             <log idref="yV" />
         </logger>

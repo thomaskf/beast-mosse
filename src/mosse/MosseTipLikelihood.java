@@ -118,5 +118,6 @@ public class MosseTipLikelihood extends CalculationNode {
 	public void printParams() {
 		System.out.println("beta = " + beta.toString());
 		System.out.println("epsilon = " + epsilon.toString());
+		System.out.println("subst = " + meanSubstitution.toString());
 	}
 }
