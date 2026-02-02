@@ -861,7 +861,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			for (int jobid = 0; jobid < totjobs; jobid++) {
 				int sid = jobid % subpatns;
 				int categoryid = jobid / subpatns;
-				double rate = 1.0;
 				double rate = single_rate;
 				if (categoryRates != null) {
 					rate = categoryRates[categoryid];
