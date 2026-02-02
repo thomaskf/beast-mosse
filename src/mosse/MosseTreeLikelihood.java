@@ -123,6 +123,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int numCategories; // number of categories of the gamma distribution
 	protected double[] categoryRates; // rates for all categories
 	protected double[] categoryProps; // proportions for all categories
+	protected double single_rate = 1.0;
 
 	@Override
 	public void initAndValidate() {
@@ -399,7 +400,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					// propagate along the parent branch
 					double[] logp_patn = new double[1];
 					logp_patn[0] = 0.0; // log-compensate for this pattern
-					double rate = 1.0;
+					double rate = single_rate;
 					if (categoryRates != null) {
 						rate = categoryRates[c];
 					}
@@ -861,6 +862,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				int sid = jobid % subpatns;
 				int categoryid = jobid / subpatns;
 				double rate = 1.0;
+				double rate = single_rate;
 				if (categoryRates != null) {
 					rate = categoryRates[categoryid];
 				}
@@ -874,7 +876,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        Runnable job = () -> IntStream.range(0, totjobs).parallel().forEach(jobid -> {
 				int sid = jobid % subpatns;
 				int categoryid = jobid / subpatns;
-				double rate = 1.0;
+				double rate = single_rate;
 				if (categoryRates != null) {
 					rate = categoryRates[categoryid];
 				}
