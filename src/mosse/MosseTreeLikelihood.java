@@ -1055,16 +1055,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (conditionSurv) {
 			eRoot = getColumn(vals, 0); // get root E values as a column
 			// apply function on dRoot (and root is always low resolution)
-			for (int j = 0; j < stateCount; j++) {
-				for (int i = 0; i < lambdas_l.length; i++) {
-					double lambdaX = lambdas_l[i];
-					// sanity check
-					final double min_value = 1e-30;
-					if (1-eRoot[i] < min_value)
-						return Double.NEGATIVE_INFINITY;
-					// element-wise division of d column
-					dRoot[i][j] = dRoot[i][j] / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
-				}
+			for (int i = 0; i < lambdas_l.length; i++) {
+				double lambdaX = lambdas_l[i];
+				// sanity check
+				final double min_value = 1e-30;
+				if (1-eRoot[i] < min_value)
+					return Double.NEGATIVE_INFINITY;
+				// element-wise division of d column
+				double factor = 1.0 / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
+				for (int j = 0; j < stateCount; j++)
+					dRoot[i][j] = dRoot[i][j] * factor ;
 			}
 		}
 
@@ -1111,9 +1111,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 			}
 		} else if (rootOption == ROOT_OBS) {
+			double factor = 1.0 / (getSum(dRoot) * dx);
 			for (int i = 0; i < numSubstBins; i++) {
 				for (int j = 0; j < ntypes; j++) {
-					p[i][j] = dRoot[i][j] / (getSum(dRoot) * dx);
+					p[i][j] = dRoot[i][j] * factor;
 				}
 			}
 		} else {
