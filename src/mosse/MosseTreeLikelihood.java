@@ -808,7 +808,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		double leftCompensate = patternCompensatesLeft[leftSubpatn];
 		double rightCompensate = patternCompensatesRight[rightSubpatn];
-		return logp_patn[0] + leftCompensate + rightCompensate;
+		double compensate = logp_patn[0] + leftCompensate + rightCompensate;
+		// for root, show the compensate value (for debugging purpose)
+		// if (node.isRoot()) {
+		//	System.out.println(node.getNr() + " on " + patternIndex + ", compensate = " + compensate);
+		// }
+		return compensate;
 	 }
 	
 	/**
@@ -920,7 +925,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                boolean conditionSurv = false;
+		                boolean conditionSurv = true;
 		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
@@ -937,7 +942,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                boolean conditionSurv = false;
+		                boolean conditionSurv = true;
 		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
