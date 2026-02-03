@@ -536,21 +536,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * create a flatTransitionMatrice
 	 */
 	protected double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
-		double rate; // dx
+		double dx;
 		int numEntries;
 		int padLeft;
 		if (lowResolution) {
-			rate = dx_l;
+			dx = dx_l;
 			numEntries = treeModel.numEntries_l;
 			padLeft = treeModel.padLeft_l;
 		} else {
-			rate = dx_h;
+			dx = dx_h;
 			numEntries = treeModel.numEntries_h;
 			padLeft = treeModel.padLeft_h;
 		}
 		int sqStateCount = stateCount * stateCount;
 		double[] transitionMatrix = new double[sqStateCount];
-		substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater
+		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx, transitionMatrix); // startTime is greater
 																								// than endTime
 		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
 		DoubleMatrix matrixOne = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
