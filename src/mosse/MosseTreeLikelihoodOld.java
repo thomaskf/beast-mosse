@@ -867,7 +867,7 @@ public class MosseTreeLikelihoodOld extends TreeLikelihood {
 	                double[] partials = new double[singlePartialSize];
 	                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 	
-	                boolean conditionSurv = false;
+	                boolean conditionSurv = true;
 	                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 	                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        	}
@@ -880,7 +880,7 @@ public class MosseTreeLikelihoodOld extends TreeLikelihood {
 	                double[] partials = new double[singlePartialSize];
 	                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 	
-	                boolean conditionSurv = false;
+	                boolean conditionSurv = true;
 	                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 	                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	            });
