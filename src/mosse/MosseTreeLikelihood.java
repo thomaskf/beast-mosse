@@ -752,6 +752,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		int leftSubpatn = pattern2SubpatnPerNode[left_t + patternIndex]; 
 		int rightSubpatn = pattern2SubpatnPerNode[right_t + patternIndex]; 
+
+		double leftCompensate = patternCompensatesLeft[leftSubpatn];
+		double rightCompensate = patternCompensatesRight[rightSubpatn];
+		if (Double.isNaN(leftCompensate) || Double.isNaN(rightCompensate))
+			return Double.NaN;
+		
 		int leftPos = leftSubpatn * partialSizeCurr;
 		int rightPos = rightSubpatn * partialSizeCurr;
 		
@@ -821,14 +827,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int st = subpatnid * singlePartialSizeParent;
 		System.arraycopy(patnPartialsResult, 0, partialsAllPatterns, st, singlePartialSizeParent);
 		
-		double leftCompensate = patternCompensatesLeft[leftSubpatn];
-		double rightCompensate = patternCompensatesRight[rightSubpatn];
-		double compensate = logp_patn[0] + leftCompensate + rightCompensate;
-		// for root, show the compensate value (for debugging purpose)
-		// if (node.isRoot()) {
-		//	System.out.println(node.getNr() + " on " + patternIndex + ", compensate = " + compensate);
-		// }
-		return compensate;
+		return logp_patn[0] + leftCompensate + rightCompensate;
 	 }
 	
 	/**
@@ -925,7 +924,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	for (int jobid = 0; jobid < totaljobs; jobid++) {
 	        		int p = jobid / numCategories; // pattern-id
 	        		int c = jobid % numCategories; // category-id
-	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY) {
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY || Double.isNaN(compensatesAllPatterns[c][p])) {
 	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
 	        		} else {
 		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
@@ -942,7 +941,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	            Runnable rootJob = () -> IntStream.range(0, totaljobs).parallel().forEach(jobid -> {
 	        		int p = jobid / numCategories; // pattern-id
 	        		int c = jobid % numCategories; // category-id
-	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY) {
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY || Double.isNaN(compensatesAllPatterns[c][p])) {
 	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
 	        		} else {
 		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
