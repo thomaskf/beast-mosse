@@ -193,10 +193,10 @@ public class MosseTreeLikelihoodProblem44Tree {
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
                 "resolution", Integer.toString(resolution),
-                "threads", 32                               // number of cpu threads
+                "threads", 8                               // number of cpu threads
         );
 
-        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
+        MosseTreeLikelihoodMT likelihood = new MosseTreeLikelihoodMT();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,

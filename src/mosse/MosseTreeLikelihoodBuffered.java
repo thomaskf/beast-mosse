@@ -23,8 +23,8 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 	// array for storing during MCMC
 	protected int[] storedTaxaIndexUnderNode;
 	protected int[] storedPattern2SubpatnPerNode;
-	protected double[] storedFlatTransitionMatrices_h;
-	protected double[] storedFlatTransitionMatrices_l;
+	protected double[][] storedFlatTransitionMatrices_h;
+	protected double[][] storedFlatTransitionMatrices_l;
 	protected double[] storedPatternLogLikelihoods;
 
 	@Override
@@ -66,9 +66,9 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 			if (updateSiteModel || updateTreeModel || updateFunc) {
 				// recompute all the transition matrices
 				boolean lowResolution = true;
-				flatTransitionMatrices_l = createFlatTransitionMatrice(node, lowResolution);
+				flatTransitionMatrices_l = createFlatTransitionMatrices(node, lowResolution);
 				lowResolution = false;
-				flatTransitionMatrices_h = createFlatTransitionMatrice(node, lowResolution);
+				flatTransitionMatrices_h = createFlatTransitionMatrices(node, lowResolution);
 			}
 			
 			if (updateTips || updateTreeModel || updateSiteModel || updateFunc) {
@@ -195,6 +195,7 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 
 		int[] tmp;
 		double[] tmp2;
+		double[][] tmp3;
 
 		tmp = taxaIndexUnderNode;
 		taxaIndexUnderNode = storedTaxaIndexUnderNode;
@@ -208,13 +209,13 @@ public class MosseTreeLikelihoodBuffered extends MosseTreeLikelihood {
 		patternLogLikelihoods = storedPatternLogLikelihoods;
 		storedPatternLogLikelihoods = tmp2;
 		
-		tmp2 = flatTransitionMatrices_h;
+		tmp3 = flatTransitionMatrices_h;
 		flatTransitionMatrices_h = storedFlatTransitionMatrices_h;
-		storedFlatTransitionMatrices_h = tmp2;
+		storedFlatTransitionMatrices_h = tmp3;
 		
-		tmp2 = flatTransitionMatrices_l;
+		tmp3 = flatTransitionMatrices_l;
 		flatTransitionMatrices_l = storedFlatTransitionMatrices_l;
-		storedFlatTransitionMatrices_l = tmp2;
+		storedFlatTransitionMatrices_l = tmp3;
 	}
 
 	private void checkNodeStatus(final Node node) {
