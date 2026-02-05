@@ -69,6 +69,36 @@ public class MosseTipLikelihood extends CalculationNode {
 		NormalDistribution normalDist = new NormalDistribution(mean, sd);
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
+			double x = startSubsRate + i * subsInterval;
+			tipLikelihoods[i] = normalDist.density(x);
+		}
+		// TODO make logscale consistent with TreeLikelihood
+
+		return tipLikelihoods;
+	}
+
+	
+	/**
+	 *
+	 * @param traits        array of trait values
+	 * @param numBins       number of bins for substitution rate discretization
+	 * @param startSubsRate substitution rate lower bound for rate bins
+	 * @param subsInterval  substitution rate interval for rate bins
+	 * @return array of tip likelihoods
+	 */
+	public double[] getTipLikelihoods_prob(double[] traits, int numBins, double startSubsRate, double subsInterval) {
+		double mean = meanSubstitution.getValue();
+		for (int i = 0; i < traits.length; i++) {
+			int numBetas = beta.getDimension();
+			if (numBetas != traits.length) {
+				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+			}
+			mean += beta.getValue(i) * traits[i];
+		}
+		double sd = epsilon.getValue();
+		NormalDistribution normalDist = new NormalDistribution(mean, sd);
+		double[] tipLikelihoods = new double[numBins];
+		for (int i = 0; i < numBins; i++) {
 			double a = startSubsRate + i * subsInterval;
 			double b = startSubsRate + (i + 1) * subsInterval;
 			// area between a and b under normal distribution
@@ -87,7 +117,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @param endSubsRate   substitution rate upper bound
 	 * @return array of tip likelihoods
 	 */
-	public double[] getTipLikelihoods2(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
+	public double[] getTipLikelihoods2_prob(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
 		double mean = meanSubstitution.getValue();
 		for (int i = 0; i < traits.length; i++) {
 			int numBetas = beta.getDimension();
