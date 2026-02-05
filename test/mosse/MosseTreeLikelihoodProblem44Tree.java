@@ -76,6 +76,7 @@ public class MosseTreeLikelihoodProblem44Tree {
         int numLeaves = 20;
         String[] names = {"sp1","sp2","sp3","sp4","sp5","sp6","sp7","sp8","sp9","sp10","sp11","sp12","sp13","sp14","sp15","sp16","sp17","sp18","sp19","sp20"};
         
+        /*
         String[] sequences = {
         		"tttttttgcatctttttctccttttcttcttcttatttttcttttttttatatttttatttttattttttttctttttttttctttaccttatttttttctttactttttttttttttctactttattattttcttttatcttatttatttttctttttagtttttttttctttttttttttttttttttttttttttttttcctatctttttttcttattttttttttttttgtttcttgttttttcattctttttttttttttttctttttttttttactacttttcttttttctcttccaccttttttttctctttcttttgttctcgtatttctctttttttttattttttatattcttttaatttttcttttaattttattttcttttttcattttgttttcttttttatatctcttttttttctttatttgttttggctttattttcctttttttttatttttctttttatatttttttattatttttttttttttcttttatcttctttttttattttttaaattttttcttatctacttttttctttttttcttttttttttttttcaattttagatcttcttttttttattcttttttttattttttattttctttttttttctttttttttctttttttttttttttttattttttttttcttttttctttacttttgttcttttttgttgtgtttttaatttttttctttttttctctaattttattttccttattttttttattttcttttaatttagtttttttctttttctatcttcttttgtttttttatctttctttttttacttttttcaatttaatatatgtttttattctatgtttttttgtttttaactttttcattatttttttttactattttatttattgctttatttttattatttttatttttttgttttatatttctttaatttttcttctttcttttttttttctttttttttttttaacattttttgtattttttttttcttttttctttttcttctttgtcctttaccttttcttactttttttaattttttttcctttttatttttttatttccttttatcttttttttttttttttttttttttttttcttcttttatttttttttttctcttattttttttttcattttttctttttttcttctttttatattctatttacgttttatttttttttttttttattattttttttcctcttttttcttattcttttttttttatttttatttctctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttttttctctcttctttcttttctccctatttttatttctctattttctcgttttttttttccttctttttttattttcattactttattttctctatttttttttcttctagatttttatattctcttctaccttttttatattttattttttttttttctattgtcgcttttttttttttcttttttttttcttttttttctattctttcacttctttctttttttttttatatcttttattattttttttaactttttttttttttccttttttttttctaacttttttttctctttattatttctacactttctctctttttcttcttttttatatatttatttcttctgttattctttttttttttatttttcatttgtttttttttcttttatttttttatttttttttattcctgtgattttatttccttttcgttttttattatttttttcattccttctctatattttcttctttttttttccctttcatcttcactttatatctttttttatttttttttttttcctttttatattattttttctttcattttttttgttcatatctttattttatatttttacataattttttttttctttttttttttatttacttttagtttttttcatttttttttctaatattatatt",
         		"ttttttttcatttttttttcttcttcttcttctcatttttcttttttttatatttttatttttattttttttctttttttttctttaccttatttttttctttactttttttttttttttattttattattttctttcattttatttttttttccttttagtttttttttctttttttttttttttttttttttttttttttcctatcttttttccttatctttttttttcttgtttcttgttttttcattctttttttttttttttcttttttcttttactacttttcttttttctcctctatttttcttctctctttcttatgttttcgtatttccctttttttttattttttatattctcttaatttttcttttaattttttattttcttttcattttgttttcttttttatatctcttttttttctttacttgttttggctttattttcctttttttttttttttctttttatatttttttattattttttttttttttttttattttctttttttattttttaaattttttcttatctacttttttctttttctcttttttttttttttcaattttagatcctcttttttttattcttttttttattttttattttctttttttctctttttttttttctttattttttttttcatttttttttttttttttctttactttcgttcttttttgttgtgtttttaatttttttctttttttctctaattctattttccttattttttttattttcttttagtttagtttttttctttttctatcttcttttgtttttttatctttctttttttacttttttcaatttaatatttgtttttattctatttttttctgtttttaatttctttattatttttttttattattttatttattgtcttatttttattatttttatttttttgttttatatttctttaatttttcttctttcttttttttttctttttttttttttaacatttttcgtattttttttttttttcttctttttcttttttgttcctttccttttcttactttttttaattttttttcctttttatttttttatttccttttatcttttttttttttttttttttttttctttcttcttttatttttttttttctcttattttttttttcattttttctttttttcttctttttatattctttttatgttttatttttttttttttttattattttttttcttcttttttcttattcttttttttttatttttatttttctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttttttttctcttctttcttttctccctattttcacttctttattttctcgttttttttttccttctttttttattttcattactttattttctctaattttttttcttctagatttttatattcttttttacctcttttatattttattttttttttctctattgtcgcttttttttttttcttttttttttctttttttcccattctttcacttctttttttttttttttatatcttttattattttttttaactttttttttccttccttttttttttttaatttttttttctctttattatttctacattttctttctttttcttcttttttatatatttatctcctctgttattctttttttttttatttttcatttgtttttttttcttttatttttttatttttttttattcttgtgattttattttcttttcgttttttataatttttttcattctttttttatatttttttttttttttttcccttttcttttcactttatatctttttttatctttttttttttcccttttttattatttttttttacattttttttgttcatatctttattttaaatttttatataattttttttttctttttttttttatttatttttagtttttttcatttttctttctaatattatatt",
@@ -97,10 +98,11 @@ public class MosseTreeLikelihoodProblem44Tree {
         		"tttttttgcatcttcttttctttttcttcttctcatttttctttcttttatatttttatttttattttttttctttttttttctttactttattcttttctttactttttttttttttctattttattattttcttttattttatttatttttcctttatgttctttttttttttttttttttttttttttttttctcttttcctttcttttttccttatcttttttttttttgtttcttgttttttcattcttttttttttttttttttttttcttttactacttttcttttttctcttctatcttttttctctctttcttatgttttcgtatttccttttttttttatttttcatattttctttatttttcctttaattttttattttctttttattttgttttcttttttatatctcttttttttctttacttgttttggcttttttttccttcttttttttttttctttttatattttttcattttttttttttttttcttttattttctttttttgttttttaaattttttcttatctattttttcttttttcttttttttttttttttcaattttagattctcttttttttattcctttttttattttttattttctttctttttttttttttttttcttttttttttttttcttttttttttttctttttctttactttcgttcttttttgttgtgtttctaatttttttctttttttttctatttcttttttccttatattttttattttcttttaatttagtttttttctttttctgtcttcttttgtttttttatttttctttttttacttttttcaatttattatttgttcctattctatgtttttctgtttttaatttctttattacttttttttattattttatttattgtcttatttttattatttttatttttttgttttatatttctttaatttttcttctttcttttttttttctttttttttttttaacatttttcgtattttttttttctcttttcttttttttctttgttctttttctttttttactttttttaattttttttcctttttatttttttatttccttttatctttttttttttttttttttttttttcttttttttttatttttttttttctcttattttttttttcattttttctttttttcttctttttatattctatttatgtttcattttttttttcttttattacttttcttcttcttttttcttattcttttttttttatttttattactctttgtttcttattgcttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttatttttttcttctttcttttctccttatttttacttctttattttctcgttttctttttcctttcctttttattttcattactttattttctctatttttatttcttttagatttttatattctttcttacctcttttatattttattttttttttttctattgtcttttttttttttttcttttttttttctttttttcccattctttcacttcttttttttttttcttatattttttatcattttttttaactttttctttcttctcttttttttttttaatttttttttttttttattatttctacattttctttttttttcttcttttttacatacttatctcttctgttattcttttttttcttatttttcatttgtttttttttcttttatttttttattttctcttattcttatgattttatttcctttccgttttttattatttttttcattcttgttctatactttcttttttttttttcctttttgttttcattttatattttttcttatctttttttttttcccttttttattatttttttttatattttttttgttcttatttttattttaaatttttacataatttttcttttctttttttttttatttatctttagcttttttcatttttttttttaatattatatt",
         		"tttttttgcatctttttgtctttttcttcttctcatttttctttcttttatatttttatttttattttttttttttttttttctttaccttatttttttccttactttttttttttttctactttattattttctttcattttatttatttttcctttttgttctttttttttttttttttttttttttttttttctcttttcctttcttttttccttatcttttttttttttgtttcttgttttttcattcttttttttttttttttttttttcttttactacttttcttttttctcttttatcttttttctctctttcttatgttttcgtattttcttttttttttatttttcatattttcttaatttttcctttaattttttattttctttttattttgttttcttttttatatctcttttttttctttacttgttttggcttttttttccttcttttttttttttctttttatattttttcattattttttctttttttttttattttctttttttgttttttaaattttttcttatctactttttcttttttcttttttttttttttttcaattttagattctcttttttttattcttttttttattttttattttctttttttttctttttttttttctttttttttttttttttttttttttttctttttctttactttcgttcctttttgttgtgtttttaatttttttctttttttctctattttttttttccttattttttttattttcttttaatttagtttttttctttttctatcttcttttgtttttttatttttctttttttacttttttcaatttaatatttgttcctattctatgtttttctgtttttaattcctttattacttttttttattattttatttattgtcttattcttattatttttatttttttgttttatatttctttaatttttcttctttctctttttcttctttttttttttttaatatttttcgtcttttttttttcttttttcctttttttctttgttccttttctttttttactttttttaattttttttcctttttatttttttatttccttttatctttttttttttttttttttttttttcttttttttttatttttttttttctcttattttttttttcgttttttctttttttcttctttttgtattctatttatgttttattttttttttcttttattatttttcttcttcttttttcttattcttttttttttatttttattactctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttatttttttcttctttcttttctccctatttttacttctttactttctcgttttttttttcctttcctttttattttcattactttattttctctatttttttttcttttagatttttatattctttcttacctcttttacattttattttttttttttctattgtcttctttttttttttcttttttttttctttttttcccattctttcacttcttttctttttttcttatattttttattatcttttttaactttttctttccttttttttttttttttaatttttttttttctttattatttctacattttctttctttttcttcttttttacatatttatctcttctgttattctttttttttttatttttcatttgtttttttttcttttacttttttatttttttttattcttatgattttatttctttttcgttttttattatttttttcattcttcttttatactttctttttcttttttcctttttattttcattttatatcttttcttatctttttttttttcccttttttactatttttttttacattttttttgttcatatctttattttaaattttttcataatttttcttttctttttttttttatttatctttagcttctttcatttttttttctaatattatatt",
         		"tttttttgcatctttttgtctttttcttcttctcatttttctttcttttatatttttatttttattttttttttttttttttctttaccttatttttttccttactttttttttttttctactttattattttctttcattttatttatttttcctttttgttctttttttttttttttttttttttttttttttctcttttcctttcttttttccttatcttttttttttttgtttcttgttttttcattcttttttttttttttttttttttcttttactacttttcttttttctcttttatcttttttctctctttcttatgttttcgtattttcttttttttttatttttcatattttcttaatttttcctttaattttttattttctttttattttgttttcttttttatatctcttttttttctttacttgttttggcttttttttccttcttttttttttttctttttatattttttcattattttttctttttttttttattttctttttttgttttttaaatttttttttatctactttttcttttttcttttttttttttttttcaattttagattctcttttttttattcttttttttattttttattttctttttttttctttttttttttctttttttttttttttttttttttttttctttttctttactttcgttcctttttgttgtgtttttaatttttttctttttttctctattttttttttccttattttttttattttcttttaatttagtttttttctttttctatcttcttttgtttttttatttttctttttttactttttgcaatttaatatttgttcctattctatgtttttctgtttttaattcctttattacttttttttattattttatttattgtcttattcttattatttttatttttttgttttatatttctttaatttttcttctttctctttttcttctttttttttttttaatatttttcgtcttttttttttcttttttcctttttttctttgttccttttctttttttactttttttaattttttttcctttttatttttttatttccttttatctttttttttttttttttttttttttcttttttttttatttttttttttctcttattttttttttcgttttttctttttttcttctttttgtattctatttatgttttattttttttttcttttattatttttcttcttcttttttcttattcttttttttttatttttattactctttgtttcttattgtttcctttaatatttttttttttttcattgttttaatttatttttgttgtttttaatttatttttttcttctttcttttctccctatttttacttctttactttctcgttttttttttcctttcctttttattttcattactttattttctctatttttttttcttttagatttttatattctttcttacctcttttacattttattttttttttttctattgtcttctttttttttttcttttttttttctttttttcccattctttcacttcttttctttttttcttatattttttattatcttttttaactttttctttccttttttttttttttttaatttttttttttctttattatttctacattttctttctttttcttcttttttacatatttatctcttctgttattctttttttttttatttttcatttgtttttttttcttttacttttttatttttttttattcttatgattttatttctttttcgttttttattatttttttcattcttcttttatactttctttttcttttttcctttttattttcattttatatcttttcttatctttttttttttcccttttttactatttttttttacattttttttgttcatatctttattttaaattttttcataatttttcttttctttttttttttatttatctttagcttctttcatttttttttctaatattatatt"};
+        */		
 
-        // String[] sequences = {"t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t"};
+        String[] sequences = {"t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t","t"};
 
-        String newick = "((sp1:0.10932413174106122,(sp4:0.10849669240751579,(sp5:0.10492259585728603,((sp13:0.059633986257852024,sp12:0.059633986257852024):0.024986684447582543,sp6:0.08462067070543457):0.02030192515185146):0.0035740965502297634):8.274393335454266E-4):0.9869904392257013,((sp2:0.06389715004371345,((sp10:0.047659801246233216,(sp16:0.01760032166457423,sp15:0.01760032166457423):0.030059479581658985):0.0056824948086096755,(sp11:0.038785048316021226,sp9:0.038785048316021226):0.014557247738821666):0.010554853988870558):0.02041531733621761,(((sp14:0.03891022464497525,(sp19:0.014200026863235519,sp20:0.014200026863235519):0.024710197781739728):0.023429122227066543,(sp8:0.061843890564264745,((sp17:0.0034136321678283872,sp18:0.0034136321678283872):0.0430209790016217,sp7:0.04643461116945009):0.015409279394814658):4.954563077770452E-4):0.0069153664145136795,sp3:0.06925471328655547):0.015057754093375592):1.0120021035868314):0.0;";
+        String newick = "((sp1:0.9410095548820001,((sp4:0.43828346558200015,((sp6:0.23995376277536223,(sp12:0.059211836322,sp13:0.059211836322):0.18074192645336223):0.14593396528993902,(((sp14:0.04861332138200014,(sp19:0.0035636480020000416,sp20:0.0035636480020000416):0.0450496733800001):0.13675683785009132,((sp7:0.008316409561679644,sp8:0.008316409561679644):0.0887005381275639,(sp17:0.012301279822000133,sp18:0.012301279822000133):0.08471566786724341):0.08835321154284792):0.13527593549993097,sp5:0.32064609473202244):0.06524163333327881):0.052395737516698904):0.024399052287571943,sp3:0.4626825178695721):0.478327037012428):0.15909207830000005,(sp2:0.1550889664224112,((sp15:0.029907699592000014,sp16:0.029907699592000014):0.0977520085900001,(sp10:0.06324471327385377,(sp9:0.057467097563870626,sp11:0.057467097563870626):0.0057776157099831416):0.06441499490814635):0.027429258240411092):0.945012666759589):0.0;";
 
         String trait0Values = "sp1=0.0387876829138803988,sp2=-0.0261650640045382014,sp3=0.0000780613211212051,sp4=0.0640955976744835010,sp5=0.0631755463800323935,sp6=0.0175265726505994986,sp7=0.0285494149210851998,sp8=0.0034181730917631800,sp9=0.0381431935689817980,sp10=0.0429503413943981976,sp11=0.0322004948111379030,sp12=0.0470716865963385980,sp13=0.0547267264548012972,sp14=0.0392330272674960984,sp15=-0.0039068533176126897,sp16=0.0182309457961658990,sp17=0.0801855614646413001,sp18=0.0790165878526876003,sp19=0.0521209102564738000,sp20=0.0470196223928652998";
 
@@ -109,22 +111,22 @@ public class MosseTreeLikelihoodProblem44Tree {
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
-        Double[] betasArray = {2.7904374228724407E-4};
-        double meanSubst =  0.40885606957565945; // 0.05; // mean substitution rate
-        double epsilon = 2.9448591950095023E-6;
+        Double[] betasArray = { 0.0 }; // 3.632238571467065E-4 };
+        double meanSubst =  0.050033792386930856; // 0.05; // mean substitution rate
+        double epsilon = 6.98738781637296E-6;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
         Double[] y0 = new Double[] { 0.0 };
-        Double[] y1 = new Double[] { 46.047476599891866 }; // speciation rate
-        Double[] r = new Double[] { 1319.2866478651451 };
-        Double[] yValue = new Double[] { 2.976689839051731E-4 }; // extinction rate
+        Double[] y1 = new Double[] { 8.096057330537827 }; // speciation rate
+        Double[] r = new Double[] { 171.92056820137893 };
+        Double[] yValue = new Double[] { 6.7718723223281545 }; // extinction rate
 
         // Parameters for Mosse distribution
         double dx = 0.0001;          // distance between xs
         Double[] drift = new Double[] { 0.0 };          // drift parameter
         
-        Double[] diffusion = new Double[] { 2.068683743616561E-7 };    // diffusion parameter
+        Double[] diffusion = new Double[] { 2.3124558018078874E-8 };    // diffusion parameter
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
@@ -132,23 +134,26 @@ public class MosseTreeLikelihoodProblem44Tree {
         Tree tree = new Tree(newick);
 
         // For HKY model
-        RealParameter kappa = new RealParameter("7.280840843737067");
+        RealParameter kappa = new RealParameter("5.291555427300904");
         RealParameter freqsParam = new RealParameter("0.099225 0.11265 0.02075 0.767375");
         Frequencies freqs = new Frequencies();
         freqs.initByName("frequencies", freqsParam);
+        /*
         HKY hky = new HKY();
         hky.initByName(
         		"kappa", kappa,
         		"frequencies", freqs
-        );
+        );*/
+        JukesCantor jc = new JukesCantor();
         
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
                 "mutationRate", "1.0",
-                // "gammaCategoryCount", "1",
-                "gammaCategoryCount", "4",
-                "shape", "0.012144571897590052",
-                "substModel", hky);
+                "gammaCategoryCount", "1",
+                // "gammaCategoryCount", "4",
+                // "shape", "12.025021537654434",
+                // "substModel", hky);
+                "substModel", jc);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
         tipModel.initByName(
@@ -196,7 +201,7 @@ public class MosseTreeLikelihoodProblem44Tree {
                 "threads", 8                               // number of cpu threads
         );
 
-        MosseTreeLikelihoodMT likelihood = new MosseTreeLikelihoodMT();
+        MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
         likelihood.initByName(
                 "data", alignment,
                 "tree", tree,
@@ -206,7 +211,7 @@ public class MosseTreeLikelihoodProblem44Tree {
                 "traits", traitsList,
                 "lambdaFunc", linearFunc,
                 "muFunc", constFunc,
-                "tc", 0.100000000006
+                "tc",  0.11001016331820002
                 );
 
         // using observed root
