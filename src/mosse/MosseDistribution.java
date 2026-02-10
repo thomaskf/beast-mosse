@@ -20,7 +20,10 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	final public Input<IntegerParameter> nxInput = new Input<>("nx", "number of bins for substitution rate",
 			new IntegerParameter("1024"));
-	final public Input<RealParameter> dxInput = new Input<>("dx", "distance between xs", new RealParameter("0.0001"));
+	
+	// change dx from an input value to a calculated value
+	// final public Input<RealParameter> dxInput = new Input<>("dx", "distance between xs", new RealParameter("0.0001"));
+	
 	final public Input<RealParameter> driftInput = new Input<>("drift", "drift parameter", new RealParameter("0.0"));
 	final public Input<RealParameter> diffusionInput = new Input<>("diffusion", "diffusion parameter",
 			new RealParameter("0.001"));
@@ -38,7 +41,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	protected int resolution;
 	protected int nx;
-	protected double dx;
+	// protected double dx;
 	protected int numRateBins_h;
 	protected int numRateBins_l;
 	
@@ -106,11 +109,6 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		} else {
 			nx = nxInput.defaultValue.getValue();
 		}
-		if (dxInput.get() != null) {
-			dx = dxInput.get().getValue();
-		} else {
-			dx = dxInput.defaultValue.getValue();
-		}
 		
 		numRateBins_h = nx * resolution;
 		numRateBins_l = nx;
@@ -121,24 +119,26 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 		width = widthInput.get().getValue();
 		
-		// compute padLeft, padRight, and numEntries
-		computePadNumEntries();
-		
 		if (threadsInput.get() != null) {
 			numThreads = threadsInput.get().intValue();
 		}
-
-		int[] nd = { 5 };
-		int flags = FLAG_FFTW3_DEFAULT;
+		
+		ptr_l = null;
+		ptr_h = null;
+	}
+	
+	public void initFFTPtrs(double dx) {
 		ptr_l = new long[numThreads];
 		ptr_h = new long[numThreads];
+		int[] nd = { 5 };
+		int flags = FLAG_FFTW3_DEFAULT;
 		for (int i = 0; i < numThreads; i++) {
 			ptr_l[i] = makeMosseFFT(nx, dx * resolution, nd, flags);
 			ptr_h[i] = makeMosseFFT(nx * resolution, dx, nd, flags);
 		}
 	}
 
-	public void computePadNumEntries() {
+	public void computePadNumEntries(double dx) {
 		double mean = drift * dt;
 		double sd = Math.sqrt(diffusion * dt);
 		

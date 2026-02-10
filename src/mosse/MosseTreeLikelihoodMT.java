@@ -30,6 +30,9 @@ public class MosseTreeLikelihoodMT extends MosseTreeLikelihood implements AutoCl
     public void initAndValidate() {
         super.initAndValidate();
         pool = (treeModel.numThreads == 1) ? null : new ForkJoinPool(treeModel.numThreads);
+
+		// initialize the fft pointers
+		treeModel.initFFTPtrs(dx_h);
     }
 
     @Override
