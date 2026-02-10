@@ -506,7 +506,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = nx; i < totSize; i++) {
 			vsum += vars[i];
 		}
-		vsum *= dx;
+		// vsum *= dx;
 		for (int i = nx; i < totSize; i++) {
 			vars[i] /= vsum;
 		}
