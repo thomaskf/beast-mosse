@@ -4,6 +4,7 @@ import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -84,6 +85,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected MosseTipLikelihood tipModel;
 	protected MosseDistribution treeModel;
 	protected double tc; // time < tc for high resolution, while time >= tc for low resolution
+	
+	// rate for the bins
+	protected double rmin; // minimum of rate
+	protected double rmax; // maximum of rate
 
 	// variables for high resolution
 	protected int numRateBins_h;
@@ -142,13 +147,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		resolution = treeModel.resolution;
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
 
+		// compute the min and the max value of rate for the bins
+		double x0 = tipModel.meanSubstitutionInput.get().getValue();
+		computeRminRmax(x0); // assign to the variables rmin and rmax
+		double dx = computeDx();
+		
 		// high resolution
 		numRateBins_h = treeModel.numRateBins_h;
-		dx_h = treeModel.dx;
+		dx_h = dx;
 		startSubsRate_h = dx_h;
+		
 		// low resolution
 		numRateBins_l = treeModel.numRateBins_l;
-		dx_l = treeModel.dx * resolution;
+		dx_l = dx * resolution;
 		startSubsRate_l = dx_l;
 				
 		// maximum value of numRateBins (always numRateBins_h)
@@ -237,6 +248,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// for each node, store numRateBins
 		// numRateBinsPerNode = new int[nodeCount];
 		
+		// initialize the fft pointers
+		treeModel.initFFTPtrs(dx_h);
+		
 		// for this class, always single-threaded
 		pool = null;
 		
@@ -248,10 +262,41 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		count= 0;
 	}
 
+	// compute the values of rmin and rmax
+	protected void computeRminRmax(double x0) {
+		List<Node> leaves = tree.getExternalNodes();
+		List<Double> traitList = new ArrayList<>();
+		for (int i = 0; i < leaves.size(); i++) {
+			double[] traitValues = getTraits(leaves.get(i));
+			for (double value : traitValues) {
+				traitList.add(value);
+			}
+		}
+		double traitmin = Collections.min(traitList).doubleValue();
+		double traitmax = Collections.max(traitList).doubleValue();
+		double w = 5.0;
+		double betamin = -3.0; // lower bound of beta
+		double betamax = 3.0; // upper bound of beta
+		double rminmin = x0 - w/2 * betamin * traitmax + (w/2+1) * betamin * traitmin;
+		double rminmax = x0 - w/2 * betamax * traitmax + (w/2+1) * betamax * traitmin;
+		double rmaxmin = x0 + (w/2+1) * betamin * traitmax - w/2 * betamin * traitmin;
+		double rmaxmax = x0 + (w/2+1) * betamax * traitmax - w/2 * betamax * traitmin;
+		List<Double> x_array = new ArrayList<>();
+		x_array.add(rminmin); x_array.add(rminmax); x_array.add(rmaxmin); x_array.add(rmaxmax);
+		rmin = Collections.min(x_array).doubleValue();
+		rmax = Collections.max(x_array).doubleValue();
+		System.out.println("rmin = " + rmin + "; rmax = " + rmax);
+	}
+	
+	// compute the bin size -- dx
+	protected double computeDx() {
+		return (rmax-rmin) / 4096.0; // divided by 1024 * 4
+	}
+	
 	protected void computeLambdaMus() {
 		
 		// update the values of pads and numEntries
-		treeModel.computePadNumEntries();
+		treeModel.computePadNumEntries(dx_h);
 
 		// compute the padLeft, padRight, and numEntries for low and high resolution
 		int padLeft_l = treeModel.padLeft_l;
@@ -545,27 +590,34 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			padLeft = treeModel.padLeft_h;
 		}
 		int sqStateCount = stateCount * stateCount;
+		
+		double[] identityMatrix = new double[sqStateCount];
+		for (int i = 0; i < stateCount; i++)
+			identityMatrix[i * stateCount + i] = 1.0;
+		
 		double[] transitionMatrix = new double[sqStateCount];
-		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx * rate, transitionMatrix); // startTime is greater
-																								// than endTime
+		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx * rate, transitionMatrix); // startTime is greater than endTime
+		
+		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
+		DoubleMatrix matrixTran = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
+		double currX = rmin;
+		
 		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
-		DoubleMatrix matrixOne = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
-		DoubleMatrix matrixTwo = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
-
+		
 		// skip the first padLeft entries
 		for (int i = 0; i < padLeft; i++) {
-			// multiplication of matrix
-			matrixTwo = matrixOne.mmul(matrixTwo);
+			if (currX > 0.0) {
+				matrixCurr = matrixCurr.mmul(matrixTran);
+			}
+			currX += dx;
 		}
-		// int l = 0;
-		// update transitionMatrices
-		transitionMatrices[0] = matrixTwo.toArray();
-		// for (int i = padLeft; i < numEntries + padLeft - 1; i++) {
-		for (int l = 1; l < numEntries; l++) {
-			// multiplication of matrix
-			matrixTwo = matrixOne.mmul(matrixTwo);
-			// l++;
-			transitionMatrices[l] = matrixTwo.toArray();
+		
+		for (int i = 0; i < numEntries; i++) {
+			if (currX > 0.0) {
+				matrixCurr = matrixCurr.mmul(matrixTran);
+			}
+			transitionMatrices[i] = matrixCurr.toArray();
+			currX += dx;
 		}
 
 		return Arrays.stream(transitionMatrices).flatMapToDouble(Arrays::stream).toArray();
@@ -1196,6 +1248,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	@Override
 	public double calculateLogP() {
+		// check whether beta is out of the range
+		if (tipModel.betaOutOfRange(-3.0, 3.0))
+			return Double.NEGATIVE_INFINITY;
 		traverseFull(tree.getRoot());
 		calcLogP();
 		printLogP();
@@ -1206,6 +1261,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
 		System.out.println("tc = " + tc);
+		System.out.println("dx_h = " + dx_h);
+		System.out.println("rmin = " + rmin);
 		printSiteModelParameters();
 		tipModel.printParams();
 		treeModel.printParams();
@@ -1441,5 +1498,4 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (error_found)
 			System.exit(1);
 	}
-    
 }
