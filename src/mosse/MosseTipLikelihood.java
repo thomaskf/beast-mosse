@@ -146,15 +146,19 @@ public class MosseTipLikelihood extends CalculationNode {
 	}
 	
 	public void printParams() {
-		System.out.println("beta = " + beta.toString());
-		System.out.println("epsilon = " + epsilon.toString());
-		System.out.println("subst = " + meanSubstitution.toString());
+		System.out.print("beta =");
+		for (int i = 0; i< beta.getDimension(); i++) {
+			System.out.print(" " + beta.getValue(i));
+		}
+		System.out.println();
+		System.out.println("epsilon = " + epsilon.getValue());
+		System.out.println("meanSubstitution = " + meanSubstitution.getValue());
 	}
 	
 	public boolean betaOutOfRange(double bmin, double bmax) {
 		RealParameter betas = betaInput.get();
 		for (int i = 0; i < betas.getDimension(); i++) {
-			if (beta.getValue(i) < bmin || beta.getValue() > bmax) {
+			if (betas.getValue(i) < bmin || betas.getValue(i) > bmax) {
 				return true;
 			}
 		}
