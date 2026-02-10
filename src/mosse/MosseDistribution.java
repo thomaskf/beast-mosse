@@ -296,7 +296,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	}
 	
 	public void printParams() {
-		System.out.println("drift = " + drift + "; diffusion = " + diffusion);
+		System.out.println("drift = " + drift + "; diffusion = " + diffusion + "; nx = " + nx + "; nx = " + nx + "; dt = " + dt + "; width = " + width + "; resolution = " + resolution);
+		System.out.println("padLeft_h = " + padLeft_h + "; padLeft_l = " + padLeft_l + "; padRight_h = " + padRight_h + "; padRight_l = " + padRight_l + "; numEntries_h = " + numEntries_h + "; numEntries_l = " + numEntries_l);
 	}
 	
 	@Override
