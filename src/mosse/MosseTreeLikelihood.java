@@ -1,5 +1,6 @@
 package mosse;
 
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
@@ -149,18 +150,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		// compute the min and the max value of rate for the bins
 		double x0 = tipModel.meanSubstitutionInput.get().getValue();
-		computeRminRmax(x0); // assign to the variables rmin and rmax
-		double dx = computeDx();
+		computeRminRmaxDx(x0, treeModel.nx, resolution); // assign to the variables rmin, rmax, and dx_h
 		
 		// high resolution
 		numRateBins_h = treeModel.numRateBins_h;
-		dx_h = dx;
-		startSubsRate_h = dx_h;
+		startSubsRate_h = rmin;
 		
 		// low resolution
 		numRateBins_l = treeModel.numRateBins_l;
-		dx_l = dx * resolution;
-		startSubsRate_l = dx_l;
+		dx_l = dx_h * resolution;
+		startSubsRate_l = rmin;
 				
 		// maximum value of numRateBins (always numRateBins_h)
 		numRateBins_max = numRateBins_h;
@@ -262,8 +261,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		count= 0;
 	}
 
-	// compute the values of rmin and rmax
-	protected void computeRminRmax(double x0) {
+	// compute the values of rmin, rmax, and dx
+	protected void computeRminRmaxDx(double x0, int nx, int resolution) {
 		List<Node> leaves = tree.getExternalNodes();
 		List<Double> traitList = new ArrayList<>();
 		for (int i = 0; i < leaves.size(); i++) {
@@ -285,12 +284,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		x_array.add(rminmin); x_array.add(rminmax); x_array.add(rmaxmin); x_array.add(rmaxmax);
 		rmin = Collections.min(x_array).doubleValue();
 		rmax = Collections.max(x_array).doubleValue();
-		System.out.println("rmin = " + rmin + "; rmax = " + rmax);
-	}
-	
-	// compute the bin size -- dx
-	protected double computeDx() {
-		return (rmax-rmin) / 4096.0; // divided by 1024 * 4
+		dx_h = (rmax-rmin) / (nx * resolution);
+		
+		int num_dec_pl = 5;
+		dx_h = BigDecimal.valueOf(dx_h).setScale(num_dec_pl, RoundingMode.HALF_UP).doubleValue(); // round to 5 decimal places
+		
+		if (rmin < 0) {
+			int nBins = ((int) (Math.abs(rmin) / dx_h / resolution) ) * resolution ; // has to be divisible by 4
+			rmin = - dx_h * nBins;
+		}
+		
+		rmax = rmin + dx_h * nx * resolution;
 	}
 	
 	protected void computeLambdaMus() {
@@ -391,7 +395,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		boolean[] updated = new boolean[subpatns];
 		Arrays.fill(updated, false);
 		
-		double subsInterval = startSubsRate_h;
+		double subsInterval = dx_h;
 		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
 				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
@@ -601,20 +605,24 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
 		DoubleMatrix matrixTran = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
 		double currX = rmin;
+		int multiNum = 0;
 		
 		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
 		
+		double delta = dx / 100.0;
 		// skip the first padLeft entries
 		for (int i = 0; i < padLeft; i++) {
-			if (currX > 0.0) {
+			if (currX > delta) {
 				matrixCurr = matrixCurr.mmul(matrixTran);
+				multiNum++;
 			}
 			currX += dx;
 		}
 		
 		for (int i = 0; i < numEntries; i++) {
-			if (currX > 0.0) {
+			if (currX > delta) {
 				matrixCurr = matrixCurr.mmul(matrixTran);
+				multiNum++;
 			}
 			transitionMatrices[i] = matrixCurr.toArray();
 			currX += dx;
@@ -879,7 +887,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int st = subpatnid * singlePartialSizeParent;
 		System.arraycopy(patnPartialsResult, 0, partialsAllPatterns, st, singlePartialSizeParent);
 		
-		return logp_patn[0] + leftCompensate + rightCompensate;
+		double compensate = logp_patn[0] + leftCompensate + rightCompensate;
+		// System.out.println("node: " + node.getNr() + "; patternIndex = " + patternIndex + " has compensate = " + compensate);
+		return compensate;
 	 }
 	
 	/**
@@ -971,6 +981,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             	patternCatLogLikes = new double[totaljobs];
             }
             
+            boolean conditionSurv = false;
 	        if (pool == null) {
 	        	// single thread
 	        	for (int jobid = 0; jobid < totaljobs; jobid++) {
@@ -983,7 +994,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                boolean conditionSurv = true;
 		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
@@ -1000,7 +1010,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                boolean conditionSurv = true;
 		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
@@ -1044,7 +1053,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        }
 	        }
 	        
-	        /*
 	        // show the patternCatLogLikes array
 	        System.out.println("patternCatLogLikes:");
 	        int k;
@@ -1071,7 +1079,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	System.out.print("," + data.getPatternWeight(j));
 	        }
 	        System.out.println();
-	        */
         }
 	}
 
@@ -1101,7 +1108,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		double[] x = getSubstitutionRates(treeModel.numEntries_l, startSubsRate_l, dx_l, treeModel.padLeft_l);
 		// root options
-		double[][] rootP = getRootProb(dRoot, x, nx, rootOption, rootFunc);
+		double[][] rootP = getRootProb(dRoot, x, nx, dx, rootOption, rootFunc);
 
 		if (conditionSurv) {
 			eRoot = getColumn(vals, 0); // get root E values as a column
@@ -1110,8 +1117,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				double lambdaX = lambdas_l[i];
 				// sanity check
 				final double min_value = 1e-30;
-				if (1-eRoot[i] < min_value)
+				if (1-eRoot[i] < min_value) {
 					return Double.NEGATIVE_INFINITY;
+				}
 				// element-wise division of d column
 				double factor = 1.0 / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
 				for (int j = 0; j < stateCount; j++)
@@ -1149,8 +1157,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return dValues;
 	}
 
-	private double[][] getRootProb(double[][] dRoot, double[] x, int nx, int rootOption, LinkFn rootFunc) {
-		double dx = x[1] - x[0];
+	private double[][] getRootProb(double[][] dRoot, double[] x, int nx, double dx, int rootOption, LinkFn rootFunc) {
+		
 		int numSubstBins = dRoot.length;
 		int ntypes = dRoot[0].length;
 		double[][] p = new double[numSubstBins][ntypes];
@@ -1469,12 +1477,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
         return max + Math.log(sum);
     }
 
-	protected void show1DArray(double[] array, String desc) {
+	protected static void show1DArray(double[] array, String desc) {
 		System.out.println(desc);
 		boolean error_found = false;
 		int max_num_per_line = 30;
 		for (int i = 0; i < array.length; i++) {
-			if (i % max_num_per_line == 0)
+			if (i > 0 && i % max_num_per_line == 0)
 				System.out.println();
 			System.out.print("," + array[i]);
 			if (Double.isNaN(array[i]))
@@ -1485,7 +1493,36 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			System.exit(1);
 	}
 	
-	protected void show2DArray(double[][] array, String desc) {
+	protected static void show1DArray(double[] array, String desc, int max_num_per_line) {
+		System.out.println(desc);
+		boolean error_found = false;
+		for (int i = 0; i < array.length; i++) {
+			if (i > 0 && i % max_num_per_line == 0)
+				System.out.println();
+			System.out.print("," + array[i]);
+			if (Double.isNaN(array[i]))
+				error_found = true;
+		}
+		System.out.println();
+		if (error_found)
+			System.exit(1);
+	}
+
+	protected static void show1DArrayTranspose(double[] array, String desc, int items_per_col) {
+		System.out.println(desc);
+		assert (array.length % items_per_col == 0);
+		int ncols = array.length / items_per_col;
+		for (int i = 0; i < items_per_col; i++) {
+			for (int j = 0; j < ncols; j++) {
+				if (j > 0)
+					System.out.print(",");
+				System.out.print(array[j*items_per_col + i]);
+			}
+			System.out.println();
+		}
+	}
+
+	protected static void show2DArray(double[][] array, String desc) {
 		System.out.println(desc);
 		boolean error_found = false;
 		for (int i = 0; i < array.length; i++) {
