@@ -292,6 +292,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (rmin < 0) {
 			int nBins = ((int) (Math.abs(rmin) / dx_h / resolution) ) * resolution ; // has to be divisible by 4
 			rmin = - dx_h * nBins;
+		} else {
+			rmin = 0.0;
 		}
 		
 		rmax = rmin + dx_h * nx * resolution;
