@@ -1131,7 +1131,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		double[][] rootProduct = getProduct(rootP, dRoot);
 
-		double logProb = Math.log(getSum(rootProduct) * dx);
+		// double logProb = Math.log(getSum(rootProduct) * dx);
+		double logProb = Math.log(getSum(rootProduct));
 
 		return logProb;
 	}
@@ -1168,11 +1169,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (rootOption == ROOT_FLAT) {
 			for (int i = 0; i < numSubstBins; i++) {
 				for (int j = 0; j < ntypes; j++) {
-					p[i][j] = 1 / ((nx - 1) * ntypes * dx);
+					p[i][j] = 1 / ((nx - 1) * ntypes);
+					// p[i][j] = 1 / ((nx - 1) * ntypes * dx);
 				}
 			}
 		} else if (rootOption == ROOT_OBS) {
-			double factor = 1.0 / (getSum(dRoot) * dx);
+			double factor = 1.0 / getSum(dRoot);
+			// double factor = 1.0 / (getSum(dRoot) * dx);
 			for (int i = 0; i < numSubstBins; i++) {
 				for (int j = 0; j < ntypes; j++) {
 					p[i][j] = dRoot[i][j] * factor;
@@ -1184,7 +1187,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (rootOption == ROOT_EQUI) { // check this
 				for (int i = 0; i < numSubstBins; i++) {
 					for (int j = 0; j < ntypes; j++) {
-						p[i][j] = rootI[j] * dRoot[i][j] / (getColumnSum(dRoot, j) * dx); // mapply
+						// p[i][j] = rootI[j] * dRoot[i][j] / (getColumnSum(dRoot, j) * dx); // mapply
+						p[i][j] = rootI[j] * dRoot[i][j] / getColumnSum(dRoot, j); // mapply
 					}
 				}
 			} else if (rootOption == ROOT_GIVEN) { // test this with an appropriate function
