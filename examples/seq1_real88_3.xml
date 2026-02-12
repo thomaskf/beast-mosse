@@ -93,7 +93,7 @@
     <!-- <tree id="tree" spec="beast.base.evolution.tree.Tree"/> -->
     
     <tree id='tree' spec='beast.base.evolution.tree.TreeParser' IsLabelledNewick='true'
-		newick='((((((sp16:0.07720873184,(sp17:0.06452587402,sp18:0.06452587402)nd19:0.01268285782)nd15:0.2063851389,sp10:0.2835938707)nd13:0.06989078221,(sp8:0.3121550077,sp9:0.3121550077)nd14:0.04132964525)nd12:0.07546300403,sp5:0.4289476569)nd10:0.3214327956,(sp3:0.6526965639,sp4:0.6526965639)nd11:0.0976838886)nd2:0.6948756616,((sp1:1.131083608,(sp6:0.3658051434,sp7:0.3658051434)nd6:0.7652784642)nd4:0.2032880925,((sp11:0.2487647919,(sp13:0.1261826814,(sp14:0.08413900772,sp15:0.08413900772)nd18:0.04204367367)nd16:0.1225821105)nd7:0.8176362408,((sp12:0.2006336451,(sp19:0.005169135364,sp20:0.005169135364)nd17:0.2006336451)nd9:0.6828081043,sp2:0.8834417494)nd8:0.1829592832)nd5:0.2679706674)nd3:0.1108844141)nd1;'
+		newick='(((sp1:1.136252742864,(sp6:0.370974278664,sp7:0.370974278664):0.7652784641999999):0.20328809250000002,((sp2:0.888610884764,(sp12:0.2058027804639999,(sp19:0.005169135363999988,sp20:0.005169135363999988):0.20063364509999992):0.6828081043):0.1829592832,(sp11:0.253933927164,(sp13:0.13135181666399998,(sp14:0.08930814299399992,sp15:0.08930814299399992):0.04204367367000006):0.12258211050000001):0.8176362408):0.2679706674):0.11088441410000005,((sp3:0.657865699264,sp4:0.657865699264):0.09768388859999999,(sp5:0.4341167922639999,((sp8:0.3173241429839999,sp9:0.3173241429839999):0.04132964525000005,(sp10:0.28876300602400007,(sp16:0.08237786712400008,(sp17:0.06969500930400008,sp18:0.06969500930400008):0.012682857820000004):0.2063851389):0.06989078220999989):0.07546300402999995):0.32143279560000004):0.6948756616):0.0;'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood"
@@ -121,13 +121,13 @@
     <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dt="0.01" width="5" resolution="4" threads="16">
+        nx="1024" dt="0.001" width="5" resolution="4" threads="32">
         <drift id="drift" spec="parameter.RealParameter">0.0</drift>
         <diffusion id="diffusion" spec="parameter.RealParameter">0.0005</diffusion>
     </MosseDistribution>
 
     <!-- Link function parameters -->
-    <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0</parameter>
+    <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.00001</parameter>
     <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.25</parameter>
     <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">30</parameter>
     <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.0046</parameter>
