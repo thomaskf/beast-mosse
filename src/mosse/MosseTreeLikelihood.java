@@ -1055,6 +1055,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        }
 	        }
 	        
+	        /*
 	        // show the patternCatLogLikes array
 	        System.out.println("patternCatLogLikes:");
 	        int k;
@@ -1081,6 +1082,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	System.out.print("," + data.getPatternWeight(j));
 	        }
 	        System.out.println();
+	        */
         }
 	}
 
