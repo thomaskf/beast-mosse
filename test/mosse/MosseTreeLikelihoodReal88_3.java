@@ -118,7 +118,7 @@ public class MosseTreeLikelihoodReal88_3 {
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
-        Double[] y0 = new Double[] { 0.0 };
+        Double[] y0 = new Double[] { 0.00001 };
         Double[] y1 = new Double[] { 2.25 }; // speciation rate
         Double[] r = new Double[] {  30.0 };
         Double[] yValue = new Double[] { 0.0046 }; // extinction rate
