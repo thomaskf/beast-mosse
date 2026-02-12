@@ -70,7 +70,7 @@ public class MosseTipLikelihood extends CalculationNode {
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double x = startSubsRate + i * subsInterval;
-			tipLikelihoods[i] = normalDist.density(x);
+			tipLikelihoods[i] = normalDist.density(x) * subsInterval;
 		}
 		// TODO make logscale consistent with TreeLikelihood
 
