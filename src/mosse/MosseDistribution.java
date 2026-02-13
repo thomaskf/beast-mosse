@@ -1,5 +1,6 @@
 package mosse;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
@@ -41,7 +42,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 	protected int resolution;
 	protected int nx;
-	// protected double dx;
+	protected double dx_h; // assigned by initFFTPtrs()
 	protected int numRateBins_h;
 	protected int numRateBins_l;
 	
@@ -59,8 +60,8 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	
 	// number of threads
 	protected int numThreads;
-	protected long[] ptr_l; // ptr for low resolution
-	protected long[] ptr_h; // ptr for high resolution
+	ArrayList<Long> ptr_l_pool; // ptr for low resolution
+	ArrayList<Long> ptr_h_pool; // ptr for high resolution
 	
 	// for storing during mcmc
 	protected double storedrift;
@@ -122,19 +123,33 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		if (threadsInput.get() != null) {
 			numThreads = threadsInput.get().intValue();
 		}
-		
-		ptr_l = null;
-		ptr_h = null;
 	}
 	
-	public void initFFTPtrs(double dx) {
-		ptr_l = new long[numThreads];
-		ptr_h = new long[numThreads];
+	public void initFFTPtrs(double dx_h) {
 		int[] nd = { 5 };
 		int flags = FLAG_FFTW3_DEFAULT;
+		ptr_l_pool = new ArrayList<Long>();
+		ptr_h_pool = new ArrayList<Long>();
 		for (int i = 0; i < numThreads; i++) {
-			ptr_l[i] = makeMosseFFT(nx, dx * resolution, nd, flags);
-			ptr_h[i] = makeMosseFFT(nx * resolution, dx, nd, flags);
+			long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
+			long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
+			ptr_l_pool.add(ptr_l);
+			ptr_h_pool.add(ptr_h);
+		}
+		this.dx_h = dx_h;
+	}
+	
+	public synchronized void resizePtrPool(int newsize) {
+		int[] nd = { 5 };
+		int flags = FLAG_FFTW3_DEFAULT;
+		if (newsize > ptr_l_pool.size()) {
+			int k = newsize - ptr_l_pool.size();
+			for (int i = 0; i < k; i++) {
+				long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
+				long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
+				ptr_l_pool.add(ptr_l);
+				ptr_h_pool.add(ptr_h);
+			}
 		}
 	}
 
@@ -219,10 +234,15 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 
 		// make mosse fft object pointer
 		long ptr;
+		
+		if (ptr_l_pool.size() <= threadID) {
+			resizePtrPool(threadID + 1);
+		}
+		
 		if (lowResolution)
-			ptr = ptr_l[threadID];
+			ptr = ptr_l_pool.get(threadID).longValue();
 		else
-			ptr = ptr_h[threadID];
+			ptr = ptr_h_pool.get(threadID).longValue();
 		
 		// long ptr = makeMosseFFT(nx, dx, nd, flags);
 
@@ -254,12 +274,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	public synchronized void close() throws Exception {
 	    if (closed) return;
 	    closed = true;
-	    for (int i = 0; i < numThreads; i++) {
-	        if (ptr_l[i] != 0) mosseFinalize(ptr_l[i]);
-	        if (ptr_h[i] != 0) mosseFinalize(ptr_h[i]);
-	        ptr_l[i] = 0;
-	        ptr_h[i] = 0;
+	    for (int i = 0; i < ptr_l_pool.size(); i++) {
+	        mosseFinalize(ptr_l_pool.get(i).longValue());
+	        mosseFinalize(ptr_h_pool.get(i).longValue());
 	    }
+	    ptr_l_pool.clear();
+	    ptr_h_pool.clear();
 	}
 	
 	@Override
