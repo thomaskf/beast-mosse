@@ -1034,6 +1034,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        		int s = p * numCategories;
 		        		for (int c = 0; c < numCategories; c++) {
 		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        			if (Double.isNaN(catLogLikes[c])) {
+		        				catLogLikes[c] = Double.NEGATIVE_INFINITY;
+		        			}
 		        			// System.out.print("," + catLogLikes[c]);
 		        		}
 		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
@@ -1046,6 +1049,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        		int s = p * numCategories;
 		        		for (int c = 0; c < numCategories; c++) {
 		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        			if (Double.isNaN(catLogLikes[c])) {
+		        				catLogLikes[c] = Double.NEGATIVE_INFINITY;
+		        			}
 		        		}
 		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
 		            });
