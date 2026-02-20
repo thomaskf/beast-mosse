@@ -164,7 +164,7 @@
             <stateNode idref="epsilon" />
             <stateNode idref="beta" />
             <stateNode idref="subst" />
-            <stateNode idref="alpha" />
+            <!-- alpha is fixed at 20 and excluded from state -->
             <stateNode idref="tree" />
             <stateNode idref="kappa" />
             <stateNode idref="drift" />
@@ -206,12 +206,7 @@
                     </distr>
                 </distribution>
             
-                <distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
-                    <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-                        <parameter name="M" spec="parameter.RealParameter" value="1.0"/>
-                        <parameter name="S" spec="parameter.RealParameter" value="10.0"/>
-                    </distr> <!--XH:increase sd=10-->
-                </distribution>
+                <!-- alphaPrior removed: alpha is fixed at 20 -->
                 
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
                     <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
@@ -310,8 +305,7 @@
 
         <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
             scaleFactor="0.75" weight="3.0"/>
-        <operator id="alphaScale" spec="ScaleOperator" parameter="@alpha"
-            scaleFactor="0.75" weight="3.0"/>
+        <!-- alphaScale operator removed: alpha is fixed at 20 -->
 
         <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
             scaleFactor="0.75" weight="3.0" />
