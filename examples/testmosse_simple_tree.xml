@@ -51,7 +51,7 @@
 
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dx="0.0001" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" />
+        nx="1024" drift="0.0" diffusion="0.001" dt="0.01" width="5" resolution="4" />
 
     <LogisticFunction
         id="logfunc" spec="mosse.LogisticFunction" curveYBaseValue="0.1"
@@ -70,13 +70,11 @@
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
-                <distribution id="mossetreelikelihoodfast"
-                    spec="mosse.MosseTreeLikelihoodFast" 
+                <distribution id="mossetreelikelihood"
+                    spec="mosse.MosseTreeLikelihood"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    startSubsRate="0.0001" numRateBins="1024"
-                    lambdaFunc="@logfunc" muFunc="@constfunc"
-                    resolution="4">
+                    lambdaFunc="@logfunc" muFunc="@constfunc">
                     <traits id="trait0"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
@@ -102,7 +100,7 @@
         <logger logEvery="10" fileName="examples/test.$(seed).log" model="@likelihood">
             <log idref='posterior' />
             <log idref='likelihood' />
-            <log idref="mossetreelikelihoodfast" />
+            <log idref="mossetreelikelihood" />
             <log idref="beta" />
             <log idref="epsilon" />
         </logger>

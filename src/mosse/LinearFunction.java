@@ -20,10 +20,10 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 
 	final public Input<RealParameter> curveYBaseValueInput = new Input<>("curveYBaseValue", "Curve y base value.",
 			Input.Validate.REQUIRED);
-	final public Input<RealParameter> curveMaxYInput = new Input<>("curveMaxY", "Curve maximum y value.",
+	final public Input<RealParameter> curveMaxYInput = new Input<>("curveMaxY", "Curve maximum y value (cap).",
 			Input.Validate.REQUIRED);
-	final public Input<RealParameter> logisticGrowthRateInput = new Input<>("logisticGrowthRate",
-			"Growth rate of logistic curve.", Input.Validate.REQUIRED);
+	final public Input<RealParameter> linearGrowthRateInput = new Input<>("linearGrowthRate",
+			"Slope (growth rate) of the linear function.", Input.Validate.REQUIRED);
 
 	private double y0, y1, r;
 	private static final String LINKFUNCTION = "linear";
@@ -32,7 +32,7 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 	public void initAndValidate() {
 		y0 = curveYBaseValueInput.get().getValue();
 		y1 = curveMaxYInput.get().getValue();
-		r = logisticGrowthRateInput.get().getValue();
+		r = linearGrowthRateInput.get().getValue();
 	}
 
 	@Override
@@ -50,8 +50,8 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 			refreshedSomething = true;
 		}
 
-		if (logisticGrowthRateInput.get().somethingIsDirty()) {
-			r = logisticGrowthRateInput.get().getValue();
+		if (linearGrowthRateInput.get().somethingIsDirty()) {
+			r = linearGrowthRateInput.get().getValue();
 			refreshedSomething = true;
 		}
 

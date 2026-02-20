@@ -173,7 +173,7 @@ public class MosseTreeLikelihoodReal88_3 {
         LinearFunction logistFunc = new LinearFunction();
         logistFunc.initByName( "curveYBaseValue",
                 y0rp, "curveMaxY", y1rp,
-                "logisticGrowthRate", rrp);
+                "linearGrowthRate", rrp);
         // constant
         RealParameter yValueRP = new RealParameter(yValue);
         ConstantLinkFn constFunc = new ConstantLinkFn();

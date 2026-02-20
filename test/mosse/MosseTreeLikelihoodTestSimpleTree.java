@@ -95,7 +95,6 @@ public class MosseTreeLikelihoodTestSimpleTree {
         Double[] yValue = new Double[] { 0.03 };
 
         // Parameters for Mosse distribution
-        double dx = 0.0001;          // distance between xs
         double drift = 0.0;          // drift parameter
         double diffusion = 0.001;    // diffusion parameter
         double dt = 0.01;            // time interval dt
@@ -148,7 +147,6 @@ public class MosseTreeLikelihoodTestSimpleTree {
         mosseDist.initByName(
                 "tree", tree,
                 "nx", Integer.toString(numBins),           // number of bins for substitution rate
-                "dx", Double.toString(dx),                 // distance between xs
                 "drift", Double.toString(drift),           // drift parameter
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
