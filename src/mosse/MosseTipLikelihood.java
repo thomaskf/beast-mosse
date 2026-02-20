@@ -57,12 +57,11 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods(double[] traits, int numBins, double startSubsRate, double subsInterval) {
+		if (beta.getDimension() != traits.length) {
+			throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+		}
 		double mean = meanSubstitution.getValue();
 		for (int i = 0; i < traits.length; i++) {
-			int numBetas = beta.getDimension();
-			if (numBetas != traits.length) {
-				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
-			}
 			mean += beta.getValue(i) * traits[i];
 		}
 		double sd = epsilon.getValue();
@@ -87,12 +86,11 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods_prob(double[] traits, int numBins, double startSubsRate, double subsInterval) {
+		if (beta.getDimension() != traits.length) {
+			throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+		}
 		double mean = meanSubstitution.getValue();
 		for (int i = 0; i < traits.length; i++) {
-			int numBetas = beta.getDimension();
-			if (numBetas != traits.length) {
-				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
-			}
 			mean += beta.getValue(i) * traits[i];
 		}
 		double sd = epsilon.getValue();
@@ -118,12 +116,11 @@ public class MosseTipLikelihood extends CalculationNode {
 	 * @return array of tip likelihoods
 	 */
 	public double[] getTipLikelihoods2_prob(double[] traits, int numBins, double startSubsRate, double endSubsRate) {
+		if (beta.getDimension() != traits.length) {
+			throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
+		}
 		double mean = meanSubstitution.getValue();
 		for (int i = 0; i < traits.length; i++) {
-			int numBetas = beta.getDimension();
-			if (numBetas != traits.length) {
-				throw new IllegalArgumentException("beta dimension not equal to trait dimension!");
-			}
 			mean += beta.getValue(i) * traits[i];
 		}
 		double sd = epsilon.getValue();

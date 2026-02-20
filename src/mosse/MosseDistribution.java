@@ -3,6 +3,7 @@ package mosse;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.lang.ref.Cleaner;
 
 import beast.base.core.Description;
 import beast.base.core.Input;
@@ -66,12 +67,15 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	// for storing during mcmc
 	protected double storedrift;
 	protected double storedDiffusion;
-//	protected int storedPadLeft_h;
-//	protected int storedPadLeft_l;
-//	protected int storedPadRight_h;
-//	protected int storedPadRight_l;
-//	protected int storedNumEntries_h;
-//	protected int storedNumEntries_l;
+	protected int storedPadLeft_h;
+	protected int storedPadLeft_l;
+	protected int storedPadRight_h;
+	protected int storedPadRight_l;
+	protected int storedNumEntries_h;
+	protected int storedNumEntries_l;
+
+	private static final Cleaner CLEANER = Cleaner.create();
+	private Cleaner.Cleanable cleanable;
 
 	static {
 		System.loadLibrary("test");
@@ -137,6 +141,19 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			ptr_h_pool.add(ptr_h);
 		}
 		this.dx_h = dx_h;
+
+		// Register a Cleaner so native FFT memory is released even if close() is
+		// never called explicitly — without relying on the deprecated finalize().
+		ArrayList<Long> lPool = ptr_l_pool;
+		ArrayList<Long> hPool = ptr_h_pool;
+		cleanable = CLEANER.register(this, () -> {
+			for (int i = 0; i < lPool.size(); i++) {
+				mosseFinalize(lPool.get(i).longValue());
+				mosseFinalize(hPool.get(i).longValue());
+			}
+			lPool.clear();
+			hPool.clear();
+		});
 	}
 	
 	public synchronized void resizePtrPool(int newsize) {
@@ -274,18 +291,11 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	public synchronized void close() throws Exception {
 	    if (closed) return;
 	    closed = true;
-	    for (int i = 0; i < ptr_l_pool.size(); i++) {
-	        mosseFinalize(ptr_l_pool.get(i).longValue());
-	        mosseFinalize(ptr_h_pool.get(i).longValue());
+	    if (cleanable != null) {
+	        cleanable.clean(); // runs the Cleaner action exactly once
+	        cleanable = null;
 	    }
-	    ptr_l_pool.clear();
-	    ptr_h_pool.clear();
 	}
-	
-	@Override
-    protected void finalize() throws Throwable {
-        close();
-    }
 
 	@Override
 	public void store() {
@@ -293,12 +303,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
-//		storedPadLeft_h = padLeft_h;
-//		storedPadLeft_l = padLeft_l;
-//		storedPadRight_h = padRight_h;
-//		storedPadRight_l = padRight_l;
-//		storedNumEntries_h = numEntries_h;
-//		storedNumEntries_l = numEntries_l;
+		storedPadLeft_h = padLeft_h;
+		storedPadLeft_l = padLeft_l;
+		storedPadRight_h = padRight_h;
+		storedPadRight_l = padRight_l;
+		storedNumEntries_h = numEntries_h;
+		storedNumEntries_l = numEntries_l;
 	}
 
 	@Override
@@ -307,12 +317,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
-//		padLeft_h = storedPadLeft_h;
-//		padLeft_l = storedPadLeft_l;
-//		padRight_h = storedPadRight_h;
-//		padRight_l = storedPadRight_l;
-//		numEntries_h = storedNumEntries_h;
-//		numEntries_l = storedNumEntries_l;
+		padLeft_h = storedPadLeft_h;
+		padLeft_l = storedPadLeft_l;
+		padRight_h = storedPadRight_h;
+		padRight_l = storedPadRight_l;
+		numEntries_h = storedNumEntries_h;
+		numEntries_l = storedNumEntries_l;
 	}
 	
 	public void printParams() {

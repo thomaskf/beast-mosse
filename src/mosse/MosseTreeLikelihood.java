@@ -1285,6 +1285,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		System.out.println("tc = " + tc);
 		System.out.println("dx_h = " + dx_h);
 		System.out.println("rmin = " + rmin);
+		System.out.println("rmax = " + rmax);
 		
 		printSiteModelParameters();
 		tipModel.printParams();

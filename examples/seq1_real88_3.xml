@@ -129,12 +129,12 @@
     <!-- Link function parameters -->
     <parameter id="curveYBaseValue" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.00001</parameter>
     <parameter id="curveMaxY" spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.25</parameter>
-    <parameter id="logisticGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">30</parameter>
+    <parameter id="linearGrowthRate" spec="beast.base.inference.parameter.RealParameter" lower="0.0">30</parameter>
     <parameter id="yV" spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.0046</parameter>
 
     <LinearFunction
         id="linearfunc" spec="mosse.LinearFunction" curveYBaseValue="@curveYBaseValue"
-        curveMaxY="@curveMaxY" logisticGrowthRate="@logisticGrowthRate" />
+        curveMaxY="@curveMaxY" linearGrowthRate="@linearGrowthRate" />
 
     <ConstantLinkFn
         id="constfunc" spec="mosse.ConstantLinkFn" yV="@yV" />
@@ -171,7 +171,7 @@
             <stateNode idref="diffusion" />
             <stateNode idref="curveYBaseValue" />
             <stateNode idref="curveMaxY" />
-            <stateNode idref="logisticGrowthRate" />
+            <stateNode idref="linearGrowthRate" />
             <stateNode idref="yV" />
 			<!--<stateNode idref="freqs" />-->
         </state>
@@ -274,8 +274,8 @@
 					</distr>
 				</distribution>
             	
-            	<distribution id="logisticGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@logisticGrowthRate">
-            		<distr id="LogNormal.logisticGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
+            	<distribution id="linearGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@linearGrowthRate">
+            		<distr id="LogNormal.linearGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
             			<parameter name="M" spec="parameter.RealParameter" value="0.0" estimate="false" />
             			<parameter name="S" spec="parameter.RealParameter" value="10.0" estimate="false" />
             		</distr> <!--XH:increase sd=10-->
@@ -329,7 +329,7 @@
             scaleFactor="0.75" weight="3.0" />
         <operator id="CurveMaxYScaler" spec="ScaleOperator" parameter="@curveMaxY"
             scaleFactor="0.75" weight="3.0" />
-        <operator id="LogisticGrowthRateScaler" spec="ScaleOperator" parameter="@logisticGrowthRate"
+        <operator id="LinearGrowthRateScaler" spec="ScaleOperator" parameter="@linearGrowthRate"
             scaleFactor="0.75" weight="3.0" />
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
             scaleFactor="0.75" weight="3.0" />
@@ -360,7 +360,7 @@
             <log idref="kappa" />
             <log idref="curveYBaseValue" />
             <log idref="curveMaxY" />
-            <log idref="logisticGrowthRate" />
+            <log idref="linearGrowthRate" />
             <log idref="yV" />
         </logger>
         <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
