@@ -398,7 +398,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		Arrays.fill(updated, false);
 		
 		double subsInterval = dx_h;
-		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, treeModel.numEntries_h,
+		double[] tipLikelihoods = tipModel.getTipLikelihoods_prob(traitValues, treeModel.numEntries_h,
 				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
 		// compute the partial likelihood for single sub-pattern with categories
