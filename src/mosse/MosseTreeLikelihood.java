@@ -404,10 +404,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// compute the partial likelihood for single sub-pattern with categories
 		double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
 		// the first numRateBins_h positions are zeros for E initial values
-		int k = 0;
 		for (int c = 0; c < numCategories; c++) {
 			for (int i = 0; i < numRateBins_h; i++) {
-				patnPartials[c][k++] = 0.0;
+				patnPartials[c][i] = 0.0;
 			}
 		}
 		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
@@ -417,7 +416,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				int stateid = data.getPattern(taxonIndex, patternIndex);
 				boolean[] stateSet = data.getStateSet(stateid);
 				
-				k = numRateBins_h;
+				int k = numRateBins_h;
 				// D initial values
 				for (int state = 0; state < stateCount; state++) {
 					if (stateSet[state]) {
@@ -543,10 +542,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// normalize the values of vars
 
 		int nx = numRateBins_h;
-		double dx = dx_h;
+		// double dx = dx_h;
 		if (lowResolution) {
 			nx = numRateBins_l;
-			dx = dx_l;
+			// dx = dx_l;
 		}
 
 		int totSize = nx * numPlan;
@@ -561,6 +560,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = nx; i < totSize; i++) {
 			vars[i] /= vsum;
 		}
+		if (vsum <= 0.0)
+			return Double.NEGATIVE_INFINITY;
 		return Math.log(vsum);
 	}
 
@@ -607,7 +608,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
 		DoubleMatrix matrixTran = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
 		double currX = rmin;
-		int multiNum = 0;
+		// int multiNum = 0;
 		
 		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
 		
@@ -616,7 +617,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = 0; i < padLeft; i++) {
 			if (currX > delta) {
 				matrixCurr = matrixCurr.mmul(matrixTran);
-				multiNum++;
+				// multiNum++;
 			}
 			currX += dx;
 		}
@@ -624,7 +625,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = 0; i < numEntries; i++) {
 			if (currX > delta) {
 				matrixCurr = matrixCurr.mmul(matrixTran);
-				multiNum++;
+				// multiNum++;
 			}
 			transitionMatrices[i] = matrixCurr.toArray();
 			currX += dx;
