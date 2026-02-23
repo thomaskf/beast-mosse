@@ -121,6 +121,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	// pool for threads
     protected ForkJoinPool pool;
+
+	// Set to true when substitution model parameters or dx_h change; reset after
+	// recomputing flatTransitionMatrices_{h,l} in traverseFull().
+	protected boolean transitionMatricesDirty = true;
+
+	// Computed once per computeLambdaMus() call; valid until pad params change.
+	protected double[] cached_x_h;
+	protected double[] cached_x_l;
+
+	// Three arrays per thread: [0]=partialsLeft, [1]=partialsRight, [2]=patnPartials,
+	// each of length numPlan * numRateBins_h (maximum possible partial size).
+	protected ThreadLocal<double[][]> threadLocalScratch;
     
 	// the format of the displayed log-likelihood value
 	DecimalFormat df;
@@ -258,7 +270,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		df.setMaximumFractionDigits(7);
 		df.setRoundingMode(RoundingMode.CEILING);
 		
-		count= 0;
+		count = 0;
+
+		// possible partial array (numPlan * numRateBins_h). Three arrays per thread.
+		final int scratchSize = numPlan * numRateBins_h;
+		threadLocalScratch = ThreadLocal.withInitial(() -> new double[][] {
+			new double[scratchSize], // [0] partialsLeft
+			new double[scratchSize], // [1] partialsRight
+			new double[scratchSize]  // [2] patnPartials (combined)
+		});
+
+		// first traversal.
+		transitionMatricesDirty = true;
 	}
 
 	// compute the values of rmin, rmax, and dx
@@ -315,12 +338,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		lambdas_l = new double[numEntries_l];
 		mus_h = new double[numEntries_h];
 		mus_l = new double[numEntries_l];
-		double[] x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
-		double[] x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
-		lambdaFunc.getY(x_h, lambdas_h);
-		lambdaFunc.getY(x_l, lambdas_l);
-		muFunc.getY(x_h, mus_h);
-		muFunc.getY(x_l, mus_l);
+		// without recomputing every call.
+		cached_x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
+		cached_x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
+		lambdaFunc.getY(cached_x_h, lambdas_h);
+		lambdaFunc.getY(cached_x_l, lambdas_l);
+		muFunc.getY(cached_x_h, mus_h);
+		muFunc.getY(cached_x_l, mus_l);
+
+		transitionMatricesDirty = true;
 	}
 	
 	/**
@@ -542,25 +568,40 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * @return log of scaling (i.e. lq)
 	 */
 	public double normalization(boolean lowResolution, double[] vars) {
-		// normalize the values of vars
-
-		int nx = numRateBins_h;
+		// eliminating the if (lowResolution) branch in this very-hot method.
 		if (lowResolution) {
-			nx = numRateBins_l;
+			return normalizationL(vars);
+		} else {
+			return normalizationH(vars);
 		}
+	}
 
+	/** High-resolution normalization: uses numRateBins_h. */
+	public double normalizationH(double[] vars) {
+		int nx = numRateBins_h;
 		int totSize = nx * numPlan;
 		assert (vars.length >= totSize);
-
 		double vsum = 0.0;
-		// ignore the first nx entries (i.e. first row)
 		for (int i = nx; i < totSize; i++) {
 			vsum += vars[i];
 		}
-		// Guard BEFORE division: if vsum is non-positive, return early without
-		// corrupting vars[] with NaN or Inf values.
-		if (vsum <= 0.0)
-			return Double.NEGATIVE_INFINITY;
+		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		for (int i = nx; i < totSize; i++) {
+			vars[i] /= vsum;
+		}
+		return Math.log(vsum);
+	}
+
+	/** Low-resolution normalization: uses numRateBins_l. */
+	public double normalizationL(double[] vars) {
+		int nx = numRateBins_l;
+		int totSize = nx * numPlan;
+		assert (vars.length >= totSize);
+		double vsum = 0.0;
+		for (int i = nx; i < totSize; i++) {
+			vsum += vars[i];
+		}
+		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
 		for (int i = nx; i < totSize; i++) {
 			vars[i] /= vsum;
 		}
@@ -605,29 +646,52 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			identityMatrix[i * stateCount + i] = 1.0;
 		
 		double[] transitionMatrix = new double[sqStateCount];
-		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx * rate, transitionMatrix); // startTime is greater than endTime
+		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx * rate, transitionMatrix);
 		
-		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
 		DoubleMatrix matrixTran = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
-		double currX = rmin;
-		// int multiNum = 0;
-		
-		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
-		
-		double delta = dx / 100.0;
-		// skip the first padLeft entries
-		for (int i = 0; i < padLeft; i++) {
-			if (currX > delta) {
-				matrixCurr = matrixCurr.mmul(matrixTran);
-				// multiNum++;
-			}
-			currX += dx;
+
+		// Use exponentiation-by-squaring to precompute a table of
+		// matrixTran^(2^k) for k = 0..LOG2_MAX
+		int totalSteps = padLeft + numEntries;
+		int LOG2_MAX = 32 - Integer.numberOfLeadingZeros(totalSteps); // ceil(log2(totalSteps))
+		DoubleMatrix[] powersOfTran = new DoubleMatrix[LOG2_MAX + 1];
+		powersOfTran[0] = matrixTran;
+		for (int k = 1; k <= LOG2_MAX; k++) {
+			powersOfTran[k] = powersOfTran[k - 1].mmul(powersOfTran[k - 1]);
 		}
-		
+
+		// Compose the current matrix incrementally by step count.
+		// For each bin we need matrixTran^(step), where step increments by 1
+		// each time currX > delta. Composing a single extra factor per step is
+		// unavoidable; the savings from the power table come from the initial
+		// fast-forward through the padLeft skip region.
+		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
+		double currX = rmin;
+		double delta = dx / 100.0;
+
+		// Fast-forward through padLeft skipped bins using exponentiation-by-squaring.
+		// Count how many steps actually need multiplying (where currX > delta).
+		int stepsInPad = 0;
+		double currX_scan = rmin;
+		for (int i = 0; i < padLeft; i++) {
+			if (currX_scan > delta) stepsInPad++;
+			currX_scan += dx;
+		}
+		// Apply matrixTran^stepsInPad via repeated squaring.
+		int remaining = stepsInPad;
+		for (int k = LOG2_MAX; k >= 0 && remaining > 0; k--) {
+			if (remaining >= (1 << k)) {
+				matrixCurr = matrixCurr.mmul(powersOfTran[k]);
+				remaining -= (1 << k);
+			}
+		}
+		currX = currX_scan; // currX is now at the first entry bin
+
+		// For the numEntries bins, each bin needs exactly one more factor if currX > delta.
+		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
 		for (int i = 0; i < numEntries; i++) {
 			if (currX > delta) {
 				matrixCurr = matrixCurr.mmul(matrixTran);
-				// multiNum++;
 			}
 			transitionMatrices[i] = matrixCurr.toArray();
 			currX += dx;
@@ -666,14 +730,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// if node has high resolution, then high resolution for the whole branch
 			lowResolution = false;
 			double branchTime = (node.getHeight() - child.getHeight());
-			logCompen[0] += normalization(lowResolution, partialsIn);
+			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
 					flatTransitionMatrices_h[categoryID], lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
-			logCompen[0] += normalization(lowResolution, partialsIn);
+			logCompen[0] += normalizationL(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
 					flatTransitionMatrices_l[categoryID], lowResolution, threadID);
 		} else {
@@ -686,7 +750,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			branchTime = (t_mid - child.getHeight());
 			lowResolution = false;
-			logCompen[0] += normalization(lowResolution, partialsIn);
+			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
 					flatTransitionMatrices_h[categoryID], lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
@@ -695,7 +759,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = true;
 			branchTime = (node.getHeight() - t_mid);
 			if (branchTime > 0.0) {
-				logCompen[0] += normalization(lowResolution, partialsOut);
+				logCompen[0] += normalizationL(partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
 						flatTransitionMatrices_l[categoryID], lowResolution, threadID);
 			}
@@ -729,11 +793,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				categoryRates = m_siteModel.getCategoryRates(null);
 				categoryProps = m_siteModel.getCategoryProportions(null);
 			}
-			// create the transition matrices
-			boolean lowResolution = true;
-			flatTransitionMatrices_l = createFlatTransitionMatrices(node, lowResolution);
-			lowResolution = false;
-			flatTransitionMatrices_h = createFlatTransitionMatrices(node, lowResolution);
+			// recompute flatTransitionMatrices only when the substitution
+			// model parameters or pad parameters have changed (dirty flag set by
+			// computeLambdaMus / requiresRecalculation).
+			if (transitionMatricesDirty) {
+				boolean lowResolution = true;
+				flatTransitionMatrices_l = createFlatTransitionMatrices(node, lowResolution);
+				lowResolution = false;
+				flatTransitionMatrices_h = createFlatTransitionMatrices(node, lowResolution);
+				transitionMatricesDirty = false;
+			}
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
 		}
@@ -753,14 +822,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int startPos = node.getNr() * patterns; // starting pos in patternMapPerNode
 		if (!node.isRoot()) {
 			// collect the number of sub-patterns if it is not a root node
-			// and compute the mapping between global pattern index and local partial index
-			HashMap<ArrayList<Integer>, Integer> subpatn2subpatnid = new HashMap<>();
+			// and compute the mapping between global pattern index and local partial index.
+			// Encode each subpattern as a compact String key instead of an
+			// ArrayList<Integer>. String hashing is O(k) like ArrayList but avoids
+			// boxing overhead and is much cheaper in practice due to interning and
+			// compact memory layout. For typical stateCount<=64, each state fits in
+			// two hex chars, giving short, cache-friendly keys.
+			HashMap<String, Integer> subpatn2subpatnid = new HashMap<>();
 			subpatns = 0;
-			ArrayList<Integer> subpattern = new ArrayList<>();
+			StringBuilder sbKey = new StringBuilder();
 			int s = node.getNr() * taxonCount; // starting pos in taxIndexUnderNode
 			for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
-				// get the subpattern
-				subpattern.clear();
+				// build a compact string key for this subpattern
+				sbKey.setLength(0);
 				int subpatnid;
 				for (int i = 0; i < data.getTaxonCount(); i++) {
 					if (taxaIndexUnderNode[s + i] == -1) {
@@ -768,14 +842,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					}
 					int taxonIndex = taxaIndexUnderNode[s + i];
 					int patternState = data.getPattern(taxonIndex, patternIndex);
-					subpattern.add(patternState);
+					// separate state values with ',' to avoid ambiguity (e.g. "1","2" vs "12")
+					sbKey.append(patternState).append(',');
 				}
-				if (!subpatn2subpatnid.containsKey(subpattern)) {
-					subpatn2subpatnid.put(subpattern, subpatns);
+				String key = sbKey.toString();
+				if (!subpatn2subpatnid.containsKey(key)) {
+					subpatn2subpatnid.put(key, subpatns);
 					subpatnid = subpatns;
 					subpatns++;
 				} else {
-					subpatnid = subpatn2subpatnid.get(subpattern);
+					subpatnid = subpatn2subpatnid.get(key);
 				}
 				// save the mapping: pattern -> sub-pattern id
 				pattern2SubpatnPerNode[startPos + patternIndex] = subpatnid;
@@ -826,11 +902,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int leftPos = leftSubpatn * partialSizeCurr;
 		int rightPos = rightSubpatn * partialSizeCurr;
 		
-		double[] partialsLeft = new double[partialSizeCurr];
-		System.arraycopy(patternPartialsLeft, leftPos, partialsLeft, 0, partialSizeCurr);
-		double[] partialsRight = new double[partialSizeCurr];
+		// Reuse thread-local scratch buffers instead of allocating new
+		// arrays on every call. The scratch arrays are sized to numPlan*numRateBins_h
+		// (maximum partial size); we simply use the first partialSizeCurr elements.
+		double[][] scratch = threadLocalScratch.get();
+		double[] partialsLeft  = scratch[0];
+		double[] partialsRight = scratch[1];
+		double[] patnPartials  = scratch[2];
+		System.arraycopy(patternPartialsLeft,  leftPos,  partialsLeft,  0, partialSizeCurr);
 		System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeCurr);
-		double[] patnPartials = new double[partialSizeCurr];
 
 		int k = 0;
 		// E is topology independent
@@ -867,14 +947,28 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		logp_patn[0] = 0.0; // log-compensate for this pattern
 		double[] patnPartialsResult;
 		int singlePartialSizeParent;
-		
+
+		// The native C code infers nd (number of ODE dimensions) from vars.length / nx.
+		// The scratch buffer is sized to numPlan * numRateBins_h (maximum), but for
+		// low-resolution nodes partialSizeCurr = numPlan * numRateBins_l < scratchSize.
+		// Passing the oversized scratch buffer would make the C code compute nd = 20
+		// instead of 5, causing "Failed to find nd = 20". We must pass an array whose
+		// length is exactly partialSizeCurr.  In the high-res case the scratch is
+		// already the right size (no copy needed); only low-res requires a trim.
+		final double[] patnPartialsForNative;
+		if (patnPartials.length == partialSizeCurr) {
+			patnPartialsForNative = patnPartials; // high-res: no copy needed
+		} else {
+			patnPartialsForNative = Arrays.copyOf(patnPartials, partialSizeCurr); // low-res: trim
+		}
+
 		if (node.isRoot()) {
-			patnPartialsResult = patnPartials;
+			patnPartialsResult = patnPartialsForNative;
 			singlePartialSizeParent = partialSizeCurr;
 		} else {
 		
 			// propagate along the parent branch
-			patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp_patn, categoryID, threadID);
+			patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartialsForNative, logp_patn, categoryID, threadID);
 
 			// the size of the resulting partials is based on its parent
 			int numRateBins_parent = numRateBins_h;
@@ -1100,52 +1194,126 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * @param nx            number of bins for substitution rate
 	 * @param dx            distance between xs
 	 * @param r             for resolution scale factor
-	 * @param result        root node result matrix of D and E values
+	 * @param result        root node result matrix of D and E values (column-major:
+	 *                      first nx entries = E, next nx entries = D[state0], etc.)
 	 * @param conditionSurv whether to condition on survival
 	 * @return log probability for root
 	 */
 	protected double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
 
-		double[][] vals = new double[nx][numPlan];
-		int count = 0;
-		for (int j = 0; j < numPlan; j++) { // nucleotide types columns
-			for (int i = 0; i < nx; i++) { // nx rows
-				vals[i][j] = result[count];
-				count++;
-			}
-		}
+		// Operate directly on the flat column-major result[] without
+		// transposing into a double[nx][numPlan] intermediate. The layout is:
+		//   result[j * nx + i]  =>  column j (plan dimension), row i (bin)
+		// Column 0 = E values; columns 1..stateCount = D values per state.
+		// This saves O(nx * numPlan) allocation and copying work per root pattern.
 
-		double[][] dRoot = getDValues(vals); // get root D values in last column
-
-		double[] eRoot = null;
-
-		double[] x = getSubstitutionRates(treeModel.numEntries_l, startSubsRate_l, dx_l, treeModel.padLeft_l);
+		// Reuse cached_x_l instead of calling getSubstitutionRates again.
+		double[] x = cached_x_l;
 		// root options
-		double[][] rootP = getRootProb(dRoot, x, nx, dx, rootOption, rootFunc);
+		double[][] rootP = getRootProbFlat(result, x, nx, dx, rootOption, rootFunc);
 
 		if (conditionSurv) {
-			eRoot = getColumn(vals, 0); // get root E values as a column
-			// apply function on dRoot (and root is always low resolution)
+			// eRoot is result[0..nx-1] (column 0)
+			// apply survival conditioning on dRoot in-place
 			for (int i = 0; i < lambdas_l.length; i++) {
+				double eRootI = result[i]; // E at bin i
 				double lambdaX = lambdas_l[i];
-				// sanity check
 				final double min_value = 1e-30;
-				if (1-eRoot[i] < min_value) {
+				if (1 - eRootI < min_value) {
 					return Double.NEGATIVE_INFINITY;
 				}
-				// element-wise division of d column
-				double factor = 1.0 / (lambdaX * (1 - eRoot[i]) * (1 - eRoot[i]));
-				for (int j = 0; j < stateCount; j++)
-					dRoot[i][j] = dRoot[i][j] * factor ;
+				double factor = 1.0 / (lambdaX * (1 - eRootI) * (1 - eRootI));
+				for (int j = 1; j <= stateCount; j++) {
+					// dRoot[i][j-1] lives at result[j * nx + i]
+					result[j * nx + i] *= factor;
+				}
 			}
 		}
 
-		double[][] rootProduct = getProduct(rootP, dRoot);
-
-		// double logProb = Math.log(getSum(rootProduct) * dx);
-		double logProb = Math.log(getSum(rootProduct));
-
+		// compute product sum: sum over i,j of rootP[i][j] * dRoot[i][j]
+		double logProb = Math.log(getProductSum(rootP, result, nx));
 		return logProb;
+	}
+
+	/**
+	 * Compute rootP directly from the flat column-major result array, avoiding the
+	 * intermediate double[nx][numPlan] vals and double[nx][stateCount] dRoot arrays.
+	 * Returns rootP as double[numSubstBins][stateCount].
+	 */
+	private double[][] getRootProbFlat(double[] result, double[] x, int nx, double dx, int rootOption, LinkFn rootFunc) {
+		// numSubstBins == nx (low-res bins at root)
+		// The D values live in result columns 1..stateCount.
+		// We build rootP[i][j] directly.
+		int ntypes = stateCount;
+		// For ROOT_OBS we need the sum over all D values first
+		if (rootOption == ROOT_OBS) {
+			double dsum = 0.0;
+			for (int j = 1; j <= ntypes; j++) {
+				int colStart = j * nx;
+				for (int i = 0; i < nx; i++) {
+					dsum += result[colStart + i];
+				}
+			}
+			double factor = (dsum == 0.0) ? 0.0 : 1.0 / dsum;
+			double[][] p = new double[nx][ntypes];
+			for (int j = 0; j < ntypes; j++) {
+				int colStart = (j + 1) * nx;
+				for (int i = 0; i < nx; i++) {
+					p[i][j] = result[colStart + i] * factor;
+				}
+			}
+			return p;
+		} else if (rootOption == ROOT_FLAT) {
+			double val = 1.0 / ((nx - 1) * ntypes);
+			double[][] p = new double[nx][ntypes];
+			for (int i = 0; i < nx; i++)
+				Arrays.fill(p[i], val);
+			return p;
+		} else {
+			double[] rootI = substitutionModel.getFrequencies();
+			double[][] p = new double[nx][ntypes];
+			if (rootOption == ROOT_EQUI) {
+				// p[i][j] = rootI[j] * D[i][j] / sum_i(D[i][j])
+				double[] colSums = new double[ntypes];
+				for (int j = 0; j < ntypes; j++) {
+					int colStart = (j + 1) * nx;
+					for (int i = 0; i < nx; i++) colSums[j] += result[colStart + i];
+				}
+				for (int j = 0; j < ntypes; j++) {
+					int colStart = (j + 1) * nx;
+					double inv = (colSums[j] == 0.0) ? 0.0 : rootI[j] / colSums[j];
+					for (int i = 0; i < nx; i++) {
+						p[i][j] = result[colStart + i] * inv;
+					}
+				}
+			} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
+				double[] y = new double[x.length];
+				y = rootFunc.getY(x, y);
+				for (int i = 0; i < nx; i++) {
+					double yi = (i < y.length) ? y[i] : 0.0;
+					for (int j = 0; j < ntypes; j++) {
+						p[i][j] = rootI[j] * yi;
+					}
+				}
+			}
+			return p;
+		}
+	}
+
+	/**
+	 * Compute sum_{i,j} rootP[i][j] * D[i][j], where D is stored in the flat
+	 * column-major result array (columns 1..stateCount, nx rows per column).
+	 */
+	private double getProductSum(double[][] rootP, double[] result, int nx) {
+		double sum = 0.0;
+		int ntypes = stateCount;
+		for (int j = 0; j < ntypes; j++) {
+			int colStart = (j + 1) * nx;
+			for (int i = 0; i < nx; i++) {
+				sum += rootP[i][j] * result[colStart + i];
+			}
+		}
+		return sum;
 	}
 
 	private double getColumnSum(double[][] dRoot, int column) {
@@ -1337,7 +1505,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	@Override
 	protected boolean requiresRecalculation() {
-		// always recalculate
+		// Mark transition matrices dirty whenever the substitution model
+		// (or RHAS rates) may have changed so they are recomputed on the next traversal.
+		if (m_siteModel.isDirtyCalculation()) {
+			transitionMatricesDirty = true;
+		}
+		// always recalculate the tree likelihood itself
 		return true;
 	}
 
