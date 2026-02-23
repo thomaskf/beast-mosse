@@ -1,13 +1,9 @@
 package mosse;
 
 import beast.base.core.Description;
-import beast.base.evolution.tree.Node;
 
 import java.lang.ref.Cleaner;
-import java.util.Arrays;
 import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ExecutionException;
-import java.util.stream.IntStream;
 import java.util.concurrent.ForkJoinWorkerThread;
 
 /**
@@ -32,28 +28,24 @@ public class MosseTreeLikelihoodMT extends MosseTreeLikelihood implements AutoCl
     
     @Override
     public void initAndValidate() {
-        // super.initAndValidate() already calls treeModel.initFFTPtrs(dx_h) for a
-        // single-threaded pool (numThreads == 1). We close those pointers and
-        // re-initialize with the correct thread-count before registering the Cleaner,
-        // so that every code path ends up with exactly one correctly-sized pool.
+        // super.initAndValidate() reads treeModel.numThreads and calls
+        // treeModel.initFFTPtrs(dx_h) with the correct number of slots already,
+        // because numThreads is set from treeModel before initFFTPtrs is invoked.
+        // We must NOT call close() + initFFTPtrs() again here — doing so would
+        // set closed=true and leave the re-created native pointers unfreeable
+        // (bug 1.2 fix: eliminate the double-init memory leak).
         super.initAndValidate();
 
-        // Replace the single-thread pool created by the parent with the real MT pool.
-        // initFFTPtrs is idempotent with respect to the FFT plans because the parent
-        // already set dx_h; we just need the right number of pointer slots.
+        // Create the ForkJoinPool for multi-threaded computation if needed.
+        // The pool is null (single-threaded) when numThreads == 1.
         if (treeModel.numThreads > 1) {
-            try {
-                treeModel.close(); // release the single-thread FFT ptrs from super
-            } catch (Exception e) {
-                throw new RuntimeException("Failed to release FFT pointers before MT re-init", e);
-            }
-            treeModel.initFFTPtrs(dx_h); // re-init with numThreads slots
             pool = new ForkJoinPool(treeModel.numThreads);
         }
-        // else: pool remains null (single-threaded), FFT ptrs already correct.
+        // else: pool remains null (single-threaded path), already set by super.
 
-        // Register a Cleaner action so the pool is shut down even if close() is
-        // never called explicitly — without relying on the deprecated finalize().
+        // Register a Cleaner so the pool is shut down even if close() is never
+        // called explicitly. The lambda captures only 'pool' (a local copy), not
+        // 'this', so the Cleaner can fire when this object becomes unreachable.
         ForkJoinPool poolRef = pool;
         cleanable = CLEANER.register(this, () -> {
             if (poolRef != null) poolRef.shutdownNow();

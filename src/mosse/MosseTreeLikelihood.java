@@ -394,28 +394,31 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] compensates = new double[numCategories][subpatns];
 		
 		double[] traitValues = getTraits(node);
+		// Java initialises boolean arrays to false, so no explicit fill needed.
 		boolean[] updated = new boolean[subpatns];
-		Arrays.fill(updated, false);
 		
 		double subsInterval = dx_h;
 		double[] tipLikelihoods = tipModel.getTipLikelihoods_prob(traitValues, treeModel.numEntries_h,
 				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
 
-		// compute the partial likelihood for single sub-pattern with categories
-		double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
-		// the first numRateBins_h positions are zeros for E initial values
-		for (int c = 0; c < numCategories; c++) {
-			for (int i = 0; i < numRateBins_h; i++) {
-				patnPartials[c][i] = 0.0;
-			}
-		}
+		// compute the partial likelihood for single sub-pattern with categories.
 		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
 			int subpatnid = pattern2SubpatnPerNode[s + patternIndex];
 			if (!updated[subpatnid]) {
 				updated[subpatnid] = true;
 				int stateid = data.getPattern(taxonIndex, patternIndex);
 				boolean[] stateSet = data.getStateSet(stateid);
-				
+
+				// Allocate a fresh array for this subpattern so normalization()'s
+				// in-place mutation of patnPartials[c] does not bleed into the next
+				// subpattern's initial condition.
+				double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
+				// E initial values: first numRateBins_h entries are zero (already 0
+				// by Java array initialisation, but set explicitly for clarity).
+				for (int c = 0; c < numCategories; c++) {
+					Arrays.fill(patnPartials[c], 0, numRateBins_h, 0.0);
+				}
+
 				int k = numRateBins_h;
 				// D initial values
 				for (int state = 0; state < stateCount; state++) {
@@ -542,10 +545,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// normalize the values of vars
 
 		int nx = numRateBins_h;
-		// double dx = dx_h;
 		if (lowResolution) {
 			nx = numRateBins_l;
-			// dx = dx_l;
 		}
 
 		int totSize = nx * numPlan;
@@ -556,12 +557,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = nx; i < totSize; i++) {
 			vsum += vars[i];
 		}
-		// vsum *= dx;
+		// Guard BEFORE division: if vsum is non-positive, return early without
+		// corrupting vars[] with NaN or Inf values.
+		if (vsum <= 0.0)
+			return Double.NEGATIVE_INFINITY;
 		for (int i = nx; i < totSize; i++) {
 			vars[i] /= vsum;
 		}
-		if (vsum <= 0.0)
-			return Double.NEGATIVE_INFINITY;
 		return Math.log(vsum);
 	}
 
@@ -765,8 +767,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 						break;
 					}
 					int taxonIndex = taxaIndexUnderNode[s + i];
-					int stateCount = data.getPattern(taxonIndex, patternIndex);
-					subpattern.add(stateCount);
+					int patternState = data.getPattern(taxonIndex, patternIndex);
+					subpattern.add(patternState);
 				}
 				if (!subpatn2subpatnid.containsKey(subpattern)) {
 					subpatn2subpatnid.put(subpattern, subpatns);

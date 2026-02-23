@@ -77,6 +77,35 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	private static final Cleaner CLEANER = Cleaner.create();
 	private Cleaner.Cleanable cleanable;
 
+	/**
+	 * Static nested class that holds only the native pointer lists and a bridge to
+	 * the native finalizer. Keeping this separate from MosseDistribution ensures
+	 * the Cleaner-registered action holds NO reference to the enclosing instance,
+	 * which is required for the Cleaner to ever fire (bug 1.1 fix).
+	 */
+	private static final class CleanerState implements Runnable {
+		private final ArrayList<Long> lPool;
+		private final ArrayList<Long> hPool;
+		private final java.util.function.LongConsumer nativeFinalizer;
+
+		CleanerState(ArrayList<Long> lPool, ArrayList<Long> hPool,
+				java.util.function.LongConsumer nativeFinalizer) {
+			this.lPool = lPool;
+			this.hPool = hPool;
+			this.nativeFinalizer = nativeFinalizer;
+		}
+
+		@Override
+		public void run() {
+			for (int i = 0; i < lPool.size(); i++) {
+				nativeFinalizer.accept(lPool.get(i));
+				nativeFinalizer.accept(hPool.get(i));
+			}
+			lPool.clear();
+			hPool.clear();
+		}
+	}
+
 	static {
 		System.loadLibrary("test");
 	}
@@ -129,6 +158,17 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		}
 	}
 	
+	/**
+	 * Static bridge so CleanerState can invoke the native finalizer without
+	 * holding a reference to the MosseDistribution instance.
+	 * The MosseDistribution instance is passed explicitly only at the moment of
+	 * the call; CleanerState stores only this method reference (which is a
+	 * reference to this static-bridge method, not to 'this').
+	 */
+	private void mosseFinalizeBridge(long ptr) {
+		mosseFinalize(ptr);
+	}
+
 	public void initFFTPtrs(double dx_h) {
 		int[] nd = { 5 };
 		int flags = FLAG_FFTW3_DEFAULT;
@@ -142,18 +182,15 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		}
 		this.dx_h = dx_h;
 
-		// Register a Cleaner so native FFT memory is released even if close() is
-		// never called explicitly — without relying on the deprecated finalize().
-		ArrayList<Long> lPool = ptr_l_pool;
-		ArrayList<Long> hPool = ptr_h_pool;
-		cleanable = CLEANER.register(this, () -> {
-			for (int i = 0; i < lPool.size(); i++) {
-				mosseFinalize(lPool.get(i).longValue());
-				mosseFinalize(hPool.get(i).longValue());
-			}
-			lPool.clear();
-			hPool.clear();
-		});
+		// Reset closed so that a subsequent close() call (e.g. from
+		// MosseTreeLikelihoodMT re-init) will actually release these new pointers.
+		closed = false;
+
+		// Register a Cleaner using the static-nested CleanerState so that the
+		// cleanup action does NOT capture 'this' through an anonymous lambda
+		// (which would prevent the object from ever becoming unreachable).
+		cleanable = CLEANER.register(this,
+				new CleanerState(ptr_l_pool, ptr_h_pool, this::mosseFinalizeBridge));
 	}
 	
 	public synchronized void resizePtrPool(int newsize) {
@@ -292,7 +329,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	    if (closed) return;
 	    closed = true;
 	    if (cleanable != null) {
-	        cleanable.clean(); // runs the Cleaner action exactly once
+	        cleanable.clean(); // runs CleanerState.run() exactly once
 	        cleanable = null;
 	    }
 	}
