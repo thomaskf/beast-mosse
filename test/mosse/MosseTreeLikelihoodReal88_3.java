@@ -192,7 +192,7 @@ public class MosseTreeLikelihoodReal88_3 {
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
                 "resolution", Integer.toString(resolution),
-                "threads", 32                               // number of cpu threads
+                "threads", 24                               // number of cpu threads
         );
 
         MosseTreeLikelihoodMT likelihood = new MosseTreeLikelihoodMT();
@@ -204,7 +204,8 @@ public class MosseTreeLikelihoodReal88_3 {
                 "treeModel", mosseDist,
                 "traits", traitsList,
                 "lambdaFunc", logistFunc,
-                "muFunc", constFunc
+                "muFunc", constFunc,
+                "resolutionMode", "mixed"
                 );
 
         // using observed root
