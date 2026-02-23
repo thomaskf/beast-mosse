@@ -121,7 +121,7 @@
     <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dt="0.004" width="5" resolution="4" threads="32">
+        nx="1024" dt="0.004" width="5" resolution="4" threads="24">
         <drift id="drift" spec="parameter.RealParameter">0.0</drift>
         <diffusion id="diffusion" spec="parameter.RealParameter">0.0005</diffusion>
     </MosseDistribution>
@@ -184,7 +184,8 @@
                     spec="mosse.MosseTreeLikelihoodMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    lambdaFunc="@linearfunc" muFunc="@constfunc">
+                    lambdaFunc="@linearfunc" muFunc="@constfunc"
+                    resolutionMode="low">
                     <traits id="traitset"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
