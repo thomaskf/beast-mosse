@@ -61,6 +61,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	final public Input<Double> tcInput = new Input<>("tc", "below this height for high resolution",
 			Input.Validate.OPTIONAL);
 
+	// resolution mode: "mixed" (default, tc-based), "low" (all low), "high" (all high)
+	final public Input<String> resolutionModeInput = new Input<>("resolutionMode",
+			"Resolution mode for the whole tree: \"mixed\" (default, tc-based split between high and low), " +
+			"\"low\" (entire tree uses low resolution), or \"high\" (entire tree uses high resolution).",
+			"mixed");
+
 	// root options
 	final public int ROOT_FLAT = 1;
 	final public int ROOT_OBS = 2;
@@ -86,6 +92,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected MosseTipLikelihood tipModel;
 	protected MosseDistribution treeModel;
 	protected double tc; // time < tc for high resolution, while time >= tc for low resolution
+
+	// Resolution mode constants and active mode
+	public static final String RESOLUTION_MODE_MIXED = "mixed";
+	public static final String RESOLUTION_MODE_LOW   = "low";
+	public static final String RESOLUTION_MODE_HIGH  = "high";
+	protected String resolutionMode; // one of the three constants above
 	
 	// rate for the bins
 	protected double rmin; // minimum of rate
@@ -204,6 +216,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			tc = tcInput.get().doubleValue();
 		} else {
 			tc = tree.getRoot().getHeight() / 10.0;
+		}
+
+		// read and validate the resolutionMode input
+		resolutionMode = resolutionModeInput.get();
+		if (!RESOLUTION_MODE_MIXED.equals(resolutionMode)
+				&& !RESOLUTION_MODE_LOW.equals(resolutionMode)
+				&& !RESOLUTION_MODE_HIGH.equals(resolutionMode)) {
+			throw new IllegalArgumentException(
+					"resolutionMode must be one of \"mixed\", \"low\", or \"high\", but got: \"" + resolutionMode + "\".");
 		}
 		m_siteModel = (SiteModel.Base) siteModelInput.get();
 		m_siteModel.setDataType(dataInput.get().getDataType());
@@ -406,10 +427,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		assert (subpatns > 0);
 
-		// for leaf, always use high resolution to begin with
-		int singlePartialSizeLeaf = (stateCount + 1) * numRateBins_h;
-		
-		// the size of the partials is based on its parent
+		// In "low" resolution mode the leaf itself is low-resolution; in "high" or
+		// "mixed" modes the leaf always starts at high resolution (and is downsampled
+		// later if its parent operates at low resolution).
+		boolean leafIsLow = RESOLUTION_MODE_LOW.equals(resolutionMode);
+		int numRateBins_leaf    = leafIsLow ? numRateBins_l : numRateBins_h;
+		int numEntries_leaf     = leafIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+		int padLeft_leaf        = leafIsLow ? treeModel.padLeft_l    : treeModel.padLeft_h;
+		double startSubsRate_leaf = leafIsLow ? startSubsRate_l : startSubsRate_h;
+		double dx_leaf          = leafIsLow ? dx_l : dx_h;
+
+		int singlePartialSizeLeaf = (stateCount + 1) * numRateBins_leaf;
+
+		// the size of the partials stored for this leaf is based on its parent's resolution
 		int numRateBins_parent = numRateBins_h;
 		if (isLowResolution(node.getParent())) {
 			// assume all leaves should have a parent
@@ -422,10 +452,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] traitValues = getTraits(node);
 		// Java initialises boolean arrays to false, so no explicit fill needed.
 		boolean[] updated = new boolean[subpatns];
-		
-		double subsInterval = dx_h;
-		double[] tipLikelihoods = tipModel.getTipLikelihoods_prob(traitValues, treeModel.numEntries_h,
-				startSubsRate_h + treeModel.padLeft_h * subsInterval, subsInterval);
+
+		double[] tipLikelihoods = tipModel.getTipLikelihoods_prob(traitValues, numEntries_leaf,
+				startSubsRate_leaf + padLeft_leaf * dx_leaf, dx_leaf);
 
 		// compute the partial likelihood for single sub-pattern with categories.
 		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
@@ -439,41 +468,41 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				// in-place mutation of patnPartials[c] does not bleed into the next
 				// subpattern's initial condition.
 				double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
-				// E initial values: first numRateBins_h entries are zero (already 0
+				// E initial values: first numRateBins_leaf entries are zero (already 0
 				// by Java array initialisation, but set explicitly for clarity).
 				for (int c = 0; c < numCategories; c++) {
-					Arrays.fill(patnPartials[c], 0, numRateBins_h, 0.0);
+					Arrays.fill(patnPartials[c], 0, numRateBins_leaf, 0.0);
 				}
 
-				int k = numRateBins_h;
+				int k = numRateBins_leaf;
 				// D initial values
 				for (int state = 0; state < stateCount; state++) {
 					if (stateSet[state]) {
 						// set likelihoods for nucleotide in data
-						if (numRateBins_h <= treeModel.numEntries_h) {
-							for (int i = 0; i < numRateBins_h; i++) {
+						if (numRateBins_leaf <= numEntries_leaf) {
+							for (int i = 0; i < numRateBins_leaf; i++) {
 								patnPartials[0][k++] = tipLikelihoods[i];
 							}
 						} else {
-							for (int i = 0; i < treeModel.numEntries_h; i++) {
+							for (int i = 0; i < numEntries_leaf; i++) {
 								patnPartials[0][k++] = tipLikelihoods[i];
 							}
 							// set to zeros for the rest
-							for (int i = treeModel.numEntries_h; i < numRateBins_h; i++) {
+							for (int i = numEntries_leaf; i < numRateBins_leaf; i++) {
 								patnPartials[0][k++] = 0.0;
 							}
 						}
 					} else {
 						// otherwise leave likelihoods to zero
-						for (int i = 0; i < numRateBins_h; i++) {
+						for (int i = 0; i < numRateBins_leaf; i++) {
 							patnPartials[0][k++] = 0.0;
 						}
 					}
 				}
 				// copy the same to the other categories
-				int copy_size = stateCount * numRateBins_h;
+				int copy_size = stateCount * numRateBins_leaf;
 				for (int c = 1; c < numCategories; c++) {
-					System.arraycopy(patnPartials[0], numRateBins_h, patnPartials[c], numRateBins_h, copy_size);
+					System.arraycopy(patnPartials[0], numRateBins_leaf, patnPartials[c], numRateBins_leaf, copy_size);
 				}
 				for (int c = 0; c < numCategories; c++) {
 					// propagate along the parent branch
@@ -1005,11 +1034,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] patternCompensatesLeft = mosseLikelihoodCore.getNodeMosseCompensates(node.getLeft().getNr());
 		double[][] patternCompensatesRight = mosseLikelihoodCore.getNodeMosseCompensates(node.getRight().getNr());
 		 
-		// the resulting partial size of single pattern is based on parents
-		int numRateBins_curr = numRateBins_h;
-		if (node.isRoot() || isLowResolution(node.getParent())) {
-			numRateBins_curr = numRateBins_l;
-		}
+		// the resulting partial size of single pattern is based on its parent's
+		// resolution (or the root's own resolution when there is no parent).
+		// isLowResolution(node) covers the root correctly for all three modes.
+		int numRateBins_curr = isLowResolution(node) ? numRateBins_l : numRateBins_h;
 		int singlePartialSize = numPlan * numRateBins_curr;
 		int subpatns = computeMapGlobal2SubpatternID(node);
 
@@ -1081,6 +1109,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             }
             
             boolean conditionSurv = false;
+            // Choose root-resolution parameters based on the active resolution mode.
+            // In "high" mode the root operates at high resolution; in all other modes
+            // (mixed and low) the root always operates at low resolution.
+            boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+            int    nx_root = rootIsLow ? numRateBins_l : numRateBins_h;
+            double dx_root = rootIsLow ? dx_l          : dx_h;
 	        if (pool == null) {
 	        	// single thread
 	        	for (int jobid = 0; jobid < totaljobs; jobid++) {
@@ -1093,7 +1127,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
+		                double patternLogLikelihood = makeRootFuncMosse(nx_root, dx_root, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
 	        	}
@@ -1109,7 +1143,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                double[] partials = new double[singlePartialSize];
 		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
 		
-		                double patternLogLikelihood = makeRootFuncMosse(numRateBins_l, dx_l, resolution, partials, conditionSurv);
+		                double patternLogLikelihood = makeRootFuncMosse(nx_root, dx_root, resolution, partials, conditionSurv);
 		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
 	        		}
 	            });
@@ -1207,17 +1241,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// Column 0 = E values; columns 1..stateCount = D values per state.
 		// This saves O(nx * numPlan) allocation and copying work per root pattern.
 
-		// Reuse cached_x_l instead of calling getSubstitutionRates again.
-		double[] x = cached_x_l;
+		// Select cached substitution-rate array and lambda array that match the
+		// resolution at which the root partials were computed.
+		boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+		double[] x       = rootIsLow ? cached_x_l : cached_x_h;
+		double[] lambdas = rootIsLow ? lambdas_l   : lambdas_h;
+
 		// root options
 		double[][] rootP = getRootProbFlat(result, x, nx, dx, rootOption, rootFunc);
 
 		if (conditionSurv) {
 			// eRoot is result[0..nx-1] (column 0)
 			// apply survival conditioning on dRoot in-place
-			for (int i = 0; i < lambdas_l.length; i++) {
+			for (int i = 0; i < lambdas.length; i++) {
 				double eRootI = result[i]; // E at bin i
-				double lambdaX = lambdas_l[i];
+				double lambdaX = lambdas[i];
 				final double min_value = 1e-30;
 				if (1 - eRootI < min_value) {
 					return Double.NEGATIVE_INFINITY;
@@ -1453,6 +1491,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected void printParams() {
 		String newickstr = toNewick(tree.getRoot()) + ";";
 		System.out.println(newickstr);
+		System.out.println("resolutionMode = " + resolutionMode);
 		System.out.println("tc = " + tc);
 		System.out.println("dx_h = " + dx_h);
 		System.out.println("rmin = " + rmin);
@@ -1536,13 +1575,35 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return sb.toString();
 	}
 
+	/**
+	 * Returns true if the given node should be computed at low resolution.
+	 *
+	 * Behaviour depends on {@code resolutionMode}:
+	 * <ul>
+	 *   <li>{@value #RESOLUTION_MODE_MIXED} (default) — the existing tc-based rule:
+	 *       leaves are always high-resolution; the root and any internal node at or
+	 *       above {@code tc} are low-resolution; nodes below {@code tc} are
+	 *       high-resolution.</li>
+	 *   <li>{@value #RESOLUTION_MODE_LOW} — every node (including leaves) is
+	 *       treated as low-resolution.</li>
+	 *   <li>{@value #RESOLUTION_MODE_HIGH} — every node (including the root) is
+	 *       treated as high-resolution.</li>
+	 * </ul>
+	 */
 	protected boolean isLowResolution(Node node) {
-		if (node.isLeaf()) {
-			return false; // leaf always uses high resolution
-		} else if (node.isRoot() || node.getHeight() >= tc) {
-			return true; // low resolution for root and the nodes on or above tc
-		} else {
-			return false; // high resolution for nodes lower than tc
+		switch (resolutionMode) {
+			case RESOLUTION_MODE_LOW:
+				return true;   // entire tree uses low resolution
+			case RESOLUTION_MODE_HIGH:
+				return false;  // entire tree uses high resolution
+			default: // RESOLUTION_MODE_MIXED
+				if (node.isLeaf()) {
+					return false; // leaf always uses high resolution
+				} else if (node.isRoot() || node.getHeight() >= tc) {
+					return true; // low resolution for root and nodes at or above tc
+				} else {
+					return false; // high resolution for nodes below tc
+				}
 		}
 	}
 
