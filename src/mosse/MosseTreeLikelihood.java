@@ -1549,9 +1549,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * data.getPatternWeight(i);
 			}
 		} else {
+			boolean anyPositiveValue = false;
 			for (int i = 0; i < patterns; i++) {
+				if (patternLogLikelihoods[i] > 0.0)
+					anyPositiveValue = true;
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
+			if (anyPositiveValue)
+				logP = Double.NEGATIVE_INFINITY;
 		}
 	}
 
