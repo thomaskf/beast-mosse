@@ -997,6 +997,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 
 		if (node.isRoot()) {
+			// Normalize at root so that sum(valid D entries) = 1, and accumulate
+			// the log compensation exactly as computeSingleBranchLikelihood does
+			boolean rootIsLow = isLowResolution(node);
+			logp_patn[0] += normalization(rootIsLow, patnPartialsForNative);
 			patnPartialsResult = patnPartialsForNative;
 			singlePartialSizeParent = partialSizeCurr;
 		} else {
