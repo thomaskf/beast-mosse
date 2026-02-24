@@ -1251,10 +1251,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] rootP = getRootProbFlat(result, x, nx, dx, rootOption, rootFunc);
 
 		if (conditionSurv) {
-			// eRoot is result[0..nx-1] (column 0)
-			// apply survival conditioning on dRoot in-place
+			// eRoot is column 0 of result; D values are columns 1..stateCount.
+			// Valid entries start at index 0 within each column (no padLeft offset needed).
 			for (int i = 0; i < lambdas.length; i++) {
-				double eRootI = result[i]; // E at bin i
+				double eRootI = result[i]; // E at valid entry i (column 0)
 				double lambdaX = lambdas[i];
 				final double min_value = 1e-30;
 				if (1 - eRootI < min_value) {
@@ -1262,7 +1262,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 				double factor = 1.0 / (lambdaX * (1 - eRootI) * (1 - eRootI));
 				for (int j = 1; j <= stateCount; j++) {
-					// dRoot[i][j-1] lives at result[j * nx + i]
 					result[j * nx + i] *= factor;
 				}
 			}
@@ -1276,58 +1275,61 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	/**
 	 * Compute rootP directly from the flat column-major result array, avoiding the
 	 * intermediate double[nx][numPlan] vals and double[nx][stateCount] dRoot arrays.
-	 * Returns rootP as double[numSubstBins][stateCount].
+	 * Returns rootP as double[numEntries][stateCount], where numEntries is the number
+	 * of valid (non-padded) bins for the given resolution.
+	 * The result array layout within each column is: valid entries [0, numEntries),
+	 * followed by padding zeros [numEntries, nx). So no padLeft offset is needed.
 	 */
 	private double[][] getRootProbFlat(double[] result, double[] x, int nx, double dx, int rootOption, LinkFn rootFunc) {
-		// numSubstBins == nx (low-res bins at root)
-		// The D values live in result columns 1..stateCount.
-		// We build rootP[i][j] directly.
+		boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+		int numEntries = rootIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+
 		int ntypes = stateCount;
-		// For ROOT_OBS we need the sum over all D values first
 		if (rootOption == ROOT_OBS) {
+			// p[i][j] = D[i][j] / sum(D)  -- root prior weighted by observed D values.
+			// Sum and weight only over valid (non-padded) entries [0, numEntries).
 			double dsum = 0.0;
 			for (int j = 1; j <= ntypes; j++) {
 				int colStart = j * nx;
-				for (int i = 0; i < nx; i++) {
+				for (int i = 0; i < numEntries; i++) {
 					dsum += result[colStart + i];
 				}
 			}
 			double factor = (dsum == 0.0) ? 0.0 : 1.0 / dsum;
-			double[][] p = new double[nx][ntypes];
+			double[][] p = new double[numEntries][ntypes];
 			for (int j = 0; j < ntypes; j++) {
 				int colStart = (j + 1) * nx;
-				for (int i = 0; i < nx; i++) {
+				for (int i = 0; i < numEntries; i++) {
 					p[i][j] = result[colStart + i] * factor;
 				}
 			}
 			return p;
 		} else if (rootOption == ROOT_FLAT) {
-			double val = 1.0 / ((nx - 1) * ntypes);
-			double[][] p = new double[nx][ntypes];
-			for (int i = 0; i < nx; i++)
+			double val = 1.0 / ((numEntries - 1) * ntypes);
+			double[][] p = new double[numEntries][ntypes];
+			for (int i = 0; i < numEntries; i++)
 				Arrays.fill(p[i], val);
 			return p;
 		} else {
 			double[] rootI = substitutionModel.getFrequencies();
-			double[][] p = new double[nx][ntypes];
+			double[][] p = new double[numEntries][ntypes];
 			if (rootOption == ROOT_EQUI) {
-				// p[i][j] = rootI[j] * D[i][j] / sum_i(D[i][j])
 				double[] colSums = new double[ntypes];
 				for (int j = 0; j < ntypes; j++) {
 					int colStart = (j + 1) * nx;
-					for (int i = 0; i < nx; i++) colSums[j] += result[colStart + i];
+					for (int i = 0; i < numEntries; i++) colSums[j] += result[colStart + i];
 				}
 				for (int j = 0; j < ntypes; j++) {
 					int colStart = (j + 1) * nx;
 					double inv = (colSums[j] == 0.0) ? 0.0 : rootI[j] / colSums[j];
-					for (int i = 0; i < nx; i++) {
+					for (int i = 0; i < numEntries; i++) {
 						p[i][j] = result[colStart + i] * inv;
 					}
 				}
 			} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
 				double[] y = new double[x.length];
 				y = rootFunc.getY(x, y);
-				for (int i = 0; i < nx; i++) {
+				for (int i = 0; i < numEntries; i++) {
 					double yi = (i < y.length) ? y[i] : 0.0;
 					for (int j = 0; j < ntypes; j++) {
 						p[i][j] = rootI[j] * yi;
@@ -1341,13 +1343,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	/**
 	 * Compute sum_{i,j} rootP[i][j] * D[i][j], where D is stored in the flat
 	 * column-major result array (columns 1..stateCount, nx rows per column).
+	 * rootP has numEntries rows (valid entries only, starting at index 0 per column).
 	 */
 	private double getProductSum(double[][] rootP, double[] result, int nx) {
+		int numEntries = rootP.length; // == numEntries_l or numEntries_h
 		double sum = 0.0;
 		int ntypes = stateCount;
 		for (int j = 0; j < ntypes; j++) {
 			int colStart = (j + 1) * nx;
-			for (int i = 0; i < nx; i++) {
+			for (int i = 0; i < numEntries; i++) {
 				sum += rootP[i][j] * result[colStart + i];
 			}
 		}
