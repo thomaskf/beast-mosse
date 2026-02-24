@@ -184,7 +184,8 @@
                     spec="mosse.MosseTreeLikelihoodMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    lambdaFunc="@linearfunc" muFunc="@constfunc">
+                    lambdaFunc="@linearfunc" muFunc="@constfunc"
+                    resolutionMode="low">
                     <traits id="traitset"
                         spec="beast.base.evolution.tree.TraitSet"
                         traitname="trait0" taxa="@taxonset"
