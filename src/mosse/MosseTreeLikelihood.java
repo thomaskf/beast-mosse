@@ -605,34 +605,46 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 	}
 
-	/** High-resolution normalization: uses numRateBins_h. */
+	/** High-resolution normalization: sums/divides only over valid numEntries_h bins per
+	 *  D column, skipping the padding bins that the C native code may leave non-zero. */
 	public double normalizationH(double[] vars) {
 		int nx = numRateBins_h;
-		int totSize = nx * numPlan;
-		assert (vars.length >= totSize);
+		int numEntries = treeModel.numEntries_h;
 		double vsum = 0.0;
-		for (int i = nx; i < totSize; i++) {
-			vsum += vars[i];
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vsum += vars[colStart + i];
+			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
-		for (int i = nx; i < totSize; i++) {
-			vars[i] /= vsum;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vars[colStart + i] /= vsum;
+			}
 		}
 		return Math.log(vsum);
 	}
 
-	/** Low-resolution normalization: uses numRateBins_l. */
+	/** Low-resolution normalization: sums/divides only over valid numEntries_l bins per
+	 *  D column, skipping the padding bins that the C native code may leave non-zero. */
 	public double normalizationL(double[] vars) {
 		int nx = numRateBins_l;
-		int totSize = nx * numPlan;
-		assert (vars.length >= totSize);
+		int numEntries = treeModel.numEntries_l;
 		double vsum = 0.0;
-		for (int i = nx; i < totSize; i++) {
-			vsum += vars[i];
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vsum += vars[colStart + i];
+			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
-		for (int i = nx; i < totSize; i++) {
-			vars[i] /= vsum;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vars[colStart + i] /= vsum;
+			}
 		}
 		return Math.log(vsum);
 	}
@@ -977,13 +989,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] patnPartialsResult;
 		int singlePartialSizeParent;
 
-		// The native C code infers nd (number of ODE dimensions) from vars.length / nx.
-		// The scratch buffer is sized to numPlan * numRateBins_h (maximum), but for
-		// low-resolution nodes partialSizeCurr = numPlan * numRateBins_l < scratchSize.
-		// Passing the oversized scratch buffer would make the C code compute nd = 20
-		// instead of 5, causing "Failed to find nd = 20". We must pass an array whose
-		// length is exactly partialSizeCurr.  In the high-res case the scratch is
-		// already the right size (no copy needed); only low-res requires a trim.
 		final double[] patnPartialsForNative;
 		if (patnPartials.length == partialSizeCurr) {
 			patnPartialsForNative = patnPartials; // high-res: no copy needed
