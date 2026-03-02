@@ -1493,12 +1493,32 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	@Override
 	public double calculateLogP() {
 		// check whether beta is out of the range
-		if (tipModel.betaOutOfRange(-3.0, 3.0))
+		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
+		
 		traverseFull(tree.getRoot());
 		calcLogP();
 		printLogP();
 		return logP;
+	}
+	
+	public boolean paramsOutOfRange() {
+		// check whether beta is out of the range
+		if (tipModel.betaOutOfRange(-3.0, 3.0))
+			return true;
+		double dx = dx_l;
+		// check whether epsilon < dx * 0.5
+		double epsilon_lowbound = dx * 0.5;
+		// System.out.println("dx = " + dx);
+		// System.out.println("epsilon = " + tipModel.epsilon.getValue().doubleValue());
+		// System.out.println("diffusion = " + treeModel.diffusion);
+		if (tipModel.epsilon.getValue().doubleValue() < epsilon_lowbound)
+			return true;
+		// check whether diffusion < dx * 0.25
+		double diffusion_lowbound = dx * 0.25;
+		if (treeModel.diffusion < diffusion_lowbound)
+			return true;
+		return false;
 	}
 	
 	protected void printParams() {
