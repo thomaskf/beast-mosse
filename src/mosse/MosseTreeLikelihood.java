@@ -154,6 +154,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] categoryRates; // rates for all categories
 	protected double[] categoryProps; // proportions for all categories
 	protected double single_rate = 1.0;
+	
+	// lower bound
+	double beta_upbound = 3.0;
+	double beta_lowbound = -3.0;
+	double epsilon_lowbound = 0.001;
+	double diffusion_lowbound = 0.0005;
 
 	@Override
 	public void initAndValidate() {
@@ -1504,20 +1510,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	
 	public boolean paramsOutOfRange() {
 		// check whether beta is out of the range
-		if (tipModel.betaOutOfRange(-3.0, 3.0))
+		if (tipModel.betaOutOfRange(beta_lowbound, beta_upbound))
 			return true;
-		double dx = dx_l;
-		// check whether epsilon < dx * 0.5
-		double epsilon_lowbound = dx * 0.5;
-		// System.out.println("dx = " + dx);
-		// System.out.println("epsilon = " + tipModel.epsilon.getValue().doubleValue());
-		// System.out.println("diffusion = " + treeModel.diffusion);
+		// check whether epsilon is too small
 		if (tipModel.epsilon.getValue().doubleValue() < epsilon_lowbound)
 			return true;
-		// check whether diffusion < dx * 0.25
-		double diffusion_lowbound = dx * 0.25;
+		// check whether diffusion is too small
 		if (treeModel.diffusion < diffusion_lowbound)
 			return true;
+		
 		return false;
 	}
 	
