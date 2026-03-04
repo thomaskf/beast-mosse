@@ -109,21 +109,22 @@ public class MosseTreeLikelihoodSim12 {
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
-        Double[] betasArray = { 1.0 };
-        double meanSubst = 0.015; // mean substitution rate
+        double kappa_hky = 32.36;
+        Double[] betasArray = { 0.292 };
+        double meanSubst = 0.0137; // mean substitution rate
         double epsilon = 0.001;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
-        Double[] y0 = new Double[] { 0.00001 };
-        Double[] y1 = new Double[] { 2.25 }; // speciation rate
-        Double[] r = new Double[] {  30.0 };
-        Double[] yValue = new Double[] { 0.0046 }; // extinction rate
-
+        Double[] y0 = new Double[] { 0.000551 };
+        Double[] y1 = new Double[] { 1.565 }; // speciation rate
+        Double[] r = new Double[] { 52.14 };
+        Double[] yValue = new Double[] { 0.00096 }; // extinction rate
+        double alpha = 20.0; // alpha shape for gamma distribution
         // Parameters for Mosse distribution
         Double[] drift = new Double[] { 0.0 }; // drift parameter
-        
         Double[] diffusion = new Double[] { 0.0005 }; // diffusion parameter
+        
         double dt = 0.004;            // time interval dt
         int width = 5;
         int resolution = 4;
@@ -131,7 +132,7 @@ public class MosseTreeLikelihoodSim12 {
         Tree tree = new Tree(newick);
 
         // For HKY model
-        RealParameter kappa = new RealParameter("56.6");
+        RealParameter kappa = new RealParameter(Double.toString(kappa_hky));
         RealParameter freqsParam = new RealParameter("0.1450 0.1584 0.5431 0.1535");
         Frequencies freqs = new Frequencies();
         freqs.initByName("frequencies", freqsParam);
@@ -145,7 +146,7 @@ public class MosseTreeLikelihoodSim12 {
         siteModel.initByName(
                 "mutationRate", "1.0",
                 "gammaCategoryCount", "4",
-                "shape", "20",
+                "shape", Double.toString(alpha),
                 "substModel", hky);
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
