@@ -459,7 +459,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// Java initialises boolean arrays to false, so no explicit fill needed.
 		boolean[] updated = new boolean[subpatns];
 
-		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_leaf,
+		double[] tipLikelihoods = tipModel.getTipLikelihoods_prob(traitValues, numEntries_leaf,
 				startSubsRate_leaf + padLeft_leaf * dx_leaf, dx_leaf);
 
 		// compute the partial likelihood for single sub-pattern with categories.

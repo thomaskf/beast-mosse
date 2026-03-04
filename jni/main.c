@@ -356,11 +356,11 @@ void qf_setup_kern_mosse(mosse_fft *obj, double drift, double diffusion,
   sd = sqrt(dt * diffusion);
 
   for (i = 0, x = 0; i <= nkr; i++, x += dx)
-    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx; // normal_cell_mass(x, dx, mean, sd); 
+    tot += kern_x[i] = normal_cell_mass(x, dx, mean, sd); // dnorm(x, mean, sd, 0) * dx; 
   for (i = nkr + 1; i < nx - nkl; i++)
     kern_x[i] = 0;
   for (i = nx - nkl, x = -nkl * dx; i < nx; i++, x += dx)
-    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx; // normal_cell_mass(x, dx, mean, sd);    
+    tot += kern_x[i] = normal_cell_mass(x, dx, mean, sd); // dnorm(x, mean, sd, 0) * dx;    
 
   for (i = 0; i <= nkr; i++)
     kern_x[i] /= tot;
