@@ -425,7 +425,7 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       d[ix] = 0;
 
       for (ik = 0; ik < nk; ik++) {
-        Q_x = obj->Q[ix * nk2 + nk * (id - 1) + ik];
+        Q_x = obj->Q[ix * nk2 + nk * ik + (id - 1)];
         d_x = obj->x[nx * (ik + 1) + ix];
         d[ix] += d_x * Q_x;
       }
