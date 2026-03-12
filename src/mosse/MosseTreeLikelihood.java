@@ -1281,10 +1281,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 
 		// root.p is computed on the projected (scalar) d.root
-		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries, dx);
+		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries);
 
 		if (conditionSurv) {
-			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2) * dx
+			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2)
 			double denom = 0.0;
 			for (int i = 0; i < numEntries; i++) {
 				double eRootI = result[i]; // E column (column 0)
@@ -1295,7 +1295,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 				denom += rootP[i] * lambdas[i] * surv * surv;
 			}
-			denom *= dx;
+			// denom *= dx;
 			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
 			for (int i = 0; i < numEntries; i++) {
 				dProj[i] /= denom;
@@ -1307,7 +1307,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		for (int i = 0; i < numEntries; i++) {
 			sum += rootP[i] * dProj[i];
 		}
-		double logProb = Math.log(sum * dx);
+		// double logProb = Math.log(sum);
+		double logProb = Math.log(sum);
 		return logProb;
 	}
 
@@ -1315,17 +1316,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * Compute root probability weights for the projected (single-column) d.root vector.
 	 * Mirrors root.p.mosse() in the updated R after d.root has been projected via root.i.
 	 */
-	private double[] getRootProbFlatProjected(double[] dProj, double[] x, int numEntries, double dx) {
+	private double[] getRootProbFlatProjected(double[] dProj, double[] x, int numEntries) {
 		double[] p = new double[numEntries];
 		if (rootOption == ROOT_OBS) {
-			// p <- d.root / (sum(d.root) * dx)
+			// p <- d.root / sum(d.root)
 			double dsum = 0.0;
 			for (int i = 0; i < numEntries; i++) dsum += dProj[i];
-			double factor = (dsum == 0.0) ? 0.0 : 1.0 / (dsum * dx);
+			double factor = (dsum == 0.0) ? 0.0 : 1.0 / dsum;
 			for (int i = 0; i < numEntries; i++) p[i] = dProj[i] * factor;
 		} else if (rootOption == ROOT_FLAT) {
-			// p <- 1 / ((pars$nx - 1) * dx)
-			double val = 1.0 / ((numEntries - 1) * dx);
+			// p <- 1 / (pars$nx - 1)
+			double val = 1.0 / (numEntries - 1);
 			Arrays.fill(p, val);
 		} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
 			// p <- root.f(x)
