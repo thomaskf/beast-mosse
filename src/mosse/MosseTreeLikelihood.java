@@ -100,8 +100,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected String resolutionMode; // one of the three constants above
 	
 	// rate for the bins
-	protected double rmin; // minimum of rate
-	protected double rmax; // maximum of rate
+	// protected double rmin; // minimum of rate
+	// protected double rmax; // maximum of rate
 
 	// variables for high resolution
 	protected int numRateBins_h;
@@ -179,17 +179,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
 
 		// compute the min and the max value of rate for the bins
-		double x0 = tipModel.meanSubstitutionInput.get().getValue();
-		computeRminRmaxDx(x0, treeModel.nx, resolution); // assign to the variables rmin, rmax, and dx_h
+		// double x0 = tipModel.meanSubstitutionInput.get().getValue();
+		dx_h = treeModel.dx_h;
+		
+		// computeRminRmaxDx(x0, treeModel.nx, resolution); // assign to the variables rmin, rmax, and dx_h
 		
 		// high resolution
 		numRateBins_h = treeModel.numRateBins_h;
-		startSubsRate_h = rmin;
+		startSubsRate_h = dx_h;
 		
 		// low resolution
 		numRateBins_l = treeModel.numRateBins_l;
 		dx_l = dx_h * resolution;
-		startSubsRate_l = rmin;
+		startSubsRate_l = dx_l;
 				
 		// maximum value of numRateBins (always numRateBins_h)
 		numRateBins_max = numRateBins_h;
@@ -312,6 +314,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	// compute the values of rmin, rmax, and dx
+	/*
 	protected void computeRminRmaxDx(double x0, int nx, int resolution) {
 		List<Node> leaves = tree.getExternalNodes();
 		List<Double> traitList = new ArrayList<>();
@@ -347,7 +350,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		
 		rmax = rmin + dx_h * nx * resolution;
-	}
+	}*/
 	
 	protected void computeLambdaMus() {
 		
@@ -713,13 +716,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// unavoidable; the savings from the power table come from the initial
 		// fast-forward through the padLeft skip region.
 		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
-		double currX = rmin;
+		double currX = dx;
 		double delta = dx / 100.0;
 
 		// Fast-forward through padLeft skipped bins using exponentiation-by-squaring.
 		// Count how many steps actually need multiplying (where currX > delta).
 		int stepsInPad = 0;
-		double currX_scan = rmin;
+		double currX_scan = dx;
 		for (int i = 0; i < padLeft; i++) {
 			if (currX_scan > delta) stepsInPad++;
 			currX_scan += dx;
@@ -1123,7 +1126,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             	patternCatLogLikes = new double[totaljobs];
             }
             
-            boolean conditionSurv = false;
+            boolean conditionSurv = true;
             // Choose root-resolution parameters based on the active resolution mode.
             // In "high" mode the root operates at high resolution; in all other modes
             // (mixed and low) the root always operates at low resolution.
@@ -1391,8 +1394,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		System.out.println("resolutionMode = " + resolutionMode);
 		System.out.println("tc = " + tc);
 		System.out.println("dx_h = " + dx_h);
-		System.out.println("rmin = " + rmin);
-		System.out.println("rmax = " + rmax);
 		
 		printSiteModelParameters();
 		tipModel.printParams();
