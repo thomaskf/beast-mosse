@@ -627,6 +627,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		vsum *= dx_h;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
 			for (int i = 0; i < numEntries; i++) {
@@ -649,6 +650,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		vsum *= dx_l;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
 			for (int i = 0; i < numEntries; i++) {
