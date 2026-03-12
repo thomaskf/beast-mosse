@@ -24,7 +24,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			new IntegerParameter("1024"));
 	
 	// change dx from an input value to a calculated value
-	final public Input<RealParameter> dxInput = new Input<>("dx", "distance between xs", new RealParameter("0.001"));
+	final public Input<RealParameter> dxInput = new Input<>("dx", "distance between xs", new RealParameter("0.0001"));
 	
 	final public Input<RealParameter> driftInput = new Input<>("drift", "drift parameter", new RealParameter("0.0"));
 	final public Input<RealParameter> diffusionInput = new Input<>("diffusion", "diffusion parameter",
