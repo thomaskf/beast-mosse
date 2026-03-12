@@ -1254,7 +1254,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// transposing into a double[nx][numPlan] intermediate. The layout is:
 		//   result[j * nx + i]  =>  column j (plan dimension), row i (bin)
 		// Column 0 = E values; columns 1..stateCount = D values per state.
-		// This saves O(nx * numPlan) allocation and copying work per root pattern.
 
 		// Select cached substitution-rate array and lambda array that match the
 		// resolution at which the root partials were computed.
@@ -1262,29 +1261,83 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] x       = rootIsLow ? cached_x_l : cached_x_h;
 		double[] lambdas = rootIsLow ? lambdas_l   : lambdas_h;
 
-		// root options
-		double[][] rootP = getRootProbFlat(result, x, nx, dx, rootOption, rootFunc);
+		int numEntries = rootIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+
+		// Compute root.i: stationary frequencies of Q (left eigenvector for eigenvalue 0).
+		// In R: root.i <- solve(t(cbind(c(1,1,1,1), pars$Q_orig[,-1])), c(1,0,0,0))
+		// This is equivalent to the substitution model's equilibrium frequencies.
+		double[] rootI = substitutionModel.getFrequencies();
+
+		// Project d.root through root.i: d_proj[i] = sum_j( D[j][i] * rootI[j] )
+		// In R: d.root <- d.root %*% root.i
+		// result layout: result[(j+1)*nx + i] = D[state j][bin i]
+		double[] dProj = new double[numEntries];
+		for (int i = 0; i < numEntries; i++) {
+			double val = 0.0;
+			for (int j = 0; j < stateCount; j++) {
+				val += result[(j + 1) * nx + i] * rootI[j];
+			}
+			dProj[i] = val;
+		}
+
+		// root.p is computed on the projected (scalar) d.root
+		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries, dx);
 
 		if (conditionSurv) {
-			// eRoot is column 0 of result; D values are columns 1..stateCount.
-			// Valid entries start at index 0 within each column (no padLeft offset needed).
-			for (int i = 0; i < lambdas.length; i++) {
-				double eRootI = result[i]; // E at valid entry i (column 0)
-				double lambdaX = lambdas[i];
+			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2) * dx
+			double denom = 0.0;
+			for (int i = 0; i < numEntries; i++) {
+				double eRootI = result[i]; // E column (column 0)
+				double surv = 1.0 - eRootI;
 				final double min_value = 1e-30;
-				if (1 - eRootI < min_value) {
+				if (surv < min_value) {
 					return Double.NEGATIVE_INFINITY;
 				}
-				double factor = 1.0 / (lambdaX * (1 - eRootI) * (1 - eRootI));
-				for (int j = 1; j <= stateCount; j++) {
-					result[j * nx + i] *= factor;
-				}
+				denom += rootP[i] * lambdas[i] * surv * surv;
+			}
+			denom *= dx;
+			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
+			for (int i = 0; i < numEntries; i++) {
+				dProj[i] /= denom;
 			}
 		}
 
-		// compute product sum: sum over i,j of rootP[i][j] * dRoot[i][j]
-		double logProb = Math.log(getProductSum(rootP, result, nx));
+		// compute product sum: sum_i rootP[i] * dProj[i]
+		double sum = 0.0;
+		for (int i = 0; i < numEntries; i++) {
+			sum += rootP[i] * dProj[i];
+		}
+		double logProb = Math.log(sum * dx);
 		return logProb;
+	}
+
+	/**
+	 * Compute root probability weights for the projected (single-column) d.root vector.
+	 * Mirrors root.p.mosse() in the updated R after d.root has been projected via root.i.
+	 */
+	private double[] getRootProbFlatProjected(double[] dProj, double[] x, int numEntries, double dx) {
+		double[] p = new double[numEntries];
+		if (rootOption == ROOT_OBS) {
+			// p <- d.root / (sum(d.root) * dx)
+			double dsum = 0.0;
+			for (int i = 0; i < numEntries; i++) dsum += dProj[i];
+			double factor = (dsum == 0.0) ? 0.0 : 1.0 / (dsum * dx);
+			for (int i = 0; i < numEntries; i++) p[i] = dProj[i] * factor;
+		} else if (rootOption == ROOT_FLAT) {
+			// p <- 1 / ((pars$nx - 1) * dx)
+			double val = 1.0 / ((numEntries - 1) * dx);
+			Arrays.fill(p, val);
+		} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
+			// p <- root.f(x)
+			double[] y = new double[x.length];
+			y = rootFunc.getY(x, y);
+			for (int i = 0; i < numEntries; i++) {
+				p[i] = (i < y.length) ? y[i] : 0.0;
+			}
+		} else {
+			throw new RuntimeException("Unsupported root option: " + rootOption);
+		}
+		return p;
 	}
 
 	/**
@@ -1320,38 +1373,25 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			return p;
 		} else if (rootOption == ROOT_FLAT) {
-			double val = 1.0 / ((numEntries - 1) * ntypes);
+			double val = 1.0 / (numEntries - 1);
 			double[][] p = new double[numEntries][ntypes];
 			for (int i = 0; i < numEntries; i++)
 				Arrays.fill(p[i], val);
 			return p;
-		} else {
-			double[] rootI = substitutionModel.getFrequencies();
+		} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
+			double[] y = new double[x.length];
+			y = rootFunc.getY(x, y);
 			double[][] p = new double[numEntries][ntypes];
-			if (rootOption == ROOT_EQUI) {
-				double[] colSums = new double[ntypes];
+			for (int i = 0; i < numEntries; i++) {
+				double yi = (i < y.length) ? y[i] : 0.0;
 				for (int j = 0; j < ntypes; j++) {
-					int colStart = (j + 1) * nx;
-					for (int i = 0; i < numEntries; i++) colSums[j] += result[colStart + i];
-				}
-				for (int j = 0; j < ntypes; j++) {
-					int colStart = (j + 1) * nx;
-					double inv = (colSums[j] == 0.0) ? 0.0 : rootI[j] / colSums[j];
-					for (int i = 0; i < numEntries; i++) {
-						p[i][j] = result[colStart + i] * inv;
-					}
-				}
-			} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
-				double[] y = new double[x.length];
-				y = rootFunc.getY(x, y);
-				for (int i = 0; i < numEntries; i++) {
-					double yi = (i < y.length) ? y[i] : 0.0;
-					for (int j = 0; j < ntypes; j++) {
-						p[i][j] = rootI[j] * yi;
-					}
+					p[i][j] = yi;
 				}
 			}
 			return p;
+		} else {
+			// Unsupported root mode
+			throw new RuntimeException("Unsupported root option: " + rootOption);
 		}
 	}
 
