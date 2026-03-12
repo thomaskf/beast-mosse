@@ -1298,10 +1298,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 				denom += rootP[i] * lambdas[i] * surv * surv;
 			}
-			denom *= dx;
 			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
 			for (int i = 0; i < numEntries; i++) {
-				dProj[i] /= denom;
+				dProj[i] = (dProj[i] / denom) * dx;
 			}
 		}
 
