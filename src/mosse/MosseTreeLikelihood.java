@@ -1123,7 +1123,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
             	patternCatLogLikes = new double[totaljobs];
             }
             
-            boolean conditionSurv = false;
+            boolean conditionSurv = true;
             // Choose root-resolution parameters based on the active resolution mode.
             // In "high" mode the root operates at high resolution; in all other modes
             // (mixed and low) the root always operates at low resolution.
@@ -1207,7 +1207,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		        }
 	        }
 	        
-	        /*
 	        // show the patternCatLogLikes array
 	        System.out.println("patternCatLogLikes:");
 	        int k;
@@ -1234,7 +1233,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	System.out.print("," + data.getPatternWeight(j));
 	        }
 	        System.out.println();
-	        */
         }
 	}
 
@@ -1419,7 +1417,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 	protected void printLogP() {
 		printParams();
-		// printSiteCatLikes(patternLogLikelihoods, 1);
+		// printSiteCatLikes(patternLogLikelihoods, 4);
 		count++;
 		System.out.println("#" + count + " logP = " + df.format(logP));
 		System.out.println();
