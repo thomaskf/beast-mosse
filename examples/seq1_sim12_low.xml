@@ -209,8 +209,8 @@
             
                 <distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
                     <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-                        <parameter name="M" spec="parameter.RealParameter" value="1.0"/>
-                        <parameter name="S" spec="parameter.RealParameter" value="10.0"/>
+                        <parameter name="M" spec="parameter.RealParameter" value="5.0"/>
+                        <parameter name="S" spec="parameter.RealParameter" value="20.0"/>
                     </distr> <!--XH:increase sd=10-->
                 </distribution>
                 
@@ -315,11 +315,11 @@
             scaleFactor="0.75" weight="3.0"/>
 
         <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.25" weight="3.0" />
         <operator id="SubstScaler" spec="ScaleOperator" parameter="@subst"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.25" weight="3.0" />
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.25" weight="3.0" />
 
         <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
             scaleFactor="0.75" weight="3.0" />
