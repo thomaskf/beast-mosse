@@ -314,8 +314,10 @@
         <operator id="alphaScale" spec="ScaleOperator" parameter="@alpha"
             scaleFactor="0.75" weight="3.0"/>
 
-        <operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
-            scaleFactor="0.25" weight="3.0" />
+		<operator id="BetaRandomWalk" spec="RealRandomWalkOperator" parameter="@beta"
+		    windowSize="0.25" weight="3.0" />
+        <!--<operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
+            scaleFactor="0.25" weight="3.0" />-->
         <operator id="SubstScaler" spec="ScaleOperator" parameter="@subst"
             scaleFactor="0.25" weight="3.0" />
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
