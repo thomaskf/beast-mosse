@@ -199,11 +199,11 @@
                 <distribution id="rootHeightPrior"
                               spec="beast.base.evolution.tree.MRCAPrior"
                               tree="@tree"
-                              monophyletic="false">
+                              monophyletic="true">
                     <taxonset idref="taxonset"/>
                     <distr id="Normal.rootHeight" spec="beast.base.inference.distribution.Normal">
-                        <parameter name="mean"  spec="parameter.RealParameter" value="1.4504252495"  estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="1e-6" estimate="false"/>
+                        <parameter name="mean"  spec="parameter.RealParameter" value="3.5122370973"  estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="1e-3" estimate="false"/>
                     </distr>
                 </distribution>
             
@@ -370,6 +370,18 @@
             <log idref="curveMaxY" />
             <log idref="linearGrowthRate" />
             <log idref="yV" />
+            <log idref="rootHeightPrior" />
+            <log idref="alphaPrior" />
+            <log idref="kappaPrior" />
+            <log idref="epsilonPrior" />
+            <log idref="betaPrior" />
+            <log idref="substPrior" />
+            <log idref="driftPrior" />
+            <log idref="diffusionPrior" />
+            <log idref="curveYBaseValuePrior" />
+            <log idref="curveYDiffPrior" />
+            <log idref="linearGrowthRatePrior" />
+            <log idref="yVPrior" />
         </logger>
         <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
             <log idref="tree" />
