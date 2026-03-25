@@ -128,12 +128,13 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
 
   // PROTECT(ret = allocMatrix(REALSXP, obj->nx, nd));
   int size = obj->nx * nd;
-  double *result = (double*)malloc(sizeof(double) * size); 
-  qf_copy_x_mosse(obj, result, nd, 0); // copy obj to result
+  // double *result = (double*)malloc(sizeof(double) * size); 
+  // qf_copy_x_mosse(obj, result, nd, 0); // copy obj to result
 
   // copy to java array
   jdoubleArray j_result = (*env)->NewDoubleArray(env, size);
-  (*env)->SetDoubleArrayRegion(env, j_result, 0, size, result);
+  // (*env)->SetDoubleArrayRegion(env, j_result, 0, size, result);
+  (*env)->SetDoubleArrayRegion(env, j_result, 0, size, obj->x);
 
   // free memory
   free(c_lambda);
@@ -153,6 +154,25 @@ int lookup(int x, int *v, int len) {
     }
 
   return idx;
+}
+
+double pnorm_cdf(double x, double mu, double sigma) {
+    if (isnan(x) || isnan(mu) || isnan(sigma)) return NAN;
+    if (sigma <= 0.0) {
+        if (x < mu) return 0.0;
+        return 1.0;
+    }
+    double z = (x - mu) / sigma;
+    return 0.5 * erfc(-z / M_SQRT2);
+}
+
+/* Probability mass in a cell centered at x with width dx */
+double normal_cell_mass(double x_center, double dx, double mu, double sigma) {
+    double half = 0.5 * dx;
+    double left  = x_center - half;
+    double right = x_center + half;
+    double a = pnorm_cdf(right, mu, sigma) - pnorm_cdf(left, mu, sigma);
+    return (a < 0.0) ? 0.0 : a;
 }
 
 double dnorm(double x, double mu, double sigma, int give_log) {
@@ -336,11 +356,11 @@ void qf_setup_kern_mosse(mosse_fft *obj, double drift, double diffusion,
   sd = sqrt(dt * diffusion);
 
   for (i = 0, x = 0; i <= nkr; i++, x += dx)
-    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx;
+    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx; // normal_cell_mass(x, dx, mean, sd); 
   for (i = nkr + 1; i < nx - nkl; i++)
     kern_x[i] = 0;
   for (i = nx - nkl, x = -nkl * dx; i < nx; i++, x += dx)
-    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx;
+    tot += kern_x[i] = dnorm(x, mean, sd, 0) * dx; // normal_cell_mass(x, dx, mean, sd);    
 
   for (i = 0; i <= nkr; i++)
     kern_x[i] /= tot;
@@ -405,7 +425,7 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       d[ix] = 0;
 
       for (ik = 0; ik < nk; ik++) {
-        Q_x = obj->Q[ix * nk2 + nk * (id - 1) + ik];
+        Q_x = obj->Q[ix * nk2 + nk * ik + (id - 1)];
         d_x = obj->x[nx * (ik + 1) + ix];
         d[ix] += d_x * Q_x;
       }

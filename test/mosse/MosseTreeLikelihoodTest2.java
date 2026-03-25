@@ -16,11 +16,10 @@ import beast.base.inference.parameter.RealParameter;
 
 
 /**
- * @author Kylie Chen
  * @author Thomas Wong
  */
 
-public class MosseTreeLikelihoodTest {
+public class MosseTreeLikelihoodTest2 {
 
     private static double DELTA = 1e-7;
 
@@ -51,34 +50,20 @@ public class MosseTreeLikelihoodTest {
      */
     @Test
     public void testMosseLikelihood() {
-        int numLeaves = 2;
-        String[] names = {"t0", "t1"};
-        String[] sequences = {"A", "C"};
-        String newick = "(t0: 0.4, t1: 0.4);";
+        int numLeaves = 15;
+        String[] names = {"sp1","sp2","sp5","sp6","sp7","sp8","sp9","sp10","sp11","sp12","sp13","sp14","sp15","sp16","sp17"};
+        String[] sequences = {"A","A","A","G","T","A","C","A","C","G","A","G","G","T","A"};
+        String newick = "(sp2:13.77320255,(sp1:12.76688384,((((sp12:1.170387028,sp13:1.170387028):0.9837720325,sp9:2.154159061):5.451401092,((sp5:4.311645343,(sp14:0.8910055279,sp15:0.8910055279):3.420639815):2.536663776,((sp16:0.3011866125,sp17:0.3011866125):4.264383667,(sp6:3.95083843,sp7:3.95083843):0.6147318498)0:2.282738839):0.7572510339):2.554739141,((sp10:2.059478202,sp11:2.059478202):0.4198789018,sp8:2.479357104):7.68094219):2.60658455):1.006318707);";
         int numTraits = 1;
-        String trait1Values = "t0=0.15, t1=0.1";
-
-//        int numLeaves = 4;
-//        String[] names = {"t0", "t1", "t2", "t3"};
-//        // String[] sequences = {"A", "C", "G", "T"};
-//        String[] sequences = {"AG", "CT", "GG", "TC"};
-//        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
-
-//        int numLeaves = 3;
-//        String[] names = {"t0", "t1", "t2"};
-//        String[] sequences = {"AG", "CT", "GG"};
-//        String newick = "((t0:0.2,t1:0.2):0.2,t2:0.4);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
+        String traitValues = "sp1=0.01070713, sp2=0.00970083, sp5=0.0104502, sp6=0.00918406, sp7=0.01006519, sp8=0.01041169, sp9=0.01002527, sp10=0.01027695, sp11=0.00945112, sp12=0.01050648, sp13=0.00998902, sp14=0.00937548, sp15=0.00881356, sp16=0.00981287, sp17=0.01024662";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
-        Double[] betasArray = {1.0};
+        Double[] betasArray = { 1.0 };
         double meanSubst = 0.0; // mean substitution rate
         double epsilon = 0.01;
+        
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
@@ -86,7 +71,7 @@ public class MosseTreeLikelihoodTest {
         Double[] y1 = new Double[] { 0.2 };
         Double[] x0 = new Double[] { 0.0 };
         Double[] r = new Double[] { 2.5 };
-        Double[] yValue = new Double[] { 0.03 }; // constant
+        Double[] yValue = new Double[] { 0.03 }; // constant -- mu
 
         // Parameters for Mosse distribution
         double drift = 0.0;          // drift parameter
@@ -118,15 +103,15 @@ public class MosseTreeLikelihoodTest {
                 "logscale", "false"
         );
 
-        // trait 1
-        TraitSet trait1 = new TraitSet();
-        trait1.initByName(
+        // trait
+        TraitSet trait = new TraitSet();
+        trait.initByName(
                 "traitname", "trait1",
                 "taxa", new TaxonSet(alignment),
-                "value", trait1Values);
+                "value", traitValues);
 
         List<TraitSet> traitsList = new ArrayList<>(numTraits);
-        traitsList.add(trait1);
+        traitsList.add(trait);
 
         // lambda and mu functions
         // logistic
@@ -154,7 +139,8 @@ public class MosseTreeLikelihoodTest {
                 "diffusion", Double.toString(diffusion),   // diffusion parameter
                 "dt", Double.toString(dt),                 // time interval dt
                 "width", Integer.toString(width),
-                "resolution", Integer.toString(resolution)
+                "resolution", Integer.toString(resolution) //,
+//                "lowresolution", Boolean.toString(lowresolution)
         );
 
         MosseTreeLikelihood likelihood = new MosseTreeLikelihood();
@@ -165,17 +151,16 @@ public class MosseTreeLikelihoodTest {
                 "tipModel", tipModel,
                 "treeModel", mosseDist,
                 "traits", traitsList,
+//                "startSubsRate", Double.toString(startSubsRate),
+//                "numRateBins", Integer.toString(numBins),
                 "lambdaFunc", logFunc,
                 "muFunc", constFunc
+//                "resolution", Integer.toString(resolution)
         );
 
         // using observed root
         double result = likelihood.calculateLogP();
-        System.out.println("[1] testMosseLikelihood logP = " + result);
-
-        // using observed root
-        double result2 = likelihood.calculateLogP();
-        System.out.println("[2] testMosseLikelihood logP = " + result2);
+        System.out.println("testMosseLikelihood logP = " + result);
 
     }
 

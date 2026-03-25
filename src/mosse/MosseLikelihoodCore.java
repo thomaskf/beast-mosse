@@ -3,81 +3,98 @@ package mosse;
 import beast.base.core.Description;
 import beast.base.evolution.likelihood.BeerLikelihoodCore;
 
-
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse likelihood core calculation class")
 public class MosseLikelihoodCore extends BeerLikelihoodCore {
 
-    protected int numRateBins;
-    protected int padLeft;
-    protected int padRight;
+	protected int numRateBins;
 
-    protected int lambdaSize;
+	protected int lambdaSize;
+	
+	protected double[][][][] mossePartials;
 
-    public MosseLikelihoodCore(int nrOfStates, int numRateBins, int padLeft, int padRight) {
-        super(nrOfStates);
-        this.numRateBins = numRateBins;
-        this.padLeft = padLeft;
-        this.padRight = padRight;
-    }
+	protected double[][][][] mosseCompensates;
+	
+	public MosseLikelihoodCore(int nrOfStates, int numRateBins) {
+		super(nrOfStates);
+		this.numRateBins = numRateBins;
+	}
 
-    /**
-     * initializes partial likelihood arrays.
-     *
-     * @param nodeCount           the number of nodes in the tree
-     * @param patternCount        the number of patterns
-     * @param matrixCount         the number of matrices (i.e., number of categories for gamma rate heterogeneity)
-     * @param integrateCategories whether sites are being integrated over all matrices
-     * @param useAmbiguities      whether to use ambiguious characters
-     */
-    @Override
-    public void initialize(int nodeCount, int patternCount, int matrixCount, boolean integrateCategories, boolean useAmbiguities) {
-        this.nrOfNodes = nodeCount;
-        this.nrOfPatterns = patternCount;
-        this.nrOfMatrices = matrixCount; // matrix count should be 1
-        this.integrateCategories = integrateCategories;
+	/**
+	 * initializes partial likelihood arrays.
+	 *
+	 * @param nodeCount           the number of nodes in the tree
+	 * @param patternCount        the number of patterns
+	 * @param matrixCount         the number of matrices (i.e., number of categories
+	 *                            for gamma rate heterogeneity)
+	 * @param integrateCategories whether sites are being integrated over all
+	 *                            matrices
+	 * @param useAmbiguities      whether to use ambiguious characters
+	 */
+	@Override
+	public void initialize(int nodeCount, int patternCount, int matrixCount, boolean integrateCategories,
+			boolean useAmbiguities) {
+		this.nrOfNodes = nodeCount;
+		this.nrOfPatterns = patternCount;
+		this.nrOfMatrices = matrixCount; // matrix count should be 1
+		this.integrateCategories = integrateCategories;
 
-        if (matrixCount > 1) {
-            throw new IllegalArgumentException("Gamma rate categories greater than 1 not supported");
-        }
+		mossePartials = new double[2][nodeCount][matrixCount][];
+		mosseCompensates = new double[2][nodeCount][matrixCount][];
 
-        // do use need gamma rate categories
-        partialsSize = patternCount * (nrOfStates + 1) * numRateBins;
+		currentMatrixIndex = new int[nodeCount];
+		storedMatrixIndex = new int[nodeCount];
 
+		currentPartialsIndex = new int[nodeCount];
+		storedPartialsIndex = new int[nodeCount];
 
-        partials = new double[2][nodeCount][];
+		states = new int[nodeCount][];
 
-        currentMatrixIndex = new int[nodeCount];
-        storedMatrixIndex = new int[nodeCount];
+		for (int i = 0; i < nodeCount; i++) {
+			for (int c = 0; c < matrixCount; c++) {
+				mossePartials[0][i][c] = null;
+				mossePartials[1][i][c] = null;
+				mosseCompensates[0][i][c] = null;
+				mosseCompensates[1][i][c] = null;
+			}
+			states[i] = null;
+		}
+	}
 
-        currentPartialsIndex = new int[nodeCount];
-        storedPartialsIndex = new int[nodeCount];
+	public void setNodeMossePartials(int nodeIndex, double[][] partialsIn) {
+		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
+	}
 
-        states = new int[nodeCount][];
+	public double[][] getNodeMossePartials(int nodeIndex) {
+		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex];
+	}
 
-        for (int i = 0; i < nodeCount; i++) {
-            partials[0][i] = null;
-            partials[1][i] = null;
-            states[i] = null;
-        }
+	public void setNodeMossePartials(int nodeIndex, int categoryIndex, double[] partialsIn) {
+		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = partialsIn;
+	}
 
-        matrixSize = nrOfStates * nrOfStates;
+	public double[] getNodeMossePartials(int nodeIndex, int categoryIndex) {
+		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
+	}
 
-        matrices = new double[2][nodeCount][matrixCount * matrixSize];
-    }
+	
+	public void setNodeMosseCompensates(int nodeIndex, double[][] compensatesIn) {
+		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex] = compensatesIn;
+	}
 
-    @Override
-    public void setNodePartials(int nodeIndex, double[] partials) {
-        if (this.partials[0][nodeIndex] == null) {
-            this.partials[0][nodeIndex] = new double[partialsSize];
-            this.partials[1][nodeIndex] = new double[partialsSize];
-        }
+	public double[][] getNodeMosseCompensates(int nodeIndex) {
+		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex];
+	}
 
-        System.arraycopy(partials, 0, this.partials[currentPartialsIndex[nodeIndex]][nodeIndex], 0, partials.length);
+	public void setNodeMosseCompensates(int nodeIndex, int categoryIndex, double[] compensatesIn) {
+		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = compensatesIn;
+	}
 
-    }
-
+	public double[] getNodeMosseCompensates(int nodeIndex, int categoryIndex) {
+		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
+	}
 }

@@ -16,26 +16,41 @@ import beast.base.inference.parameter.RealParameter;
 
 
 /**
- * @author Kylie Chen
  * @author Thomas Wong
  */
 
-public class MosseTreeLikelihoodTest {
-
-    private static double DELTA = 1e-7;
+public class MosseTreeLikelihoodTestSimpleTree {
 
     /**
      * returns an Alignment of nucleotide sequences
      * @param numLeaves number of taxa (or leaves in tree)
-     * @param names name of each taxa
+     * @param sequences nucleotide sequences for each taxa
+     * @return an Alignment of nucleotide sequences
+     */
+    public Alignment getAlignment(int numLeaves, String[] sequences) {
+        List<Sequence> seqList = new ArrayList<>();
+
+        for (int i = 0; i < numLeaves; i++) {
+            String taxonID = "t" + i;
+            seqList.add(new Sequence(taxonID, sequences[i]));
+        }
+
+        Alignment alignment = new Alignment(seqList, "nucleotide");
+
+        return alignment;
+    }
+
+    /**
+     * returns an Alignment of nucleotide sequences
+     * @param numLeaves number of taxa (or leaves in tree)
+     * @param names taxa names
      * @param sequences nucleotide sequences for each taxa
      * @return an Alignment of nucleotide sequences
      */
     public Alignment getAlignment(int numLeaves, String[] names, String[] sequences) {
         List<Sequence> seqList = new ArrayList<>();
 
-        assert(names.length == sequences.length);
-
+        assert names.length == sequences.length;
         for (int i = 0; i < numLeaves; i++) {
             seqList.add(new Sequence(names[i], sequences[i]));
         }
@@ -51,42 +66,33 @@ public class MosseTreeLikelihoodTest {
      */
     @Test
     public void testMosseLikelihood() {
-        int numLeaves = 2;
-        String[] names = {"t0", "t1"};
-        String[] sequences = {"A", "C"};
-        String newick = "(t0: 0.4, t1: 0.4);";
+
+    	long startTime = System.nanoTime();
+
+        int numLeaves = 4;
+        String[] names = {"t0","t1","t2","t3"};
+        String[] sequences = {"AG", "CT", "GG", "TC"};
+
+        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
+
+        String trait0Values = "t0=0.15,t1=0.1,t2=0.25,t3=0.2";
+
         int numTraits = 1;
-        String trait1Values = "t0=0.15, t1=0.1";
-
-//        int numLeaves = 4;
-//        String[] names = {"t0", "t1", "t2", "t3"};
-//        // String[] sequences = {"A", "C", "G", "T"};
-//        String[] sequences = {"AG", "CT", "GG", "TC"};
-//        String newick = "((t0:0.2,t1:0.2):0.2,(t2:0.3,t3:0.3):0.1);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25, t3=0.2";
-
-//        int numLeaves = 3;
-//        String[] names = {"t0", "t1", "t2"};
-//        String[] sequences = {"AG", "CT", "GG"};
-//        String newick = "((t0:0.2,t1:0.2):0.2,t2:0.4);";
-//        int numTraits = 1;
-//        String trait1Values = "t0=0.15, t1=0.1, t2=0.25";
 
         Alignment alignment = getAlignment(numLeaves, names, sequences);
 
         // Parameters
         Double[] betasArray = {1.0};
-        double meanSubst = 0.0; // mean substitution rate
+        double meanSubst = 0.0; // 0.05; // mean substitution rate
         double epsilon = 0.01;
         int numBins = 1024;
 
         // Parameters for lambda and mu functions
-        Double[] y0 = new Double[] { 0.1 };
-        Double[] y1 = new Double[] { 0.2 };
         Double[] x0 = new Double[] { 0.0 };
+        Double[] y1 = new Double[] { 0.2 };
+        Double[] y0 = new Double[] { 0.1 };
         Double[] r = new Double[] { 2.5 };
-        Double[] yValue = new Double[] { 0.03 }; // constant
+        Double[] yValue = new Double[] { 0.03 };
 
         // Parameters for Mosse distribution
         double drift = 0.0;          // drift parameter
@@ -94,21 +100,16 @@ public class MosseTreeLikelihoodTest {
         double dt = 0.01;            // time interval dt
         int width = 5;
         int resolution = 4;
-        // boolean lowresolution = false;
-
-        // Tree and Models Construction
 
         Tree tree = new Tree(newick);
 
         JukesCantor JC = new JukesCantor();
-        // JC.initAndValidate(); (no need, as this function has been called when the object JC is constructed
 
         SiteModel siteModel = new SiteModel();
         siteModel.initByName(
                 "mutationRate", "1.0",
                 "gammaCategoryCount", 1,
                 "substModel", JC);
-
 
         MosseTipLikelihood tipModel = new MosseTipLikelihood();
         tipModel.initByName(
@@ -118,18 +119,15 @@ public class MosseTreeLikelihoodTest {
                 "logscale", "false"
         );
 
-        // trait 1
-        TraitSet trait1 = new TraitSet();
-        trait1.initByName(
-                "traitname", "trait1",
+        // trait 0
+        TraitSet trait0 = new TraitSet();
+        trait0.initByName(
+                "traitname", "trait0",
                 "taxa", new TaxonSet(alignment),
-                "value", trait1Values);
-
+                "value", trait0Values);
         List<TraitSet> traitsList = new ArrayList<>(numTraits);
-        traitsList.add(trait1);
+        traitsList.add(trait0);
 
-        // lambda and mu functions
-        // logistic
         RealParameter y0rp = new RealParameter(y0);
         RealParameter y1rp = new RealParameter(y1);
         RealParameter x0rp = new RealParameter(x0);
@@ -139,7 +137,6 @@ public class MosseTreeLikelihoodTest {
                 y0rp, "curveMaxY", y1rp,
                 "sigmoidMidpoint", x0rp,
                 "logisticGrowthRate", rrp);
-
         // constant
         RealParameter yValueRP = new RealParameter(yValue);
         ConstantLinkFn constFunc = new ConstantLinkFn();
@@ -167,19 +164,31 @@ public class MosseTreeLikelihoodTest {
                 "traits", traitsList,
                 "lambdaFunc", logFunc,
                 "muFunc", constFunc
-        );
+                );
 
         // using observed root
         double result = likelihood.calculateLogP();
-        System.out.println("[1] testMosseLikelihood logP = " + result);
 
-        // using observed root
-        double result2 = likelihood.calculateLogP();
-        System.out.println("[2] testMosseLikelihood logP = " + result2);
+        assert !Double.isNaN(result);
+        assert !Double.isInfinite(result);
 
-    }
+        System.out.println("testMosseLikelihood logP = " + result);
 
-    public void testMosseLikelihoodRoot() {
-        // test root node treatments
+    	long endTime = System.nanoTime();
+    	long durationInNano = endTime - startTime;
+    	long durationInMillis = durationInNano / 1_000_000;
+    	long durationInSec = durationInMillis / 1000;
+
+    	System.out.println("Execution time: " + durationInSec + " seconds");
+
+    	Runtime runtime = Runtime.getRuntime();
+
+    	long totalMemory = runtime.totalMemory(); // Total memory currently available to the JVM
+    	long freeMemory = runtime.freeMemory();   // Free memory within the JVM
+    	long usedMemory = totalMemory - freeMemory; // Memory currently in use by the JVM
+
+    	System.out.println("Total JVM Memory: " + totalMemory / (1024 * 1024) + " MB");
+    	System.out.println("Free JVM Memory: " + freeMemory / (1024 * 1024) + " MB");
+    	System.out.println("Used JVM Memory: " + usedMemory / (1024 * 1024) + " MB");
     }
 }

@@ -1,56 +1,59 @@
 package mosse;
 
+import java.lang.reflect.InvocationTargetException;
+
 import beast.base.core.Function;
 import beast.base.core.Input;
 import beast.base.evolution.substitutionmodel.GeneralSubstitutionModel;
 
-import java.lang.reflect.InvocationTargetException;
-
 /**
  * @author Kylie Chen
- * setup custom Q matrix for testing Mosse Tree Likelihood only
+ *
+ * setup custom Q matrix for testing Mosse Tree Likelihood
+ *         only
  */
 public class CustomSubstitutionModel extends GeneralSubstitutionModel {
 
-    final public Input<Function> customRatesInput =
-            new Input<>("customRates", "rate parameter which defines the transition rate matrix Q exactly", Input.Validate.REQUIRED);
+	final public Input<Function> customRatesInput = new Input<>("customRates",
+			"rate parameter which defines the transition rate matrix Q exactly", Input.Validate.REQUIRED);
 
-    public CustomSubstitutionModel() {
-        ratesInput.setRule(Input.Validate.OPTIONAL);
-    }
+	public CustomSubstitutionModel() {
+		ratesInput.setRule(Input.Validate.OPTIONAL);
+	}
 
-    @Override
-    public void initAndValidate() {
-        frequencies = frequenciesInput.get();
-        updateMatrix = true;
-        nrOfStates = frequencies.getFreqs().length;
+	@Override
+	public void initAndValidate() {
+		frequencies = frequenciesInput.get();
+		updateMatrix = true;
+		nrOfStates = frequencies.getFreqs().length;
 
-        try {
-            eigenSystem = createEigenSystem();
-        } catch (SecurityException | ClassNotFoundException | InstantiationException | IllegalAccessException | IllegalArgumentException
-                 | InvocationTargetException e) {
-            throw new IllegalArgumentException(e.getMessage());
-        }
-        rateMatrix = new double[nrOfStates][nrOfStates];
-    }
+		try {
+			eigenSystem = createEigenSystem();
+		} catch (SecurityException | ClassNotFoundException | InstantiationException | IllegalAccessException
+				| IllegalArgumentException | InvocationTargetException e) {
+			throw new IllegalArgumentException(e.getMessage());
+		}
+		rateMatrix = new double[nrOfStates][nrOfStates];
+	}
 
-    protected void setupRateMatrixUnnormalized() {
-        double[] customRatesValues = new double[nrOfStates * nrOfStates];
-        Function customRates = this.customRatesInput.get();
-        for (int i = 0; i < customRates.getDimension(); i++) {
-            customRatesValues[i] = customRates.getArrayValue(i);
-        }
-        int count = 0;
-        for (int i = 0; i < nrOfStates; i++) {
-            for (int j = 0; j < nrOfStates; j++) {
-                rateMatrix[i][j] = customRatesValues[count];
-                count++;
-            }
-        }
-    }
+	@Override
+	protected void setupRateMatrixUnnormalized() {
+		double[] customRatesValues = new double[nrOfStates * nrOfStates];
+		Function customRates = this.customRatesInput.get();
+		for (int i = 0; i < customRates.getDimension(); i++) {
+			customRatesValues[i] = customRates.getArrayValue(i);
+		}
+		int count = 0;
+		for (int i = 0; i < nrOfStates; i++) {
+			for (int j = 0; j < nrOfStates; j++) {
+				rateMatrix[i][j] = customRatesValues[count];
+				count++;
+			}
+		}
+	}
 
-    @Override
+	@Override
 	public void setupRelativeRates() {
-        // use unnormalized matrix method instead
-    }
+		// use unnormalized matrix method instead
+	}
 }

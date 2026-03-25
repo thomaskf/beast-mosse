@@ -14,28 +14,25 @@ import beast.base.inference.CalculationNode;
  * @author Fabio K. Mendes
  */
 
-@Description("Logistic link function for converting x into y, "
+@Description("Linear function for converting x into y, "
 		+ "where x is a continuous trait and y is a macroevolutionary" + "parameter.")
-public class LogisticFunction extends CalculationNode implements LinkFn {
+public class LinearFunction extends CalculationNode implements LinkFn {
 
 	final public Input<RealParameter> curveYBaseValueInput = new Input<>("curveYBaseValue", "Curve y base value.",
 			Input.Validate.REQUIRED);
-	final public Input<RealParameter> curveMaxYInput = new Input<>("curveMaxY", "Curve maximum y value.",
+	final public Input<RealParameter> curveMaxYInput = new Input<>("curveMaxY", "Curve maximum y value (cap).",
 			Input.Validate.REQUIRED);
-	final public Input<RealParameter> sigmoidMidpointInput = new Input<>("sigmoidMidpoint",
-			"Midpoint of sigmoid curve.", Input.Validate.REQUIRED);
-	final public Input<RealParameter> logisticGrowthRateInput = new Input<>("logisticGrowthRate",
-			"Growth rate of logistic curve.", Input.Validate.REQUIRED);
+	final public Input<RealParameter> linearGrowthRateInput = new Input<>("linearGrowthRate",
+			"Slope (growth rate) of the linear function.", Input.Validate.REQUIRED);
 
-	private double y0, y1, x0, r;
-	private static final String LINKFUNCTION = "logistic";
+	private double y0, y1, r;
+	private static final String LINKFUNCTION = "linear";
 
 	@Override
 	public void initAndValidate() {
 		y0 = curveYBaseValueInput.get().getValue();
 		y1 = curveMaxYInput.get().getValue();
-		r = logisticGrowthRateInput.get().getValue();
-		x0 = sigmoidMidpointInput.get().getValue();
+		r = linearGrowthRateInput.get().getValue();
 	}
 
 	@Override
@@ -53,13 +50,8 @@ public class LogisticFunction extends CalculationNode implements LinkFn {
 			refreshedSomething = true;
 		}
 
-		if (logisticGrowthRateInput.get().somethingIsDirty()) {
-			r = logisticGrowthRateInput.get().getValue();
-			refreshedSomething = true;
-		}
-
-		if (sigmoidMidpointInput.get().somethingIsDirty()) {
-			x0 = sigmoidMidpointInput.get().getValue();
+		if (linearGrowthRateInput.get().somethingIsDirty()) {
+			r = linearGrowthRateInput.get().getValue();
 			refreshedSomething = true;
 		}
 
@@ -73,8 +65,15 @@ public class LogisticFunction extends CalculationNode implements LinkFn {
 		}
 
 		for (int i = 0; i < x.length; i++) {
-			double curveMaxMinusBaseValue = y1 - y0;
-			y[i] = y0 + curveMaxMinusBaseValue / (1.0 + Math.exp(r * (x0 - x[i])));
+			
+			if (x[i] < 0.0) {
+				y[i] = y0;
+			} else {
+				y[i] = y0 + r * x[i];
+				if (y[i] > y1) {
+					y[i] = y1;
+				}
+			}
 		}
 
 		return y;
@@ -87,8 +86,8 @@ public class LogisticFunction extends CalculationNode implements LinkFn {
 
 	@Override
 	public void printParams() {
-		// y0, y1, x0, r;
-		System.out.println("y0 = " + y0 + "; y1 = " + y1 + "; x0 = " + x0 + "; r = " + r);
+		// y0, y1, r;
+		System.out.println("y0 = " + y0 + "; y1 = " + y1 + "; r = " + r);
 	}
 
 	@Override

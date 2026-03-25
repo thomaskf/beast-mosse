@@ -6,18 +6,19 @@ package mosse;
  */
 public interface LinkFn {
 
-    boolean refreshParams();
+	boolean refreshParams();
 
-    // x = qu trait, y = macroevol parameter or D (in esDs)
-    default double[] getY(double[] x, double[] y, boolean ignoreRefresh) {
-        return y;
-    }
+	// x = qu trait, y = macroevol parameter or D (in esDs)
+	default double[] getY(double[] x, double[] y) {
+		return y;
+	}
 
-    // x = qu trait, y = macroevol parameter or D (in esDs)
-    default double[] getY(double[] x, double[] y, int[] nLeftNRightFlanksHi, String spName, boolean ignoreRefresh) {
-        return y;
-    }
+	// x = qu trait, y = macroevol parameter or D (in esDs)
+	default double[] getY(double[] x, double[] y, int[] nLeftNRightFlanksHi, String spName) {
+		return y;
+	}
 
-    String getLinkFnName();
+	String getLinkFnName();
 
+	void printParams();
 }

@@ -1,633 +1,1717 @@
 package mosse;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.IntStream;
+
+import org.jblas.DoubleMatrix;
+
 import beast.base.core.Description;
-import beast.base.inference.Distribution;
 import beast.base.core.Input;
-import beast.base.inference.parameter.IntegerParameter;
-import beast.base.inference.parameter.RealParameter;
 import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.sitemodel.SiteModel;
+import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
-import beast.base.evolution.tree.Tree;
 import beast.base.evolution.tree.TreeInterface;
-import org.jblas.DoubleMatrix;
-import org.jblas.MatrixFunctions;
-
-import java.lang.UnsupportedOperationException;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-
+import beast.base.inference.parameter.IntegerParameter;
+import beast.base.inference.parameter.RealParameter;
 
 /**
  * @author Kylie Chen
+ * @author Thomas Wong
  */
 
 @Description("Mosse likelihood class calculates the probability of sequence and trait data on a tree")
 public class MosseTreeLikelihood extends TreeLikelihood {
 
-    protected MosseLikelihoodCore mosseLikelihoodCore;
-    // trait data
-    final public Input<List<TraitSet>> traitListInput = new Input<>("traits", "list of traits", new ArrayList<>());
-    // tip model, species diversification model and trait model
-    final public Input<MosseTipLikelihood> tipModelInput = new Input<>("tipModel", "model of tip probabilities", Input.Validate.REQUIRED);
-    final public Input<Distribution> treeModelInput = new Input<>("treeModel", "species diversification model", Input.Validate.REQUIRED);
+	protected MosseLikelihoodCore mosseLikelihoodCore;
+	// trait data
+	final public Input<List<TraitSet>> traitListInput = new Input<>("traits", "list of traits", new ArrayList<>());
+	// tip model, species diversification model and trait model
+	final public Input<MosseTipLikelihood> tipModelInput = new Input<>("tipModel", "model of tip probabilities",
+			Input.Validate.REQUIRED);
+	final public Input<MosseDistribution> treeModelInput = new Input<>("treeModel", "species diversification model",
+			Input.Validate.REQUIRED);
 
-    // substitution rate parameters
-    final public Input<RealParameter> startSubsRateInput = new Input<>("startSubsRate", "lower range for substitution rate", Input.Validate.REQUIRED);
-    final public Input<IntegerParameter> numRateBinsInput = new Input<>("numRateBins", "number of bins for substitution rate", Input.Validate.REQUIRED);
+	// lambda and mu functions
+	final public Input<LinkFn> lambdaFuncInput = new Input<>("lambdaFunc", "function for birth rate lambda",
+			Input.Validate.REQUIRED);
+	final public Input<LinkFn> muFuncInput = new Input<>("muFunc", "function for death rate mu",
+			Input.Validate.REQUIRED);
 
-    // lambda and mu functions
-    final public Input<LinkFn> lambdaFuncInput = new Input<>("lambdaFunc", "function for birth rate lambda", Input.Validate.REQUIRED);
-    final public Input<LinkFn> muFuncInput = new Input<>("muFunc", "function for death rate mu", Input.Validate.REQUIRED);
+	// root options
+	final public Input<LinkFn> rootFuncInput = new Input<>("rootFunc", "function for root", Input.Validate.OPTIONAL);
 
-    // root options
-    final public Input<LinkFn> rootFuncInput = new Input<>("rootFunc", "function for root", Input.Validate.OPTIONAL);
+	final public Input<IntegerParameter> rootOptionInput = new Input<>("rootOption", "option for root calculation",
+			Input.Validate.OPTIONAL);
 
-    final public Input<IntegerParameter> rootOptionInput = new Input<>("rootOption", "option for root calculation", Input.Validate.OPTIONAL);
+	// tc (i.e. all nodes below this height are using high resolution)
+	final public Input<Double> tcInput = new Input<>("tc", "below this height for high resolution",
+			Input.Validate.OPTIONAL);
 
-    final public Input<IntegerParameter> resolutionOptionInput = new Input<>("resolution", "resolution scale factor", new IntegerParameter("1"), Input.Validate.OPTIONAL);
+	// resolution mode: "mixed" (default, tc-based), "low" (all low), "high" (all high)
+	final public Input<String> resolutionModeInput = new Input<>("resolutionMode",
+			"Resolution mode for the whole tree: \"mixed\" (default, tc-based split between high and low), " +
+			"\"low\" (entire tree uses low resolution), or \"high\" (entire tree uses high resolution).",
+			"mixed");
 
+	// root options
+	final public int ROOT_FLAT = 1;
+	final public int ROOT_OBS = 2;
+	final public int ROOT_EQUI = 3; // check test case for NAN
+	final public int ROOT_GIVEN = 4; // check test case for NAN
 
-//    final public int SUBST_NUM_STATES = 4; // for testing
+	protected Alignment data;
+	protected TreeInterface tree;
+	protected int taxonCount;
+	protected int nodeCount;
+	protected int resolution;
+	protected int patterns;
+	protected int stateCount;
+	protected double deltaT;
+	protected int numPlan;
 
-    // root options
-    final public int ROOT_FLAT = 1;
-    final public int ROOT_OBS = 2;
-    final public int ROOT_EQUI = 3; // check test case for NAN
-    final public int ROOT_GIVEN = 4; // check test case for NAN
+	protected int rootOption = 2; // default to ROOT_OBS
 
-    protected int resolution;
+	protected LinkFn rootFunc;
+	protected LinkFn lambdaFunc;
+	protected LinkFn muFunc;
+	protected List<TraitSet> traits;
+	protected MosseTipLikelihood tipModel;
+	protected MosseDistribution treeModel;
+	protected double tc; // time < tc for high resolution, while time >= tc for low resolution
 
-    protected int rootOption = 2; // default to ROOT_OBS
+	// Resolution mode constants and active mode
+	public static final String RESOLUTION_MODE_MIXED = "mixed";
+	public static final String RESOLUTION_MODE_LOW   = "low";
+	public static final String RESOLUTION_MODE_HIGH  = "high";
+	protected String resolutionMode; // one of the three constants above
+	
+	// rate for the bins
+	protected double rmin; // minimum of rate
+	protected double rmax; // maximum of rate
 
-    protected LinkFn rootFunc;
-    protected LinkFn lambdaFunc;
-    protected LinkFn muFunc;
-    protected List<TraitSet> traits;
-    protected MosseTipLikelihood tipModel;
-    protected MosseDistribution treeModel;
-    protected double startSubsRate;
-    protected int numRateBins;
-    protected int numEntries; // number of non-zero elements in lambdas
+	// variables for high resolution
+	protected int numRateBins_h;
+	protected double dx_h;
+	protected double startSubsRate_h;
+	protected double[] lambdas_h;
+	protected double[] mus_h;
+	protected double[][] flatTransitionMatrices_h;
 
-    protected double[] lambdas;
+	// variables for low resolution
+	protected int numRateBins_l;
+	protected double dx_l;
+	protected double startSubsRate_l;
+	protected double[] lambdas_l;
+	protected double[] mus_l;
+	protected double[][] flatTransitionMatrices_l;
 
-    protected double[] mus;
+	protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
-    double[] flatTransitionMatrices;
+	// for each node, store indices of taxa under subtree rooted at the node
+	protected int[] taxaIndexUnderNode;
+	// for each node, map global pattern index -> local sub-pattern index
+	protected int[] pattern2SubpatnPerNode;
+	// for each node, store numRateBins
+	// protected int[] numRateBinsPerNode;
+	
+	// counter
+	protected int count;
 
-    @Override
-    public void initAndValidate() {
-        traits = traitListInput.get();
-        tipModel = tipModelInput.get();
-        treeModel = (MosseDistribution) treeModelInput.get();
+	// pool for threads
+    protected ForkJoinPool pool;
 
-        startSubsRate = startSubsRateInput.get().getValue();
-        numRateBins = numRateBinsInput.get().getValue();
+	// Set to true when substitution model parameters or dx_h change; reset after
+	// recomputing flatTransitionMatrices_{h,l} in traverseFull().
+	protected boolean transitionMatricesDirty = true;
 
-        lambdaFunc = lambdaFuncInput.get();
-        muFunc = muFuncInput.get();
+	// Computed once per computeLambdaMus() call; valid until pad params change.
+	protected double[] cached_x_h;
+	protected double[] cached_x_l;
 
-        if (rootOptionInput.get() != null) {
-            rootOption = rootOptionInput.get().getValue();
-        }
-        if (rootFuncInput.get() != null) {
-            rootFunc = rootFuncInput.get();
-        }
-        if (resolutionOptionInput.get() != null) {
-            resolution = resolutionOptionInput.get().getValue();
+	// Three arrays per thread: [0]=partialsLeft, [1]=partialsRight, [2]=patnPartials,
+	// each of length numPlan * numRateBins_h (maximum possible partial size).
+	protected ThreadLocal<double[][]> threadLocalScratch;
+    
+	// the format of the displayed log-likelihood value
+	DecimalFormat df;
+	
+	// gamma distribution
+	protected int numCategories; // number of categories of the gamma distribution
+	protected double[] categoryRates; // rates for all categories
+	protected double[] categoryProps; // proportions for all categories
+	protected double single_rate = 1.0;
+	
+	// lower bound
+	double beta_upbound = 3.0;
+	double beta_lowbound = -3.0;
+	double epsilon_lowbound = 0.001;
+	double diffusion_lowbound = 0.0005;
+
+	@Override
+	public void initAndValidate() {
+
+		data = dataInput.get();
+		tree = treeInput.get();
+		taxonCount = data.getTaxonCount();
+		nodeCount = tree.getNodeCount();
+		patterns = data.getPatternCount();
+		stateCount = data.getDataType().getStateCount();
+		numPlan = stateCount + 1; // dimensions
+
+		traits = traitListInput.get();
+		tipModel = tipModelInput.get();
+		treeModel = treeModelInput.get();
+		resolution = treeModel.resolution;
+		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
+
+		// compute the min and the max value of rate for the bins
+		double x0 = tipModel.meanSubstitutionInput.get().getValue();
+		computeRminRmaxDx(x0, treeModel.nx, resolution); // assign to the variables rmin, rmax, and dx_h
+		
+		// high resolution
+		numRateBins_h = treeModel.numRateBins_h;
+		startSubsRate_h = rmin;
+		
+		// low resolution
+		numRateBins_l = treeModel.numRateBins_l;
+		dx_l = dx_h * resolution;
+		startSubsRate_l = rmin;
+				
+		// maximum value of numRateBins (always numRateBins_h)
+		numRateBins_max = numRateBins_h;
+
+		lambdaFunc = lambdaFuncInput.get();
+		muFunc = muFuncInput.get();
+
+		if (rootOptionInput.get() != null) {
+			rootOption = rootOptionInput.get().getValue();
+		}
+		if (rootFuncInput.get() != null) {
+			rootFunc = rootFuncInput.get();
+		}
+
+		// input checking
+		if (taxonCount != tree.getLeafNodeCount()) {
+			String message = String.format(
+					"The number of leaves in tree (%d) does not match the number of sequences (%d).",
+					tree.getLeafNodeCount(), taxonCount);
+			throw new IllegalArgumentException(message);
+		} else if (!(siteModelInput.get() instanceof SiteModel.Base)) {
+			throw new IllegalArgumentException("siteModel input should be of type SiteModel.Base");
+		} else if (branchRateModelInput.get() != null) {
+			System.err.println("Ignoring clock model " + branchRateModelInput.get().getID());
+		}
+
+		beagle = null;
+
+		if (tcInput.get() != null) {
+			tc = tcInput.get().doubleValue();
+		} else {
+			tc = tree.getRoot().getHeight() / 10.0;
+		}
+
+		// read and validate the resolutionMode input
+		resolutionMode = resolutionModeInput.get();
+		if (!RESOLUTION_MODE_MIXED.equals(resolutionMode)
+				&& !RESOLUTION_MODE_LOW.equals(resolutionMode)
+				&& !RESOLUTION_MODE_HIGH.equals(resolutionMode)) {
+			throw new IllegalArgumentException(
+					"resolutionMode must be one of \"mixed\", \"low\", or \"high\", but got: \"" + resolutionMode + "\".");
+		}
+		m_siteModel = (SiteModel.Base) siteModelInput.get();
+		m_siteModel.setDataType(dataInput.get().getDataType());
+		substitutionModel = m_siteModel.substModelInput.get();
+
+		// remove requirement for clock model
+		branchRateModelInput.setRule(Input.Validate.OPTIONAL);
+		branchRateModel = null;
+		m_branchLengths = new double[nodeCount];
+		storedBranchLengths = new double[nodeCount];
+
+		// set likelihood core number of states and number of rate bins
+		mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins_max);
+		
+		// logging likelihood class
+		String className = getClass().getSimpleName();
+		Log.info.println(className + "(" + getID() + ") uses " + mosseLikelihoodCore.getClass().getSimpleName());
+		Log.info.println("  " + data.toString(true));
+
+		setProportionInvariant(m_siteModel.getProportionInvariant());
+		m_siteModel.setPropInvariantIsCategory(false);
+		if (getProportionInvariant() > 0) {
+			calcConstantPatternIndices(patterns, stateCount);
+		}
+
+		// RHAS
+		numCategories = m_siteModel.getCategoryCount();
+		if (numCategories == 1) {
+			categoryRates = null;
+			categoryProps = null;
+		} else {
+			categoryRates = m_siteModel.getCategoryRates(null);
+			categoryProps = m_siteModel.getCategoryProportions(null);
+		}
+		showRHASParams();
+
+		// set up likelihood core and initialize partials
+		this.initCore();
+
+		patternLogLikelihoods = new double[patterns];
+		matrixSize = (stateCount + 1) * (stateCount + 1);
+		probabilities = new double[(stateCount + 1) * (stateCount + 1)];
+		Arrays.fill(probabilities, 1.0);
+
+		if (dataInput.get().isAscertained) {
+			useAscertainedSitePatterns = true;
+		}
+
+		// for each node, store indices of taxa under subtree rooted at the node
+		taxaIndexUnderNode = new int[taxonCount * nodeCount];
+		// for each node, map global pattern index -> local sub-pattern index
+		pattern2SubpatnPerNode = new int[nodeCount * patterns];
+		// for each node, store numRateBins
+		// numRateBinsPerNode = new int[nodeCount];
+		
+		// initialize the fft pointers
+		treeModel.initFFTPtrs(dx_h);
+		
+		// for this class, always single-threaded
+		pool = null;
+		
+		// the format of the displayed log-likelihood value
+		df = new DecimalFormat();
+		df.setMaximumFractionDigits(7);
+		df.setRoundingMode(RoundingMode.CEILING);
+		
+		count = 0;
+
+		// possible partial array (numPlan * numRateBins_h). Three arrays per thread.
+		final int scratchSize = numPlan * numRateBins_h;
+		threadLocalScratch = ThreadLocal.withInitial(() -> new double[][] {
+			new double[scratchSize], // [0] partialsLeft
+			new double[scratchSize], // [1] partialsRight
+			new double[scratchSize]  // [2] patnPartials (combined)
+		});
+
+		// first traversal.
+		transitionMatricesDirty = true;
+	}
+
+	// compute the values of rmin, rmax, and dx
+	protected void computeRminRmaxDx(double x0, int nx, int resolution) {
+		List<Node> leaves = tree.getExternalNodes();
+		List<Double> traitList = new ArrayList<>();
+		for (int i = 0; i < leaves.size(); i++) {
+			double[] traitValues = getTraits(leaves.get(i));
+			for (double value : traitValues) {
+				traitList.add(value);
+			}
+		}
+		double traitmin = Collections.min(traitList).doubleValue();
+		double traitmax = Collections.max(traitList).doubleValue();
+		double w = 5.0;
+		double betamin = -3.0; // lower bound of beta
+		double betamax = 3.0; // upper bound of beta
+		double rminmin = x0 - w/2 * betamin * traitmax + (w/2+1) * betamin * traitmin;
+		double rminmax = x0 - w/2 * betamax * traitmax + (w/2+1) * betamax * traitmin;
+		double rmaxmin = x0 + (w/2+1) * betamin * traitmax - w/2 * betamin * traitmin;
+		double rmaxmax = x0 + (w/2+1) * betamax * traitmax - w/2 * betamax * traitmin;
+		List<Double> x_array = new ArrayList<>();
+		x_array.add(rminmin); x_array.add(rminmax); x_array.add(rmaxmin); x_array.add(rmaxmax);
+		rmin = Collections.min(x_array).doubleValue();
+		rmax = Collections.max(x_array).doubleValue();
+		dx_h = (rmax-rmin) / (nx * resolution);
+		
+		int num_dec_pl = 5;
+		dx_h = BigDecimal.valueOf(dx_h).setScale(num_dec_pl, RoundingMode.HALF_UP).doubleValue(); // round to 5 decimal places
+		
+		if (rmin < 0) {
+			int nBins = ((int) (Math.abs(rmin) / dx_h / resolution) ) * resolution ; // has to be divisible by 4
+			rmin = - dx_h * nBins;
+		} else {
+			rmin = 0.0;
+		}
+		
+		rmax = rmin + dx_h * nx * resolution;
+	}
+	
+	protected void computeLambdaMus() {
+		
+		// update the values of pads and numEntries
+		treeModel.computePadNumEntries(dx_h);
+
+		// compute the padLeft, padRight, and numEntries for low and high resolution
+		int padLeft_l = treeModel.padLeft_l;
+		int numEntries_l = treeModel.numEntries_l;
+		int padLeft_h = treeModel.padLeft_h;
+		int numEntries_h = treeModel.numEntries_h;
+
+		// get lambdas and mus
+		lambdas_h = new double[numEntries_h];
+		lambdas_l = new double[numEntries_l];
+		mus_h = new double[numEntries_h];
+		mus_l = new double[numEntries_l];
+		// without recomputing every call.
+		cached_x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
+		cached_x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
+		lambdaFunc.getY(cached_x_h, lambdas_h);
+		lambdaFunc.getY(cached_x_l, lambdas_l);
+		muFunc.getY(cached_x_h, mus_h);
+		muFunc.getY(cached_x_l, mus_l);
+
+		transitionMatricesDirty = true;
+	}
+	
+	/**
+	 * set the taxon indices under all children of each node
+	 */
+	protected void setTaxonIndices(Node node) {
+		if (node.isRoot()) {
+			// reset the arrays
+			Arrays.fill(taxaIndexUnderNode, -1);
+		}
+		if (node.isLeaf()) {
+			taxaIndexUnderNode[node.getNr() * taxonCount] = data.getTaxonIndex(node.getID());
+		} else {
+			int k = node.getNr() * taxonCount;
+			setTaxonIndices(node.getLeft());
+			setTaxonIndices(node.getRight());
+			// for left
+			int k_left = node.getLeft().getNr() * taxonCount;
+			while (taxaIndexUnderNode[k_left] != -1) {
+				taxaIndexUnderNode[k] = taxaIndexUnderNode[k_left];
+				k_left++;
+				k++;
+			}
+			// for right
+			int k_right = node.getRight().getNr() * taxonCount;
+			while (taxaIndexUnderNode[k_right] != -1) {
+				taxaIndexUnderNode[k] = taxaIndexUnderNode[k_right];
+				k_right++;
+				k++;
+			}
+		}
+	}
+
+	protected void setLeafPartials(Node node, int patterncount, int threadID) {
+		// for leaf only
+
+		int taxonIndex = data.getTaxonIndex(node.getID());
+		// obtain the mapping: the pattern -> sub-pattern id
+		// to map the state -> sub-pattern id
+		HashMap<Integer, Integer> state2subpatnid = new HashMap<>();
+		// collect the number of sub-patterns and the mapping between global index to
+		// local partial index
+		int subpatns = 0;
+		int s = node.getNr() * patterncount;
+		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
+			int stateid = data.getPattern(taxonIndex, patternIndex);
+			int subpatnid;
+			if (!state2subpatnid.containsKey(stateid)) {
+				state2subpatnid.put(stateid, subpatns);
+				subpatnid = subpatns;
+				subpatns++;
+			} else {
+				subpatnid = state2subpatnid.get(stateid);
+			}
+			// mapping: pattern -> sub-pattern id
+			pattern2SubpatnPerNode[s + patternIndex] = subpatnid;
+		}
+		assert (subpatns > 0);
+
+		// In "low" resolution mode the leaf itself is low-resolution; in "high" or
+		// "mixed" modes the leaf always starts at high resolution (and is downsampled
+		// later if its parent operates at low resolution).
+		boolean leafIsLow = RESOLUTION_MODE_LOW.equals(resolutionMode);
+		int numRateBins_leaf    = leafIsLow ? numRateBins_l : numRateBins_h;
+		int numEntries_leaf     = leafIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+		int padLeft_leaf        = leafIsLow ? treeModel.padLeft_l    : treeModel.padLeft_h;
+		double startSubsRate_leaf = leafIsLow ? startSubsRate_l : startSubsRate_h;
+		double dx_leaf          = leafIsLow ? dx_l : dx_h;
+
+		int singlePartialSizeLeaf = (stateCount + 1) * numRateBins_leaf;
+
+		// the size of the partials stored for this leaf is based on its parent's resolution
+		int numRateBins_parent = numRateBins_h;
+		if (isLowResolution(node.getParent())) {
+			// assume all leaves should have a parent
+			numRateBins_parent = numRateBins_l;
+		}
+		int singlePartialSizeParent = (stateCount + 1) * numRateBins_parent;
+		double[][] partials = new double[numCategories][subpatns * singlePartialSizeParent];
+		double[][] compensates = new double[numCategories][subpatns];
+		
+		double[] traitValues = getTraits(node);
+		// Java initialises boolean arrays to false, so no explicit fill needed.
+		boolean[] updated = new boolean[subpatns];
+
+		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_leaf,
+				startSubsRate_leaf + padLeft_leaf * dx_leaf, dx_leaf);
+
+		// compute the partial likelihood for single sub-pattern with categories.
+		for (int patternIndex = 0; patternIndex < patterncount; patternIndex++) {
+			int subpatnid = pattern2SubpatnPerNode[s + patternIndex];
+			if (!updated[subpatnid]) {
+				updated[subpatnid] = true;
+				int stateid = data.getPattern(taxonIndex, patternIndex);
+				boolean[] stateSet = data.getStateSet(stateid);
+
+				// Allocate a fresh array for this subpattern so normalization()'s
+				// in-place mutation of patnPartials[c] does not bleed into the next
+				// subpattern's initial condition.
+				double[][] patnPartials = new double[numCategories][singlePartialSizeLeaf];
+				// E initial values: first numRateBins_leaf entries are zero (already 0
+				// by Java array initialisation, but set explicitly for clarity).
+				for (int c = 0; c < numCategories; c++) {
+					Arrays.fill(patnPartials[c], 0, numRateBins_leaf, 0.0);
+				}
+
+				int k = numRateBins_leaf;
+				// D initial values
+				for (int state = 0; state < stateCount; state++) {
+					if (stateSet[state]) {
+						// set likelihoods for nucleotide in data
+						if (numRateBins_leaf <= numEntries_leaf) {
+							for (int i = 0; i < numRateBins_leaf; i++) {
+								patnPartials[0][k++] = tipLikelihoods[i];
+							}
+						} else {
+							for (int i = 0; i < numEntries_leaf; i++) {
+								patnPartials[0][k++] = tipLikelihoods[i];
+							}
+							// set to zeros for the rest
+							for (int i = numEntries_leaf; i < numRateBins_leaf; i++) {
+								patnPartials[0][k++] = 0.0;
+							}
+						}
+					} else {
+						// otherwise leave likelihoods to zero
+						for (int i = 0; i < numRateBins_leaf; i++) {
+							patnPartials[0][k++] = 0.0;
+						}
+					}
+				}
+				// copy the same to the other categories
+				int copy_size = stateCount * numRateBins_leaf;
+				for (int c = 1; c < numCategories; c++) {
+					System.arraycopy(patnPartials[0], numRateBins_leaf, patnPartials[c], numRateBins_leaf, copy_size);
+				}
+				for (int c = 0; c < numCategories; c++) {
+					// propagate along the parent branch
+					double[] logp_patn = new double[1];
+					logp_patn[0] = 0.0; // log-compensate for this pattern
+					double[] patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartials[c], logp_patn, c, threadID);
+					
+					// to make sure the array length is correct
+					assert(patnPartialsResult.length == singlePartialSizeParent);
+					int st = subpatnid * singlePartialSizeParent;
+					System.arraycopy(patnPartialsResult, 0, partials[c], st, singlePartialSizeParent);
+					compensates[c][subpatnid] = logp_patn[0];
+				}
+			}
+		}
+
+		// store the partials and compensates
+		mosseLikelihoodCore.setNodeMossePartials(node.getNr(), partials);
+		mosseLikelihoodCore.setNodeMosseCompensates(node.getNr(), compensates);
+	}
+	
+	/**
+	 * set leaf partials using tip GLM likelihood model *
+	 */
+	@Override
+	protected void setPartials(Node node, int patterncount) {
+		// assume the array taxaIndexUpdateNode has been updated
+		if (node.isRoot()) {
+			List<Node> leaves = tree.getExternalNodes();
+			
+			if (pool == null) {
+				// single thread
+				for (int sid = 0; sid < leaves.size(); sid++) {
+	            	int threadID = 0;
+					setLeafPartials(leaves.get(sid), patterncount, threadID);
+				}
+			} else {
+				// multiple threads
+		        Runnable job = () -> IntStream.range(0, leaves.size()).parallel().forEach(sid -> {
+	            	int threadID = threadIndexInPool();
+					setLeafPartials(leaves.get(sid), patterncount, threadID);
+		        });
+	            try {
+	                pool.submit(job).get();
+	            } catch (InterruptedException e) {
+	                Thread.currentThread().interrupt();
+	                throw new RuntimeException(e);
+	            } catch (ExecutionException e) {
+	                throw new RuntimeException(e.getCause());
+	            }
+			}
+		}
+	}
+
+	/**
+	 * set leaf states (not applicable for this class, use setPartials instead)
+	 */
+	@Override
+	protected void setStates(Node node, int patternCount) {
+		throw new UnsupportedOperationException();
+	}
+
+	@Override
+	protected void initCore() {
+		mosseLikelihoodCore.initialize(nodeCount, patterns, m_siteModel.getCategoryCount(), true,
+				m_useAmbiguities.get());
+
+		/*
+		final int extNodeCount = nodeCount / 2 + 1;
+		final int intNodeCount = nodeCount / 2;
+
+		// Create partials
+		for (int i = 0; i < intNodeCount; i++) {
+			mosseLikelihoodCore.createNodePartials(extNodeCount + i);
+		}*/
+	}
+
+	/**
+	 * calculate log P without caching (for testing)
+	 *
+	 * @return log P
+	 */
+	public double calculateLogPFull() {
+		traverseFull(tree.getRoot());
+		return logP;
+	}
+
+	/**
+	 * Compute the normalization (or log compensation)
+	 *
+	 * @param vars -- array to be normalized
+	 * @return log of scaling (i.e. lq)
+	 */
+	public double normalization(boolean lowResolution, double[] vars) {
+		// eliminating the if (lowResolution) branch in this very-hot method.
+		if (lowResolution) {
+			return normalizationL(vars);
+		} else {
+			return normalizationH(vars);
+		}
+	}
+
+	/** High-resolution normalization: sums/divides only over valid numEntries_h bins per
+	 *  D column, skipping the padding bins that the C native code may leave non-zero. */
+	public double normalizationH(double[] vars) {
+		int nx = numRateBins_h;
+		int numEntries = treeModel.numEntries_h;
+		double vsum = 0.0;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vsum += vars[colStart + i];
+			}
+		}
+		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vars[colStart + i] /= vsum;
+			}
+		}
+		return Math.log(vsum);
+	}
+
+	/** Low-resolution normalization: sums/divides only over valid numEntries_l bins per
+	 *  D column, skipping the padding bins that the C native code may leave non-zero. */
+	public double normalizationL(double[] vars) {
+		int nx = numRateBins_l;
+		int numEntries = treeModel.numEntries_l;
+		double vsum = 0.0;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vsum += vars[colStart + i];
+			}
+		}
+		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		for (int col = 1; col < numPlan; col++) {
+			int colStart = col * nx;
+			for (int i = 0; i < numEntries; i++) {
+				vars[colStart + i] /= vsum;
+			}
+		}
+		return Math.log(vsum);
+	}
+
+	/*
+	public double normalization(double[] vars, int nx, double dx) {
+		// normalize the values of vars
+		// ignore the first nx entries (i.e. first row)
+		double vsum = 0.0;
+		for (int i = nx; i < vars.length; i++) {
+			vsum += vars[i];
+		}
+		vsum *= dx;
+		for (int i = nx; i < vars.length; i++) {
+			vars[i] /= vsum;
+		}
+		return Math.log(vsum);
+	}*/
+
+	/**
+	 * create a flatTransitionMatrice
+	 */
+	protected double[] createFlatTransitionMatrice(Node node, double rate, boolean lowResolution) {
+		double dx;
+		int numEntries;
+		int padLeft;
+		if (lowResolution) {
+			dx = dx_l;
+			numEntries = treeModel.numEntries_l;
+			padLeft = treeModel.padLeft_l;
+		} else {
+			dx = dx_h;
+			numEntries = treeModel.numEntries_h;
+			padLeft = treeModel.padLeft_h;
+		}
+		int sqStateCount = stateCount * stateCount;
+		
+		double[] identityMatrix = new double[sqStateCount];
+		for (int i = 0; i < stateCount; i++)
+			identityMatrix[i * stateCount + i] = 1.0;
+		
+		double[] transitionMatrix = new double[sqStateCount];
+		substitutionModel.getTransitionProbabilities(node, deltaT, 0, dx * rate, transitionMatrix);
+		
+		DoubleMatrix matrixTran = new DoubleMatrix(stateCount, stateCount, transitionMatrix);
+
+		// Use exponentiation-by-squaring to precompute a table of
+		// matrixTran^(2^k) for k = 0..LOG2_MAX
+		int totalSteps = padLeft + numEntries;
+		int LOG2_MAX = 32 - Integer.numberOfLeadingZeros(totalSteps); // ceil(log2(totalSteps))
+		DoubleMatrix[] powersOfTran = new DoubleMatrix[LOG2_MAX + 1];
+		powersOfTran[0] = matrixTran;
+		for (int k = 1; k <= LOG2_MAX; k++) {
+			powersOfTran[k] = powersOfTran[k - 1].mmul(powersOfTran[k - 1]);
+		}
+
+		// Compose the current matrix incrementally by step count.
+		// For each bin we need matrixTran^(step), where step increments by 1
+		// each time currX > delta. Composing a single extra factor per step is
+		// unavoidable; the savings from the power table come from the initial
+		// fast-forward through the padLeft skip region.
+		DoubleMatrix matrixCurr = new DoubleMatrix(stateCount, stateCount, identityMatrix);
+		double currX = rmin;
+		double delta = dx / 100.0;
+
+		// Fast-forward through padLeft skipped bins using exponentiation-by-squaring.
+		// Count how many steps actually need multiplying (where currX > delta).
+		int stepsInPad = 0;
+		double currX_scan = rmin;
+		for (int i = 0; i < padLeft; i++) {
+			if (currX_scan > delta) stepsInPad++;
+			currX_scan += dx;
+		}
+		// Apply matrixTran^stepsInPad via repeated squaring.
+		int remaining = stepsInPad;
+		for (int k = LOG2_MAX; k >= 0 && remaining > 0; k--) {
+			if (remaining >= (1 << k)) {
+				matrixCurr = matrixCurr.mmul(powersOfTran[k]);
+				remaining -= (1 << k);
+			}
+		}
+		currX = currX_scan; // currX is now at the first entry bin
+
+		// For the numEntries bins, each bin needs exactly one more factor if currX > delta.
+		double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
+		for (int i = 0; i < numEntries; i++) {
+			if (currX > delta) {
+				matrixCurr = matrixCurr.mmul(matrixTran);
+			}
+			transitionMatrices[i] = matrixCurr.toArray();
+			currX += dx;
+		}
+
+		return Arrays.stream(transitionMatrices).flatMapToDouble(Arrays::stream).toArray();
+	}
+	
+	/**
+	 * create flatTransitionMatrice for all categories 
+	 */
+	protected double[][] createFlatTransitionMatrices(Node node, boolean lowResolution) {
+		double[][] flatTransitionMatrices;
+		
+		flatTransitionMatrices = new double[numCategories][];
+		for (int c = 0; c < numCategories; c++) {
+			double rate = single_rate;
+			if (categoryRates != null)
+				rate = categoryRates[c];
+			flatTransitionMatrices[c] = createFlatTransitionMatrice(node, rate, lowResolution);
+		}
+		
+		return flatTransitionMatrices;
+	}
+	
+
+	/**
+	 * compute likelihoods for single branch return the log compensation
+	 */
+	protected double[] computeSingleBranchLikelihood(Node node, Node child, double[] partialsIn, double[] logCompen, int categoryID, int threadID) {
+		boolean lowResolution;
+		double[] partialsOut;
+
+		logCompen[0] = 0.0;
+		if (!isLowResolution(node)) {
+			// if node has high resolution, then high resolution for the whole branch
+			lowResolution = false;
+			double branchTime = (node.getHeight() - child.getHeight());
+			logCompen[0] += normalizationH(partialsIn);
+			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
+					flatTransitionMatrices_h[categoryID], lowResolution, threadID);
+		} else if (isLowResolution(child)) {
+			// if child has low resolution, then low resolution for the whole branch
+			lowResolution = true;
+			double branchTime = (node.getHeight() - child.getHeight());
+			logCompen[0] += normalizationL(partialsIn);
+			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
+					flatTransitionMatrices_l[categoryID], lowResolution, threadID);
+		} else {
+			// combination of high and low resolutions along the branch
+			// high resolutions between child.getHight() and t_mid
+			double branchTime;
+			double t_mid = tc;
+			if (node.getHeight() < tc) {
+				t_mid = node.getHeight();
+			}
+			branchTime = (t_mid - child.getHeight());
+			lowResolution = false;
+			logCompen[0] += normalizationH(partialsIn);
+			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
+					flatTransitionMatrices_h[categoryID], lowResolution, threadID);
+			// reduce the size of partials to "numPlan * numRateBins_l"
+			partialsOut = reduceSize(partialsOut);
+			// then low resolution between t_mid and node.getHeight()
+			lowResolution = true;
+			branchTime = (node.getHeight() - t_mid);
+			if (branchTime > 0.0) {
+				logCompen[0] += normalizationL(partialsOut);
+				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
+						flatTransitionMatrices_l[categoryID], lowResolution, threadID);
+			}
+		}
+		// normalization (log compensation) on the output partials
+		logCompen[0] += normalization(lowResolution, partialsOut);
+
+		return partialsOut;
+	}
+
+	/**
+	 * traverse the subtree rooted at node
+	 *
+	 * @param node
+	 */
+	private void traverseFull(Node node) {
+
+		if (node.isLeaf()) {
+			// nothing to do
+			return;
+		}
+		
+		if (node.isRoot()) {
+			// root node
+			// compute lambdas_h, lambdas_l, mus_h, and mus_l
+			computeLambdaMus();
+			// compute taxon indices under all children of each node
+			setTaxonIndices(node);
+			// update RHAS information
+			if (numCategories > 1) {
+				categoryRates = m_siteModel.getCategoryRates(null);
+				categoryProps = m_siteModel.getCategoryProportions(null);
+			}
+			// recompute flatTransitionMatrices only when the substitution
+			// model parameters or pad parameters have changed (dirty flag set by
+			// computeLambdaMus / requiresRecalculation).
+			if (transitionMatricesDirty) {
+				boolean lowResolution = true;
+				flatTransitionMatrices_l = createFlatTransitionMatrices(node, lowResolution);
+				lowResolution = false;
+				flatTransitionMatrices_h = createFlatTransitionMatrices(node, lowResolution);
+				transitionMatricesDirty = false;
+			}
+			// compute the partials for all leaves
+			setPartials(node, patterns); // all site patterns
+		}
+
+		traverseFull(node.getLeft()); // left child
+		traverseFull(node.getRight()); // right child
+		computePartialLikelihood(node);
+	}
+
+	/**
+	 * compute the mapping between the global pattern array and local subpattern-id
+	 * return the number of subpatterns
+	 */
+	 protected int computeMapGlobal2SubpatternID(Node node) {
+
+		int subpatns = patterns;
+		int startPos = node.getNr() * patterns; // starting pos in patternMapPerNode
+		if (!node.isRoot()) {
+			// collect the number of sub-patterns if it is not a root node
+			// and compute the mapping between global pattern index and local partial index.
+			// Encode each subpattern as a compact String key instead of an
+			// ArrayList<Integer>. String hashing is O(k) like ArrayList but avoids
+			// boxing overhead and is much cheaper in practice due to interning and
+			// compact memory layout. For typical stateCount<=64, each state fits in
+			// two hex chars, giving short, cache-friendly keys.
+			HashMap<String, Integer> subpatn2subpatnid = new HashMap<>();
+			subpatns = 0;
+			StringBuilder sbKey = new StringBuilder();
+			int s = node.getNr() * taxonCount; // starting pos in taxIndexUnderNode
+			for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
+				// build a compact string key for this subpattern
+				sbKey.setLength(0);
+				int subpatnid;
+				for (int i = 0; i < data.getTaxonCount(); i++) {
+					if (taxaIndexUnderNode[s + i] == -1) {
+						break;
+					}
+					int taxonIndex = taxaIndexUnderNode[s + i];
+					int patternState = data.getPattern(taxonIndex, patternIndex);
+					// separate state values with ',' to avoid ambiguity (e.g. "1","2" vs "12")
+					sbKey.append(patternState).append(',');
+				}
+				String key = sbKey.toString();
+				if (!subpatn2subpatnid.containsKey(key)) {
+					subpatn2subpatnid.put(key, subpatns);
+					subpatnid = subpatns;
+					subpatns++;
+				} else {
+					subpatnid = subpatn2subpatnid.get(key);
+				}
+				// save the mapping: pattern -> sub-pattern id
+				pattern2SubpatnPerNode[startPos + patternIndex] = subpatnid;
+			}
+		} else {
+			// for root
+			for (int patternIndex = 0; patternIndex < patterns; patternIndex++) {
+				pattern2SubpatnPerNode[startPos + patternIndex] = patternIndex;
+			}
+		}
+		return subpatns;
+	 }
+	 
+	 /**
+	  * compute partial likelihood for a pattern,
+	  * update numRateBinsPerNode
+	  * And return the log-compensation
+	  * 
+	  * @param node
+	  * @param threadID -1 if single-threaded, otherwise >=0
+	  */
+	 protected double computePartialLikelihoodPattern(int patternIndex, Node node, double[] patternPartialsLeft, double[] patternPartialsRight,
+			 double[] partialsAllPatterns, double[] patternCompensatesLeft, double[] patternCompensatesRight, int categoryID, int threadID) {
+		 
+		// numRateBins, numEntries, lambdas
+		int numRateBins_curr = numRateBins_h;
+		int numEntries_curr = treeModel.numEntries_h;
+		double[] lambdas_curr = lambdas_h;
+		if (isLowResolution(node)) {
+			numRateBins_curr = numRateBins_l;
+			numEntries_curr = treeModel.numEntries_l;
+			lambdas_curr = lambdas_l;
+		}
+		int partialSizeCurr = numPlan * numRateBins_curr;
+		
+		// pos in pattern2SubpatnPerNode
+		int left_t = node.getLeft().getNr() * patterns;
+		int right_t = node.getRight().getNr() * patterns;
+		
+		int leftSubpatn = pattern2SubpatnPerNode[left_t + patternIndex]; 
+		int rightSubpatn = pattern2SubpatnPerNode[right_t + patternIndex]; 
+
+		double leftCompensate = patternCompensatesLeft[leftSubpatn];
+		double rightCompensate = patternCompensatesRight[rightSubpatn];
+		if (Double.isNaN(leftCompensate) || Double.isNaN(rightCompensate))
+			return Double.NaN;
+		
+		int leftPos = leftSubpatn * partialSizeCurr;
+		int rightPos = rightSubpatn * partialSizeCurr;
+		
+		// Reuse thread-local scratch buffers instead of allocating new
+		// arrays on every call. The scratch arrays are sized to numPlan*numRateBins_h
+		// (maximum partial size); we simply use the first partialSizeCurr elements.
+		double[][] scratch = threadLocalScratch.get();
+		double[] partialsLeft  = scratch[0];
+		double[] partialsRight = scratch[1];
+		double[] patnPartials  = scratch[2];
+		System.arraycopy(patternPartialsLeft,  leftPos,  partialsLeft,  0, partialSizeCurr);
+		System.arraycopy(patternPartialsRight, rightPos, partialsRight, 0, partialSizeCurr);
+
+		int k = 0;
+		// E is topology independent
+		System.arraycopy(partialsLeft, k, patnPartials, k, numRateBins_curr);
+		k += numRateBins_curr;
+		
+		if (numRateBins_curr <= numEntries_curr) {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numRateBins_curr; j++) {
+					// non padded elements
+					// D_left * D_right * lambda(x)
+					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					k++;
+				}
+			}
+		} else {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numEntries_curr; j++) {
+					// non padded elements
+					// D_left * D_right * lambda(x)
+					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
+					k++;
+				}
+				// leave the rest to zeros
+				for (int j = numEntries_curr; j <  numRateBins_curr; j++) {
+					patnPartials[k++] = 0.0;
+				}
+			}
+		}
+		
+		double[] logp_patn = new double[1];
+		logp_patn[0] = 0.0; // log-compensate for this pattern
+		double[] patnPartialsResult;
+		int singlePartialSizeParent;
+
+		final double[] patnPartialsForNative;
+		if (patnPartials.length == partialSizeCurr) {
+			patnPartialsForNative = patnPartials; // high-res: no copy needed
+		} else {
+			patnPartialsForNative = Arrays.copyOf(patnPartials, partialSizeCurr); // low-res: trim
+		}
+
+		if (node.isRoot()) {
+			// Normalize at root so that sum(valid D entries) = 1, and accumulate
+			// the log compensation exactly as computeSingleBranchLikelihood does
+			boolean rootIsLow = isLowResolution(node);
+			logp_patn[0] += normalization(rootIsLow, patnPartialsForNative);
+			patnPartialsResult = patnPartialsForNative;
+			singlePartialSizeParent = partialSizeCurr;
+		} else {
+		
+			// propagate along the parent branch
+			patnPartialsResult = computeSingleBranchLikelihood(node.getParent(), node, patnPartialsForNative, logp_patn, categoryID, threadID);
+
+			// the size of the resulting partials is based on its parent
+			int numRateBins_parent = numRateBins_h;
+			if (isLowResolution(node.getParent())) {
+				// assume all leaves should have a parent
+				numRateBins_parent = numRateBins_l;
+			}
+			singlePartialSizeParent = numPlan * numRateBins_parent;
+		
+			// to make sure the array length is correct
+			assert(patnPartialsResult.length == singlePartialSizeParent);
+		}
+		int curr_t = node.getNr() * patterns;
+		int subpatnid = pattern2SubpatnPerNode[curr_t + patternIndex];
+		int st = subpatnid * singlePartialSizeParent;
+		System.arraycopy(patnPartialsResult, 0, partialsAllPatterns, st, singlePartialSizeParent);
+		
+		double compensate = logp_patn[0] + leftCompensate + rightCompensate;
+		// System.out.println("node: " + node.getNr() + "; patternIndex = " + patternIndex + " has compensate = " + compensate);
+		return compensate;
+	 }
+	
+	/**
+	 * compute the partial likelihood array
+	 *
+	 * @param node
+	 */
+	protected void computePartialLikelihood(Node node) {
+        if (node.isLeaf()) return;
+
+		// internal node or the root node
+		double[][] patternPartialsLeft = mosseLikelihoodCore.getNodeMossePartials(node.getLeft().getNr());
+		double[][] patternPartialsRight = mosseLikelihoodCore.getNodeMossePartials(node.getRight().getNr());
+		double[][] patternCompensatesLeft = mosseLikelihoodCore.getNodeMosseCompensates(node.getLeft().getNr());
+		double[][] patternCompensatesRight = mosseLikelihoodCore.getNodeMosseCompensates(node.getRight().getNr());
+		 
+		// the resulting partial size of single pattern is based on its parent's
+		// resolution (or the root's own resolution when there is no parent).
+		// isLowResolution(node) covers the root correctly for all three modes.
+		int numRateBins_curr = isLowResolution(node) ? numRateBins_l : numRateBins_h;
+		int singlePartialSize = numPlan * numRateBins_curr;
+		int subpatns = computeMapGlobal2SubpatternID(node);
+
+		assert (subpatns > 0);
+		
+		double[][] partialsAllPatterns = new double[numCategories][subpatns * singlePartialSize];
+		double[][] compensatesAllPatterns = new double[numCategories][subpatns];
+
+		int[] rep = new int[subpatns]; // representative pattern for the sub-pattern
+        Arrays.fill(rep, -1);
+
+		int t = node.getNr() * patterns; // start pos in pattern2SubpatnPerNode
+        if (node.isRoot()) {
+            // root: subpattern == patternIndex, so representative is itself
+            for (int p = 0; p < patterns; p++) {
+            	rep[p] = p;
+            }
         } else {
-            resolution = resolutionOptionInput.defaultValue.getValue();
-        }
-
-        // input checking
-        if (dataInput.get().getTaxonCount() != treeInput.get().getLeafNodeCount()) {
-            String message = String.format(
-                    "The number of leaves in tree (%d) does not match the number of sequences (%d).",
-                    treeInput.get().getLeafNodeCount(),
-                    dataInput.get().getTaxonCount());
-            throw new IllegalArgumentException(message);
-        } else if (numRateBins <= 0) {
-            throw new IllegalArgumentException("numRateBins input must be a positive integer");
-        } else if (!(siteModelInput.get() instanceof SiteModel.Base)) {
-            throw new IllegalArgumentException("siteModel input should be of type SiteModel.Base");
-        } else if (branchRateModelInput.get() != null) {
-            System.err.println("Ignoring clock model " + branchRateModelInput.get().getID());
-        }
-
-        beagle = null;
-
-        int nodeCount = treeInput.get().getNodeCount();
-        m_siteModel = (SiteModel.Base) siteModelInput.get();
-        m_siteModel.setDataType(dataInput.get().getDataType());
-        substitutionModel = m_siteModel.substModelInput.get();
-
-        // remove requirement for clock model
-        branchRateModelInput.setRule(Input.Validate.OPTIONAL);
-        branchRateModel = null;
-        m_branchLengths = new double[nodeCount];
-        storedBranchLengths = new double[nodeCount];
-
-        int stateCount = dataInput.get().getMaxStateCount();
-        int patterns = dataInput.get().getPatternCount();
-
-        // set likelihood core number of states and number of rate bins
-        int padLeft = treeModel.getPadLeft(true); // using low resolution
-        int padRight = treeModel.getPadRight(true);
-        mosseLikelihoodCore = new MosseLikelihoodCore(stateCount, numRateBins, padLeft, padRight);
-
-        // num non-zero entries (length of lambda and mu)
-        this.numEntries = numRateBins - padLeft - padRight - 1;
-
-        String className = getClass().getSimpleName();
-        Alignment alignment = dataInput.get();
-
-        // logging likelihood class
-        Log.info.println(className + "(" + getID() + ") uses " + mosseLikelihoodCore.getClass().getSimpleName());
-        Log.info.println("  " + alignment.toString(true));
-
-        setProportionInvariant(m_siteModel.getProportionInvariant());
-        m_siteModel.setPropInvariantIsCategory(false);
-        if (getProportionInvariant() > 0) {
-            calcConstantPatternIndices(patterns, stateCount);
-        }
-
-        // set up likelihood core and initialize partials
-        this.initCore();
-
-        patternLogLikelihoods = new double[patterns];
-        m_fRootPartials = new double[patterns * stateCount * numRateBins];
-        matrixSize = (stateCount + 1) * (stateCount + 1);
-        probabilities = new double[(stateCount + 1) * (stateCount + 1)];
-        Arrays.fill(probabilities, 1.0);
-
-        if (dataInput.get().isAscertained) {
-            useAscertainedSitePatterns = true;
-        }
-    }
-
-    /**
-     * set leaf partials using tip GLM likelihood model *
-     */
-    @Override
-    protected void setPartials(Node node, int patternCount) {
-        if (node.isLeaf()) {
-            Alignment data = dataInput.get();
-            int states = data.getDataType().getStateCount();
-            double[] traitValues = getTraits(node);
-            double[] partials = new double[patternCount * (states + 1) * numRateBins];
-            int k = 0;
-            int taxonIndex = data.getTaxonIndex(node.getID());
-            for (int patternIndex = 0; patternIndex < patternCount; patternIndex++) {
-                double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries, startSubsRate);
-                int stateCount = data.getPattern(taxonIndex, patternIndex);
-                    boolean[] stateSet = data.getStateSet(stateCount);
-                    // E initial values are zero
-                    for (int i = 0; i < numRateBins; i++) {
-                        partials[k++] = 0.0;
-                    }
-                    // D initial values
-                    for (int state = 0; state < states; state++) {
-                        if (stateSet[state]) {
-                            // set likelihoods for nucleotide in data
-                            for (int i = 0; i < numRateBins; i++) {
-                                if (i < numEntries) {
-                                    partials[k++] = tipLikelihoods[i];
-                                } else {
-                                    partials[k++] = 0.0; // within padding
-                                }
-                            }
-                        } else {
-                            // otherwise set likelihoods to zero
-                            for (int i = 0; i < numRateBins; i++) {
-                                partials[k++] = 0.0;
-                            }
-                        }
-                    }
+            for (int p = 0; p < patterns; p++) {
+                int sid = pattern2SubpatnPerNode[t + p];
+                if (rep[sid] < 0) rep[sid] = p;
             }
-            mosseLikelihoodCore.setNodePartials(node.getNr(), partials);
-
-        } else {
-            setPartials(node.getLeft(), patternCount);
-            setPartials(node.getRight(), patternCount);
         }
-    }
 
-    /**
-     * set leaf states (not applicable for this class, use setPartials instead)
-     */
-    @Override
-    protected void setStates(Node node, int patternCount) {
-        throw new UnsupportedOperationException();
-    }
+        int totjobs = subpatns * numCategories;
+		if (pool == null) {
+			// single thread
+			int threadID = 0;
+			for (int jobid = 0; jobid < totjobs; jobid++) {
+				int sid = jobid % subpatns;
+				int categoryid = jobid / subpatns;
+	            int patternIndex = rep[sid];
+	            if (patternIndex >= 0) {
+	            	compensatesAllPatterns[categoryid][sid] = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft[categoryid], patternPartialsRight[categoryid], partialsAllPatterns[categoryid], patternCompensatesLeft[categoryid], patternCompensatesRight[categoryid], categoryid, threadID);
+	            }
+			}
+		} else {
+			// multiple threads
+	        Runnable job = () -> IntStream.range(0, totjobs).parallel().forEach(jobid -> {
+				int sid = jobid % subpatns;
+				int categoryid = jobid / subpatns;
+	            int patternIndex = rep[sid];
+	            if (patternIndex >= 0) {
+	            	int threadID = threadIndexInPool();
+	            	compensatesAllPatterns[categoryid][sid] = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft[categoryid], patternPartialsRight[categoryid], partialsAllPatterns[categoryid], patternCompensatesLeft[categoryid], patternCompensatesRight[categoryid], categoryid, threadID);
+	            }
+	        });
+            try {
+                pool.submit(job).get();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException(e);
+            } catch (ExecutionException e) {
+                throw new RuntimeException(e.getCause());
+            }
+		}
+		
+        mosseLikelihoodCore.setNodeMossePartials(node.getNr(), partialsAllPatterns);
+        mosseLikelihoodCore.setNodeMosseCompensates(node.getNr(), compensatesAllPatterns);
 
-    protected void initCore() {
-        final int nodeCount = treeInput.get().getNodeCount();
-        mosseLikelihoodCore.initialize(
-                nodeCount,
-                dataInput.get().getPatternCount(),
-                m_siteModel.getCategoryCount(),
-                true,
-                m_useAmbiguities.get()
-        );
+        if (node.isRoot()) {
+            int totaljobs = patterns * numCategories;
+            double[] patternCatLogLikes;
+            if (categoryProps == null) {
+            	patternCatLogLikes = patternLogLikelihoods;
+            } else {
+	        	// gamma model is used
+            	patternCatLogLikes = new double[totaljobs];
+            }
+            
+            boolean conditionSurv = true;
+            // Choose root-resolution parameters based on the active resolution mode.
+            // In "high" mode the root operates at high resolution; in all other modes
+            // (mixed and low) the root always operates at low resolution.
+            boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+            int    nx_root = rootIsLow ? numRateBins_l : numRateBins_h;
+            double dx_root = rootIsLow ? dx_l          : dx_h;
+	        if (pool == null) {
+	        	// single thread
+	        	for (int jobid = 0; jobid < totaljobs; jobid++) {
+	        		int p = jobid / numCategories; // pattern-id
+	        		int c = jobid % numCategories; // category-id
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY || Double.isNaN(compensatesAllPatterns[c][p])) {
+	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
+	        		} else {
+		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
+		                double[] partials = new double[singlePartialSize];
+		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
+		
+		                double patternLogLikelihood = makeRootFuncMosse(nx_root, dx_root, resolution, partials, conditionSurv);
+		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		}
+	        	}
+	        } else {
+	        	// multi-threaded
+	            Runnable rootJob = () -> IntStream.range(0, totaljobs).parallel().forEach(jobid -> {
+	        		int p = jobid / numCategories; // pattern-id
+	        		int c = jobid % numCategories; // category-id
+	        		if (compensatesAllPatterns[c][p] == Double.NEGATIVE_INFINITY || Double.isNaN(compensatesAllPatterns[c][p])) {
+	        			patternCatLogLikes[jobid] = Double.NEGATIVE_INFINITY;
+	        		} else {
+		                int startPos = pattern2SubpatnPerNode[t + p] * singlePartialSize;
+		                double[] partials = new double[singlePartialSize];
+		                System.arraycopy(partialsAllPatterns[c], startPos, partials, 0, singlePartialSize);
+		
+		                double patternLogLikelihood = makeRootFuncMosse(nx_root, dx_root, resolution, partials, conditionSurv);
+		                patternCatLogLikes[jobid] = patternLogLikelihood + compensatesAllPatterns[c][p];
+	        		}
+	            });
+	            try { pool.submit(rootJob).get(); }
+	            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
+	            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
+	        }
+	        
+	        // compute patternLogLikelihoods
+	        if (categoryProps != null) {
+	        	// RHAS model is used
+	        	double[] logProps = new double[numCategories];
+	        	for (int c = 0; c < numCategories; c++)
+	        		logProps[c] = Math.log(categoryProps[c]);
+		        if (pool == null) {
+		        	// single thread
+		        	for (int p = 0; p < patterns; p++) {
+		        		double[] catLogLikes = new double[numCategories];
+		        		int s = p * numCategories;
+		        		for (int c = 0; c < numCategories; c++) {
+		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        			if (Double.isNaN(catLogLikes[c])) {
+		        				catLogLikes[c] = Double.NEGATIVE_INFINITY;
+		        			}
+		        			// System.out.print("," + catLogLikes[c]);
+		        		}
+		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
+		        		// System.out.println("," + patternLogLikelihoods[p]);
+		        	}
+		        } else {
+		        	// multi-threaded
+		            Runnable rootJob = () -> IntStream.range(0, patterns).parallel().forEach(p -> {
+		        		double[] catLogLikes = new double[numCategories];
+		        		int s = p * numCategories;
+		        		for (int c = 0; c < numCategories; c++) {
+		        			catLogLikes[c] = patternCatLogLikes[s + c] + logProps[c];
+		        			if (Double.isNaN(catLogLikes[c])) {
+		        				catLogLikes[c] = Double.NEGATIVE_INFINITY;
+		        			}
+		        		}
+		        		patternLogLikelihoods[p] = logSumExp(catLogLikes);
+		            });
+		            try { pool.submit(rootJob).get(); }
+		            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
+		            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
+		        }
+	        }
+	        
+	        /*
+	        // show the patternCatLogLikes array
+	        System.out.println("patternCatLogLikes:");
+	        int k;
+	        for (int i = 0; i < numCategories; i++) {
+	        	System.out.print("Cat " + (i+1));
+	        	k = i;
+	        	for (int j = 0; j < patterns; j++) {
+	        		System.out.print("," + patternCatLogLikes[k]);
+	        		k += numCategories;
+	        	}
+	        	System.out.println();
+	        }
+	        
+	        // show the overall log likelihood
+        	System.out.print("Overall");
+	        for (int j = 0; j < patterns; j++) {
+	        	System.out.print("," + patternLogLikelihoods[j]);
+	        }
+	        System.out.println();
 
-        final int extNodeCount = nodeCount / 2 + 1;
-        final int intNodeCount = nodeCount / 2;
-
-        // set up tip partials
-        setPartials(treeInput.get().getRoot(), dataInput.get().getPatternCount());
-
-        hasDirt = Tree.IS_FILTHY;
-        for (int i = 0; i < intNodeCount; i++) {
-            mosseLikelihoodCore.createNodePartials(extNodeCount + i);
+	        // show the frequencies of the patterns
+        	System.out.print("Freq");
+	        for (int j = 0; j < patterns; j++) {
+	        	System.out.print("," + data.getPatternWeight(j));
+	        }
+	        System.out.println();
+	        */
         }
+	}
+
+	/**
+	 *
+	 * @param nx            number of bins for substitution rate
+	 * @param dx            distance between xs
+	 * @param r             for resolution scale factor
+	 * @param result        root node result matrix of D and E values (column-major:
+	 *                      first nx entries = E, next nx entries = D[state0], etc.)
+	 * @param conditionSurv whether to condition on survival
+	 * @return log probability for root
+	 */
+	protected double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
+
+		// Operate directly on the flat column-major result[] without
+		// transposing into a double[nx][numPlan] intermediate. The layout is:
+		//   result[j * nx + i]  =>  column j (plan dimension), row i (bin)
+		// Column 0 = E values; columns 1..stateCount = D values per state.
+
+		// Select cached substitution-rate array and lambda array that match the
+		// resolution at which the root partials were computed.
+		boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+		double[] x       = rootIsLow ? cached_x_l : cached_x_h;
+		double[] lambdas = rootIsLow ? lambdas_l   : lambdas_h;
+
+		int numEntries = rootIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+
+		// Compute root.i: stationary frequencies of Q (left eigenvector for eigenvalue 0).
+		// In R: root.i <- solve(t(cbind(c(1,1,1,1), pars$Q_orig[,-1])), c(1,0,0,0))
+		// This is equivalent to the substitution model's equilibrium frequencies.
+		double[] rootI = substitutionModel.getFrequencies();
+
+		// Project d.root through root.i: d_proj[i] = sum_j( D[j][i] * rootI[j] )
+		// In R: d.root <- d.root %*% root.i
+		// result layout: result[(j+1)*nx + i] = D[state j][bin i]
+		double[] dProj = new double[numEntries];
+		for (int i = 0; i < numEntries; i++) {
+			double val = 0.0;
+			for (int j = 0; j < stateCount; j++) {
+				val += result[(j + 1) * nx + i] * rootI[j];
+			}
+			dProj[i] = val;
+		}
+
+		// root.p is computed on the projected (scalar) d.root
+		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries);
+
+		if (conditionSurv) {
+			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2)
+			double denom = 0.0;
+			for (int i = 0; i < numEntries; i++) {
+				double eRootI = result[i]; // E column (column 0)
+				double surv = 1.0 - eRootI;
+				final double min_value = 1e-30;
+				if (surv < min_value) {
+					return Double.NEGATIVE_INFINITY;
+				}
+				denom += rootP[i] * lambdas[i] * surv * surv;
+			}
+			// denom *= dx;
+			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
+			for (int i = 0; i < numEntries; i++) {
+				dProj[i] /= denom;
+			}
+		}
+
+		// compute product sum: sum_i rootP[i] * dProj[i]
+		double sum = 0.0;
+		for (int i = 0; i < numEntries; i++) {
+			sum += rootP[i] * dProj[i];
+		}
+		// double logProb = Math.log(sum);
+		double logProb = Math.log(sum);
+		return logProb;
+	}
+
+	/**
+	 * Compute root probability weights for the projected (single-column) d.root vector.
+	 * Mirrors root.p.mosse() in the updated R after d.root has been projected via root.i.
+	 */
+	private double[] getRootProbFlatProjected(double[] dProj, double[] x, int numEntries) {
+		double[] p = new double[numEntries];
+		if (rootOption == ROOT_OBS) {
+			// p <- d.root / sum(d.root)
+			double dsum = 0.0;
+			for (int i = 0; i < numEntries; i++) dsum += dProj[i];
+			double factor = (dsum == 0.0) ? 0.0 : 1.0 / dsum;
+			for (int i = 0; i < numEntries; i++) p[i] = dProj[i] * factor;
+		} else if (rootOption == ROOT_FLAT) {
+			// p <- 1 / (pars$nx - 1)
+			double val = 1.0 / (numEntries - 1);
+			Arrays.fill(p, val);
+		} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
+			// p <- root.f(x)
+			double[] y = new double[x.length];
+			y = rootFunc.getY(x, y);
+			for (int i = 0; i < numEntries; i++) {
+				p[i] = (i < y.length) ? y[i] : 0.0;
+			}
+		} else {
+			throw new RuntimeException("Unsupported root option: " + rootOption);
+		}
+		return p;
+	}
+
+	private double[] getSubstitutionRates(int numElements, double startRate, double dx, double padLeft) {
+		double[] res = new double[numElements];
+		res[0] = startRate + dx * padLeft;
+		for (int i = 1; i < numElements; i++) {
+			res[i] = res[i - 1] + dx;
+		}
+		return res;
+	}
+
+	private double[] getTraits(Node node) {
+		String taxonName = node.getID();
+		double[] traitValues = new double[traits.size()];
+		for (int i = 0; i < traits.size(); i++) {
+			double traitValue = traits.get(i).getValue(taxonName);
+			traitValues[i] = traitValue;
+		}
+		return traitValues;
+	}
+
+	@Override
+	public double calculateLogP() {
+		// check whether beta is out of the range
+		if (paramsOutOfRange())
+			return Double.NEGATIVE_INFINITY;
+		
+		traverseFull(tree.getRoot());
+		calcLogP();
+		printLogP();
+		return logP;
+	}
+	
+	public boolean paramsOutOfRange() {
+		// check whether beta is out of the range
+		if (tipModel.betaOutOfRange(beta_lowbound, beta_upbound))
+			return true;
+		// check whether epsilon is too small
+		if (tipModel.epsilon.getValue().doubleValue() < epsilon_lowbound)
+			return true;
+		// check whether diffusion is too small
+		if (treeModel.diffusion < diffusion_lowbound)
+			return true;
+		
+		return false;
+	}
+	
+	protected void printParams() {
+		String newickstr = toNewick(tree.getRoot()) + ";";
+		System.out.println(newickstr);
+		System.out.println("resolutionMode = " + resolutionMode);
+		System.out.println("tc = " + tc);
+		System.out.println("dx_h = " + dx_h);
+		System.out.println("rmin = " + rmin);
+		System.out.println("rmax = " + rmax);
+		
+		printSiteModelParameters();
+		tipModel.printParams();
+		treeModel.printParams();
+		lambdaFunc.printParams();
+		muFunc.printParams();
+		showRHASParams();
+	}
+
+	protected void printSiteCatLikes(double[] arr, int num_cats) {
+		System.out.println("Site log-likelihoods for each category:");
+		for (int cat = 0; cat < num_cats; cat++) {
+			int k = cat;
+			for (int p = 0; p < patterns; p++) {
+				if (p > 0)
+					System.out.print(",");
+				System.out.print(arr[k]);
+				k += num_cats;
+			}
+			System.out.println();
+		}
+	}
+		
+	protected void printLogP() {
+		printParams();
+		// printSiteCatLikes(patternLogLikelihoods, 4);
+		count++;
+		System.out.println("#" + count + " logP = " + df.format(logP));
+		System.out.println();
+	}
+
+	@Override
+	protected void calcLogP() {
+		logP = 0.0;
+		if (useAscertainedSitePatterns) {
+			final double ascertainmentCorrection = data.getAscertainmentCorrection(patternLogLikelihoods);
+			for (int i = 0; i < data.getPatternCount(); i++) {
+				logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * data.getPatternWeight(i);
+			}
+		} else {
+			boolean anyPositiveValue = false;
+			// Each patternLogLikelihoods[i] = log p(tree AND site_i).
+			// Correct for the tree probability being counted N times by using:
+			// logL = sum_i w_i * logL_i - (N-1) * log p(tree)
+			// where log p(tree) = log(sum_i w_i * exp(logL_i))
+
+			// Compute log p(tree) via weighted log-sum-exp for numerical stability
+			double maxLogL = Double.NEGATIVE_INFINITY;
+			int totalSites = 0;
+			for (int i = 0; i < patterns; i++) {
+				if (patternLogLikelihoods[i] > maxLogL)
+					maxLogL = patternLogLikelihoods[i];
+				totalSites += data.getPatternWeight(i);
+			}
+			double sumWeightedExp = 0.0;
+			for (int i = 0; i < patterns; i++) {
+				sumWeightedExp += data.getPatternWeight(i) * Math.exp(patternLogLikelihoods[i] - maxLogL);
+			}
+			double logPTree = maxLogL + Math.log(sumWeightedExp);
+
+			// sum_i w_i * logL_i
+			for (int i = 0; i < patterns; i++) {
+				if (patternLogLikelihoods[i] > 0.0)
+					anyPositiveValue = true;
+				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
+			}
+			// subtract (N-1) * log p(tree)
+			logP -= (totalSites - 1) * logPTree;
+
+			if (anyPositiveValue)
+				logP = Double.NEGATIVE_INFINITY;
+		}
+	}
+
+	@Override
+	protected boolean requiresRecalculation() {
+		// Mark transition matrices dirty whenever the substitution model
+		// (or RHAS rates) may have changed so they are recomputed on the next traversal.
+		if (m_siteModel.isDirtyCalculation()) {
+			transitionMatricesDirty = true;
+		}
+		// always recalculate the tree likelihood itself
+		return true;
+	}
+
+	public static String toNewick(Node n) {
+		StringBuilder sb = new StringBuilder();
+
+		if (!n.isLeaf()) {
+			sb.append("(");
+			for (int i = 0; i < n.getChildCount(); i++) {
+				if (i > 0) {
+					sb.append(",");
+				}
+				sb.append(toNewick(n.getChild(i)));
+			}
+			sb.append(")");
+		} else {
+			// taxon label or fallback ID
+			String label = n.getID() != null ? n.getID() : "node" + n.getNr();
+			sb.append(label);
+		}
+
+		sb.append(":").append(n.getLength());
+		return sb.toString();
+	}
+
+	/**
+	 * Returns true if the given node should be computed at low resolution.
+	 *
+	 * Behaviour depends on {@code resolutionMode}:
+	 * <ul>
+	 *   <li>{@value #RESOLUTION_MODE_MIXED} (default) — the existing tc-based rule:
+	 *       leaves are always high-resolution; the root and any internal node at or
+	 *       above {@code tc} are low-resolution; nodes below {@code tc} are
+	 *       high-resolution.</li>
+	 *   <li>{@value #RESOLUTION_MODE_LOW} — every node (including leaves) is
+	 *       treated as low-resolution.</li>
+	 *   <li>{@value #RESOLUTION_MODE_HIGH} — every node (including the root) is
+	 *       treated as high-resolution.</li>
+	 * </ul>
+	 */
+	protected boolean isLowResolution(Node node) {
+		switch (resolutionMode) {
+			case RESOLUTION_MODE_LOW:
+				return true;   // entire tree uses low resolution
+			case RESOLUTION_MODE_HIGH:
+				return false;  // entire tree uses high resolution
+			default: // RESOLUTION_MODE_MIXED
+				if (node.isLeaf()) {
+					return false; // leaf always uses high resolution
+				} else if (node.isRoot() || node.getHeight() >= tc) {
+					return true; // low resolution for root and nodes at or above tc
+				} else {
+					return false; // high resolution for nodes below tc
+				}
+		}
+	}
+
+	private double[] reduceSize(double[] partials) {
+		// reduce the size of partials to "numPlan * numRateBins_l"
+		int partialNewSize = numPlan * numRateBins_l;
+		double[] partialsNew = new double[partialNewSize];
+		// selecting the corresponding entries in the partialMiddle as the input for low
+		// resolution
+		for (int i = 0; i < numPlan; i++) {
+			int k = 0;
+			int s_h = i * numRateBins_h;
+			int s_l = i * numRateBins_l;
+			for (int j = resolution - 1; j < numRateBins_h && k < numRateBins_l; j += resolution, k++) {
+				partialsNew[s_l + k] = partials[s_h + j];
+			}
+			while (k < numRateBins_l) {
+				partialsNew[s_l + k] = 0.0;
+				k++;
+			}
+		}
+		return partialsNew;
+	}
+
+	/**
+	 * @return the corresponding thread ID
+	 * always zero for this single-threaded class
+	 */
+    protected int threadIndexInPool() {
+        return 0;
+    }
+	
+	/**
+	 * show the parameters associated with gamma distribution
+	 */
+	protected void showRHASParams() {
+		System.out.print("Number of categories: " + numCategories);
+		
+		if (m_siteModel instanceof SiteModel) {
+		    SiteModel siteModel = (SiteModel) m_siteModel;
+		    RealParameter shapeParam = siteModel.shapeParameterInput.get();
+		    if (shapeParam != null) {
+		        double alpha = shapeParam.getValue();
+		        System.out.print("; Gamma shape (alpha) = " + alpha);
+		    }
+		}
+		
+		if (categoryRates != null) {
+			System.out.print("; Rates: ");
+			for (int i = 0; i < categoryRates.length; i++) {
+				if (i > 0)
+					System.out.print(",");
+				System.out.print(categoryRates[i]);
+			}
+		}
+		if (categoryProps != null) {
+			System.out.print("; Proportions: ");
+			for (int i = 0; i < categoryProps.length; i++) {
+				if (i > 0)
+					System.out.print(",");
+				System.out.print(categoryProps[i]);
+			}
+		}
+		
+		System.out.println();
+	}
+
+    public void printSiteModelParameters() {
+
+        SubstitutionModel subst =
+                m_siteModel.substModelInput.get();
+
+        System.out.println("Substitution model: "
+                + subst.getClass().getSimpleName());
+
+        printBEASTObjectParameters(subst, "  ");
     }
 
-    /**
-     * calculate log P without caching (for testing)
-     * @return log P
-     */
-    public double calculateLogPFull() {
-        final TreeInterface tree = treeInput.get();
-        traverseFull(tree.getRoot());
-        return logP;
-    }
+    private void printBEASTObjectParameters(Object obj, String indent) {
 
-    private void traverseFull(Node node) {
-        int numPlan = 5; // dimensions
-        double deltaT = 0.001; // dt
-        double rate = startSubsRate; // dx
-        int numStates = dataInput.get().getDataType().getStateCount();
-        int numPattern = dataInput.get().getPatternCount();
-
-        double[] transitionMatrix = new double[numStates * numStates];
-        double[][] transitionMatrices = new double[numEntries][transitionMatrix.length];
-        // P(0) = exp(dx * Q * dt)
-        substitutionModel.getTransitionProbabilities(node, deltaT, 0, rate, transitionMatrix); // startTime is greater than endTime
-        transitionMatrices[0] = transitionMatrix;
-        // update transitionMatrices
-        for (int i = 1; i < numEntries; i++) {
-            double[] prevMatrix = transitionMatrices[i - 1];
-            // multiplication of matrix
-            DoubleMatrix matrixOne = new DoubleMatrix(numStates, numStates, transitionMatrices[0]);
-            DoubleMatrix matrixTwo = new DoubleMatrix(numStates, numStates, prevMatrix);
-            DoubleMatrix result = matrixOne.mmul(matrixTwo);
-            transitionMatrices[i] = result.toArray();
+        if (!(obj instanceof beast.base.core.BEASTObject)) {
+            return;
         }
-        flatTransitionMatrices = Arrays.stream(transitionMatrices)
-                .flatMapToDouble(Arrays::stream)
-                .toArray();
 
-        // get lambdas and mus
-        double[] x = getSubstitutionRates(numEntries); // substitution rates
-        lambdas = new double[numEntries];
-        mus = new double[numEntries];
-        // System.out.println("numEntries: " + numEntries);
-        lambdas = lambdaFunc.getY(x, lambdas, true);
-        mus = muFunc.getY(x, mus, true);
+        Map<String, Input<?>> inputs =
+                ((beast.base.core.BEASTObject) obj).getInputs();
 
-        if (node.isLeaf()) {
-            // leaf node
-            // leaf partials size = nrPatterns * (nrStates + 1) * numBins
-            // columns = (4x D's for each nucleotide, 1x E), rows = bins for substitution rate
-            setPartials(node, numPattern); // all site patterns
+        for (Map.Entry<String, Input<?>> e : inputs.entrySet()) {
+            Input<?> input = e.getValue();
+            Object value = input.get();
 
-        } else if (!node.isRoot()) {
-            // internal node
-            traverseFull(node.getChild(0)); // left child
-            traverseFull(node.getChild(1)); // right child
+            if (value == null) continue;
 
-            // propagate child branches
-            double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
-            double branchTimeRight = node.getHeight() - node.getRight().getHeight();
-
-            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins];
-            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins];
-            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins];
-
-            // get child node partials all patterns
-            mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
-            mosseLikelihoodCore.getNodePartials(node.getRight().getNr(), patternPartialsRight);
-            int k = 0;
-            for (int pattern = 0; pattern < numPattern; pattern++) {
-                // partial for single pattern
-                int partialSize = numPlan * numRateBins;
-                int startPos = pattern * partialSize;
-                double[] partialsLeft =  new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSize);
-                double[] partialsRight = new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
-                double[] partialsCombined = new double[partialsLeft.length];
-
-                // propagate each child branch
-                double leftP = treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                double rightP = treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
-
-//                System.out.println("leftP " + leftP);
-//                System.out.println("rightP " + rightP);
-
-                int leftBound = mosseLikelihoodCore.padLeft + 1;
-                int rightBound = numEntries + leftBound;
-                // assumes t less than tc threshold
-                for (int i = 0; i < numPlan; i++) {
-                    for (int j = 0; j < numRateBins; j++) {
-                        int index = i * numRateBins + j;
-                        if (i == 0) {
-                            // E is topology independent
-                            partialsCombined[index] = partialsLeft[index]; // for testing
-                            partialsAllPatterns[k] = partialsLeft[index];
-                        } else {
-                            if (j >= leftBound && j < rightBound) {
-                                // non padded elements
-                                // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas[j - leftBound]; // birth rate at substitution rate x
-                                partialsCombined[index] = partialsLeft[index] * partialsRight[index] * lambdaX; // for testing
-                                partialsAllPatterns[k] = partialsLeft[index] * partialsRight[index] * lambdaX;
-                            } else {
-                                // padded elements
-                                partialsCombined[index] = 0.0; // set to zero
-                                partialsAllPatterns[k] = 0.0;
-                            }
-                        }
-                        k++;
-                    }
+            // Case 1: RealParameter
+            if (value instanceof RealParameter rp) {
+                System.out.print(indent + e.getKey() + " = ");
+                for (int i = 0; i < rp.getDimension(); i++) {
+                    System.out.print(rp.getValue(i) + " ");
                 }
+                System.out.println();
             }
-            // set internal node partials for all patterns
-            mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
 
-        } else {
-            // root node
-            traverseFull(node.getLeft());
-            traverseFull(node.getRight());
-
-            // propagate child branches of root
-            double branchTimeLeft = node.getHeight() - node.getLeft().getHeight();
-            double branchTimeRight = node.getHeight() - node.getRight().getHeight();
-
-            double[] patternPartialsLeft = new double[numPattern * numPlan * numRateBins];
-            double[] patternPartialsRight = new double[numPattern * numPlan * numRateBins];
-            double[] partialsAllPatterns = new double[numPattern * numPlan * numRateBins];
-
-            // get child node partials all patterns
-            mosseLikelihoodCore.getNodePartials(node.getLeft().getNr(), patternPartialsLeft);
-            mosseLikelihoodCore.getNodePartials(node.getRight().getNr(), patternPartialsRight);
-            int k = 0;
-            for (int pattern = 0; pattern < numPattern; pattern++) {
-                // partial for single pattern
-                int partialSize = numPlan * numRateBins;
-                int startPos = pattern * partialSize;
-                double[] partialsLeft = new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsLeft, startPos, partialsLeft, 0, partialSize);
-                double[] partialsRight = new double[numPlan * numRateBins];
-                System.arraycopy(patternPartialsRight, startPos, partialsRight, 0, partialSize);
-                double[] partialsCombined = new double[partialsLeft.length];
-
-                // propagate each child branch
-                treeModel.calculateBranchLogP(branchTimeLeft, partialsLeft, lambdas, mus, flatTransitionMatrices, partialsLeft);
-                treeModel.calculateBranchLogP(branchTimeRight, partialsRight, lambdas, mus, flatTransitionMatrices, partialsRight);
-
-                // assumes t less than tc threshold
-                int leftBound = mosseLikelihoodCore.padLeft + 1;
-                int rightBound = numEntries + leftBound;
-                // assumes t less than tc threshold
-                for (int i = 0; i < numPlan; i++) {
-                    for (int j = 0; j < numRateBins; j++) {
-                        int index = i * numRateBins + j;
-                        if (i == 0) {
-                            // E is topology independent
-                            partialsCombined[index] = partialsLeft[index]; // for testing
-                            partialsAllPatterns[k] = partialsLeft[index];
-                        } else {
-                            if (j >= leftBound && j < rightBound) {
-                                // non padded elements
-                                // D_left * D_right * lambda(x)
-                                double lambdaX = lambdas[j - leftBound]; // birth rate at substitution rate x
-                                partialsCombined[index] = partialsLeft[index] * partialsRight[index] * lambdaX; // for testing
-                                partialsAllPatterns[k] = partialsLeft[index] * partialsRight[index] * lambdaX;
-                            } else {
-                                // padded elements
-                                partialsCombined[index] = 0.0; // set to zero
-                                partialsAllPatterns[k] = 0.0;
-                            }
-                        }
-                        k++;
-                    }
-                }
-            }
-            // set root node partials
-            mosseLikelihoodCore.setNodePartials(node.getNr(), partialsAllPatterns);
-
-            logP = 0.0;
-            for (int pattern = 0; pattern < numPattern; pattern++) {
-                int partialSize = numPlan * numRateBins;
-                int startPos = pattern * partialSize;
-                double[] partials =  new double[numPlan * numRateBins];
-                System.arraycopy(partialsAllPatterns, startPos, partials, 0, partialSize);
-                // root calc for a single pattern
-                boolean conditionSurv = false;
-                
-                double patternLogLikelihood = makeRootFuncMosse(numRateBins, rate, resolution, partials, conditionSurv);
-                logP += patternLogLikelihood + dataInput.get().getPatternWeight(pattern);
+            // Case 2: nested BEASTObject (e.g. Frequencies)
+            else if (value instanceof beast.base.core.BEASTObject) {
+                // System.out.println(indent + e.getKey() + ":");
+                // printBEASTObjectParameters(value, indent + "  ");
+            	printBEASTObjectParameters(value, "  ");
             }
         }
     }
-
-    /**
-     *
-     * @param nx number of bins for substitution rate
-     * @param dx distance between xs
-     * @param r for resolution scale factor
-     * @param result root node result matrix of D and E values
-     * @param conditionSurv whether to condition on survival
-     * @return log probability for root
-     */
-    private double makeRootFuncMosse(int nx, double dx, int r, double[] result, boolean conditionSurv) {
-        double dxScaled = dx * r;
-        int ntypes = 4;
-        double[][] vals = new double[nx][ntypes+1];
-        int count = 0;
-        for (int j = 0; j < ntypes + 1; j++) { // nucleotide types columns
-            for (int i = 0; i < nx; i++) { // nx rows
-                vals[i][j] = result[count];
-                count++;
-            }
+    
+    protected double logSumExp(final double[] logs) {
+        double max = Double.NEGATIVE_INFINITY;
+        for (double x : logs) {
+        	if (x > max) {
+        		max = x;
+        	}
         }
-
-        double[][] dRoot = getDValues(vals); // get root D values in last column
-        double[] eRoot = null;
-
-        double[] x = getSubstitutionRates(nx);
-        // root options
-        double[][] rootP = getRootProb(dRoot, x, nx, rootOption, rootFunc);
-
-        if (conditionSurv) {
-            eRoot = getColumn(vals, 1); // get root E values as a column
-            // apply function on dRoot
-            for (int i = 0; i < ntypes; i++) {
-                for (int j = 0; j < numEntries; j++) {
-                    double lambdaX = lambdas[j];
-                    // element-wise division of d column
-                    dRoot[i][j] = dRoot[i][j] / (lambdaX * (1 - eRoot[j]) * (1 - eRoot[j]));
-                }
-            }
-        }
-
-        double[][] rootProduct = getProduct(rootP, dRoot);
-        double lq = getSum(dRoot); // lq value is sum(D vector) for numerical underflow
-
-        double logProb = Math.log(getSum(rootProduct) * dxScaled) + lq; // log for numerical underflow
-        System.out.println("p = " + getSum(rootProduct) * dxScaled);
-
-        return logProb;
-    }
-
-    private double getColumnSum(double[][] dRoot, int column) {
         double sum = 0.0;
-        int nrow = dRoot.length;
-        for (int i = 0; i < nrow; i++) {
-            sum = sum + dRoot[i][column];
+        for (double x : logs) {
+        	sum += Math.exp(x - max);
         }
-        return sum;
+        return max + Math.log(sum);
     }
 
-    private double[][] getDValues(double[][] vals) {
-        // all columns except first column
-        int nrow = vals.length;
-        int ncol = vals[0].length;
-        assert(ncol > 1);
-        double[][] dValues = new double[nrow][ncol - 1];
-        for (int i = 0; i < nrow; i++) {
-            for (int j = 0; j < ncol - 1; j++) {
-                dValues[i][j] = vals[i][j + 1];
-            }
-        }
-        return dValues;
-    }
+	protected static void show1DArray(double[] array, String desc) {
+		System.out.println(desc);
+		boolean error_found = false;
+		int max_num_per_line = 30;
+		for (int i = 0; i < array.length; i++) {
+			if (i > 0 && i % max_num_per_line == 0)
+				System.out.println();
+			System.out.print("," + array[i]);
+			if (Double.isNaN(array[i]))
+				error_found = true;
+		}
+		System.out.println();
+		if (error_found)
+			System.exit(1);
+	}
+	
+	protected static void show1DArray(double[] array, String desc, int max_num_per_line) {
+		System.out.println(desc);
+		boolean error_found = false;
+		for (int i = 0; i < array.length; i++) {
+			if (i > 0 && i % max_num_per_line == 0)
+				System.out.println();
+			System.out.print("," + array[i]);
+			if (Double.isNaN(array[i]))
+				error_found = true;
+		}
+		System.out.println();
+		if (error_found)
+			System.exit(1);
+	}
 
-    private double[][] getRootProb(double[][] dRoot, double[] x, int nx, int rootOption, LinkFn rootFunc) {
-        double dx = x[1] - x[0];
-        int numSubstBins = dRoot.length;
-        int ntypes = dRoot[0].length;
-        double[][] p = new double[numSubstBins][ntypes];
-        
-        if (rootOption == ROOT_FLAT) {
-            for (int i = 0; i < numSubstBins; i++) {
-                for (int j = 0; j < ntypes; j++) {
-                    p[i][j] = 1 / ((nx - 1) * ntypes * dx);
-                }
-            }
-        } else if (rootOption == ROOT_OBS)  {
-            for (int i = 0; i < numSubstBins; i++) {
-                for (int j = 0; j < ntypes; j++) {
-                    p[i][j] = dRoot[i][j] / (getSum(dRoot) * dx);
-                }
-            }
-        } else {
-            double[] rootI = substitutionModel.getFrequencies(); // equilibrium freqs
-            if (rootOption == ROOT_EQUI) { // check this
-                for (int i = 0; i < numSubstBins; i++) {
-                    for (int j = 0; j < ntypes; j++) {
-                        p[i][j] = rootI[j] * dRoot[i][j] / (getColumnSum(dRoot, j) * dx); // mapply
-                    }
-                }
-            } else if (rootOption == ROOT_GIVEN){ // test this with an appropriate function
-                double[] y = new double[x.length];
-                if (rootFunc != null) {
-                    y = rootFunc.getY(x, y, true);
-                    for (int i = 0; i < numSubstBins; i++) {
-                        for (int j = 0; j < ntypes; j++) {
-                            p[i][j] = rootI[j] * y[i]; // mapply
-                        }
-                    }
-                }
-            }
-        }
+	protected static void show1DArrayTranspose(double[] array, String desc, int items_per_col) {
+		System.out.println(desc);
+		assert (array.length % items_per_col == 0);
+		int ncols = array.length / items_per_col;
+		for (int i = 0; i < items_per_col; i++) {
+			for (int j = 0; j < ncols; j++) {
+				if (j > 0)
+					System.out.print(",");
+				System.out.print(array[j*items_per_col + i]);
+			}
+			System.out.println();
+		}
+	}
 
-        return p;
-    }
-
-    private double[][] getProduct(double[][] array1, double[][] array2) {
-        assert(array1.length == array2.length);
-        assert(array1[0].length == array2[0].length);
-        double[][] res = new double[array1.length][array1[0].length];
-        for (int i = 0; i < res.length; i++) {
-            for (int j = 0; j < res[0].length; j++) {
-                res[i][j] = array1[i][j] * array2[i][j];
-            }
-        }
-        return res;
-    }
-
-    private double getSum(double[] array) {
-        double res = 0.0;
-        for (double i: array) {
-            res = res + i;
-        }
-        return res;
-    }
-
-    private double getSum(double[][] array) {
-        double res = 0.0;
-        for (int i = 0; i < array.length; i++) {
-            for (int j = 0; j < array[0].length; j++) {
-                res = res + array[i][j];
-            }
-        }
-        return res;
-    }
-
-    private double[] getColumn(double[][] values, int colIndex) {
-        int rows = values.length;
-        double[] column = new double[rows];
-        if (colIndex == -1) {
-            colIndex = values[0].length - 1;
-        }
-        for (int i = 0; i < rows; i++) {
-            column[i] = values[i][colIndex];
-        }
-        return column;
-    }
-
-    public double[] getFlatTransitionMatrices() {
-        return flatTransitionMatrices;
-    }
-
-    private double[] getSubstitutionRates(int numElements) {
-        double[] res = new double[numElements];
-        res[0] = startSubsRate;
-        double interval = startSubsRate; // use start rate as interval
-        for(int i = 1; i < numElements; i++) {
-            res[i] = res[i - 1] + interval;
-        }
-        return res;
-    }
-
-    private double[] getTraits(Node node) {
-        String taxonName = node.getID();
-        double[] traitValues = new double[traits.size()];
-        for (int i = 0; i < traits.size(); i++) {
-            double traitValue = traits.get(i).getValue(taxonName);
-            traitValues[i] = traitValue;
-        }
-        return traitValues;
-    }
-
-    @Override
-    public double calculateLogP() {
-        final TreeInterface tree = treeInput.get();
-        traverseFull(tree.getRoot());
-        return logP;
-    }
-
-    @Override
-    protected boolean requiresRecalculation() {
-        // always recalculate
-        return true;
-    }
+	protected static void show2DArray(double[][] array, String desc) {
+		System.out.println(desc);
+		boolean error_found = false;
+		for (int i = 0; i < array.length; i++) {
+			for (int j = 0; j < array[0].length; j++) {
+				System.out.print("," + array[i][j]);
+				if (Double.isNaN(array[i][j]))
+					error_found = true;
+			}
+			System.out.println();
+		}
+		if (error_found)
+			System.exit(1);
+	}
 }
