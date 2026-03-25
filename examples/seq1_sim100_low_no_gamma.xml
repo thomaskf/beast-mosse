@@ -230,9 +230,9 @@
 
                 <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
                     <distr id="Normal.beta" spec="beast.base.inference.distribution.Normal">
-                        <parameter name="mean" spec="parameter.RealParameter" value="0.0" estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="10.0" estimate="false"/>
-                    </distr>  <!--XH:change to normal, with mean=0, sd=10-->
+                        <parameter name="mean" spec="parameter.RealParameter" value="1.0" estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="0.001" estimate="false"/>
+                    </distr>  <!--Beta prior is now changed to mean 1.0 and small sd 0.001-->
                 </distribution>
                 
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
