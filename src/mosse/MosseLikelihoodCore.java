@@ -14,11 +14,11 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 	protected int numRateBins;
 
 	protected int lambdaSize;
-	
-	protected double[][][][] mossePartials;
 
-	protected double[][][][] mosseCompensates;
-	
+	protected double[][][] mossePartials;
+
+	protected double[][][] mosseCompensates;
+
 	public MosseLikelihoodCore(int nrOfStates, int numRateBins) {
 		super(nrOfStates);
 		this.numRateBins = numRateBins;
@@ -29,22 +29,17 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 	 *
 	 * @param nodeCount           the number of nodes in the tree
 	 * @param patternCount        the number of patterns
-	 * @param matrixCount         the number of matrices (i.e., number of categories
-	 *                            for gamma rate heterogeneity)
-	 * @param integrateCategories whether sites are being integrated over all
-	 *                            matrices
-	 * @param useAmbiguities      whether to use ambiguious characters
+	 * @param integrateCategories whether sites are being integrated over all matrices
+	 * @param useAmbiguities      whether to use ambiguous characters
 	 */
-	@Override
-	public void initialize(int nodeCount, int patternCount, int matrixCount, boolean integrateCategories,
-			boolean useAmbiguities) {
+	public void initialize(int nodeCount, int patternCount, boolean integrateCategories, boolean useAmbiguities) {
 		this.nrOfNodes = nodeCount;
 		this.nrOfPatterns = patternCount;
-		this.nrOfMatrices = matrixCount; // matrix count should be 1
+		this.nrOfMatrices = 1;
 		this.integrateCategories = integrateCategories;
 
-		mossePartials = new double[2][nodeCount][matrixCount][];
-		mosseCompensates = new double[2][nodeCount][matrixCount][];
+		mossePartials = new double[2][nodeCount][];
+		mosseCompensates = new double[2][nodeCount][];
 
 		currentMatrixIndex = new int[nodeCount];
 		storedMatrixIndex = new int[nodeCount];
@@ -53,48 +48,21 @@ public class MosseLikelihoodCore extends BeerLikelihoodCore {
 		storedPartialsIndex = new int[nodeCount];
 
 		states = new int[nodeCount][];
-
-		for (int i = 0; i < nodeCount; i++) {
-			for (int c = 0; c < matrixCount; c++) {
-				mossePartials[0][i][c] = null;
-				mossePartials[1][i][c] = null;
-				mosseCompensates[0][i][c] = null;
-				mosseCompensates[1][i][c] = null;
-			}
-			states[i] = null;
-		}
 	}
 
-	public void setNodeMossePartials(int nodeIndex, double[][] partialsIn) {
+	public void setNodeMossePartials(int nodeIndex, double[] partialsIn) {
 		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex] = partialsIn;
 	}
 
-	public double[][] getNodeMossePartials(int nodeIndex) {
+	public double[] getNodeMossePartials(int nodeIndex) {
 		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex];
 	}
 
-	public void setNodeMossePartials(int nodeIndex, int categoryIndex, double[] partialsIn) {
-		this.mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = partialsIn;
-	}
-
-	public double[] getNodeMossePartials(int nodeIndex, int categoryIndex) {
-		return mossePartials[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
-	}
-
-	
-	public void setNodeMosseCompensates(int nodeIndex, double[][] compensatesIn) {
+	public void setNodeMosseCompensates(int nodeIndex, double[] compensatesIn) {
 		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex] = compensatesIn;
 	}
 
-	public double[][] getNodeMosseCompensates(int nodeIndex) {
+	public double[] getNodeMosseCompensates(int nodeIndex) {
 		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex];
-	}
-
-	public void setNodeMosseCompensates(int nodeIndex, int categoryIndex, double[] compensatesIn) {
-		this.mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex] = compensatesIn;
-	}
-
-	public double[] getNodeMosseCompensates(int nodeIndex, int categoryIndex) {
-		return mosseCompensates[currentPartialsIndex[nodeIndex]][nodeIndex][categoryIndex];
 	}
 }
