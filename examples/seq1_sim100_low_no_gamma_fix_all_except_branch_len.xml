@@ -166,7 +166,7 @@
             <stateNode idref="beta" />
             <stateNode idref="subst" />
             <!--<stateNode idref="alpha" />-->
-            <!--<stateNode idref="tree" />-->
+            <stateNode idref="tree" />
             <stateNode idref="kappa" />
             <stateNode idref="drift" />
             <stateNode idref="diffusion" />
@@ -197,7 +197,7 @@
             <!-- priors -->
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
 
-                <!--<distribution id="rootHeightPrior"
+                <distribution id="rootHeightPrior"
                               spec="beast.base.evolution.tree.MRCAPrior"
                               tree="@tree"
                               monophyletic="true">
@@ -206,7 +206,7 @@
                         <parameter name="mean"  spec="parameter.RealParameter" value="3.0130700118"  estimate="false"/>
                         <parameter name="sigma" spec="parameter.RealParameter" value="1e-3" estimate="false"/>
                     </distr>
-                </distribution>-->
+                </distribution>
             
                 <!--<distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
                     <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
@@ -215,24 +215,25 @@
                     </distr>
                 </distribution>-->
                 
+                <!--
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
                     <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter name="M" spec="parameter.RealParameter" value="1.0" />
                         <parameter name="S" spec="parameter.RealParameter" value="10.0" />
-                    </distr> <!--XH:increase sd=10-->
+                    </distr>
                 </distribution>
                 
                 <distribution id="epsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
                     <distr id="Exponential.epsilon" spec="beast.base.inference.distribution.Exponential">
                         <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-                    </distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
+                    </distr>
                 </distribution>
 
                 <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
                     <distr id="Normal.beta" spec="beast.base.inference.distribution.Normal">
                         <parameter name="mean" spec="parameter.RealParameter" value="1.0" estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="0.001" estimate="false"/>
-                    </distr>  <!--Beta prior is now changed to mean 1.0 and small sd 0.001-->
+                        <parameter name="sigma" spec="parameter.RealParameter" value="10" estimate="false"/>
+                    </distr>
                 </distribution>
                 
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
@@ -252,23 +253,16 @@
                 <distribution id="diffusionPrior" spec="beast.base.inference.distribution.Prior" x="@diffusion">
                     <distr id="Exponential.diffusion" spec="beast.base.inference.distribution.Exponential">
                         <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-                    </distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
+                    </distr>
                 </distribution>
+                -->
                 
-            	<distribution id="curveYBaseValuePrior" spec="beast.base.inference.distribution.Prior" x="@curveYBaseValue">
-            		<distr id="Exponential.curveYBaseValue" spec="beast.base.inference.distribution.Exponential">
+                <!--
+                <distribution id="curveYBaseValuePrior" spec="beast.base.inference.distribution.Prior" x="@curveYBaseValue">
+                    <distr id="Exponential.curveYBaseValue" spec="beast.base.inference.distribution.Exponential">
                         <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-            		</distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
-            	</distribution>
-            	
-            	<!--
-            	<distribution id="curveMaxYPrior" spec="beast.base.inference.distribution.Prior" x="@curveMaxY">
-            		<distr id="LogNormal.curveMaxY" spec="beast.base.inference.distribution.Exponential">
-                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-            		</distr>
-            	</distribution>
-            	-->
-            	<!--XH:change to difference between max and min; use exponential with rate =0.5-->
+                    </distr>
+                </distribution>
             	
 				<distribution id="curveYDiffPrior" spec="beast.base.inference.distribution.Prior" x="@curveYDiff">
 					<distr id="Exponential.curveYDiff" spec="beast.base.inference.distribution.Exponential">
@@ -280,13 +274,15 @@
             		<distr id="LogNormal.linearGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
             			<parameter name="M" spec="parameter.RealParameter" value="0.0" estimate="false" />
             			<parameter name="S" spec="parameter.RealParameter" value="10.0" estimate="false" />
-            		</distr> <!--XH:increase sd=10-->
+            		</distr>
             	</distribution>
+            	
             	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
             		<distr id="Exponential.yV" spec="beast.base.inference.distribution.Exponential">
                         <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-            		</distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
+            		</distr>
             	</distribution>
+            	-->
                 
                 <!--
                 <distribution id="freqsPrior" spec="beast.base.inference.distribution.Prior" x="@freqs">
@@ -307,18 +303,18 @@
         
         
         <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
-        
-        <!--<operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>-->
 
-        <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
-            scaleFactor="0.75" weight="3.0"/>
+        <!-- SubtreeSlide changes topology — disabled to fix topology -->
+        <!-- <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/> -->        
+
         <!--<operator id="alphaScale" spec="ScaleOperator" parameter="@alpha"
             scaleFactor="0.75" weight="3.0"/>-->
 
+        <!--
+        <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
+            scaleFactor="0.75" weight="3.0"/>
 		<operator id="BetaRandomWalk" spec="RealRandomWalkOperator" parameter="@beta"
 		    windowSize="0.25" weight="3.0" />
-        <!--<operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
-            scaleFactor="0.25" weight="3.0" />-->
         <operator id="SubstScaler" spec="ScaleOperator" parameter="@subst"
             scaleFactor="0.25" weight="3.0" />
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
@@ -328,21 +324,21 @@
             scaleFactor="0.75" weight="3.0" />
         <operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
             scaleFactor="0.75" weight="3.0" />
+        -->
 
+        <!--
         <operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
             scaleFactor="0.75" weight="3.0" />
             
-        <!-- curveMaxY is sampled independently; the curveYDiffPrior enforces curveMaxY >= curveYBaseValue
-             by placing an Exponential prior on (curveMaxY - curveYBaseValue), which has zero density
-             when the difference is negative, so proposals violating the constraint are always rejected -->
         <operator id="CurveMaxYScaler" spec="ScaleOperator" parameter="@curveMaxY"
             scaleFactor="0.75" weight="3.0" />
         
         <operator id="LinearGrowthRateScaler" spec="ScaleOperator" parameter="@linearGrowthRate"
             scaleFactor="0.75" weight="3.0" />
+            
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
             scaleFactor="0.75" weight="3.0" />
-
+        -->
 
         <!-- Base frequency operators (sum stays 1) -->
         <!--
@@ -354,7 +350,7 @@
         -->
 
         <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
-        <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
+        <operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/>
 
         <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
             <log idref="posterior" />
@@ -371,18 +367,22 @@
             <log idref="curveMaxY" />
             <log idref="linearGrowthRate" />
             <log idref="yV" />
-            <!--<log idref="rootHeightPrior" />-->
+            <log idref="rootHeightPrior" />
             <!--<log idref="alphaPrior" />-->
+            <!--
             <log idref="kappaPrior" />
             <log idref="epsilonPrior" />
             <log idref="betaPrior" />
             <log idref="substPrior" />
             <log idref="driftPrior" />
             <log idref="diffusionPrior" />
+            -->
+            <!--
             <log idref="curveYBaseValuePrior" />
             <log idref="curveYDiffPrior" />
             <log idref="linearGrowthRatePrior" />
             <log idref="yVPrior" />
+            -->
         </logger>
         <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
             <log idref="tree" />
