@@ -110,8 +110,7 @@
 
     <SiteModel
         id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
-        mutationRate="1.0" substModel="@JC"
-        gammaCategoryCount="1.0" />
+        mutationRate="1.0" substModel="@JC" />
 
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree" />
