@@ -138,7 +138,6 @@
                     spec="mosse.MosseTreeLikelihood"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
                     tipModel="@mossetiplikelihood" treeModel="@treemodel"
-                    startSubsRate="0.01" numRateBins="1024"
                     lambdaFunc="@logfunc" muFunc="@constfunc">
                     <traits id="traitset"
                         spec="beast.base.evolution.tree.TraitSet"
