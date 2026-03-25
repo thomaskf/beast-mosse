@@ -111,13 +111,11 @@
     
     <!-- HKY model -->
     <parameter id="kappa" value="1.52"/>
-    <!--<parameter id="alpha" value="20"/>-->
-   
+
     <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
 
     <SiteModel id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel"
-        mutationRate="1.0" substModel="@hky"
-        gammaCategoryCount="1" />
+        mutationRate="1.0" substModel="@hky" />
 
     <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
@@ -161,11 +159,11 @@
 		    </populationModel>
 		</init> -->
       		        
+        <!--
         <state id="state" storeEvery="100">
             <stateNode idref="epsilon" />
             <stateNode idref="beta" />
             <stateNode idref="subst" />
-            <!--<stateNode idref="alpha" />-->
             <stateNode idref="tree" />
             <stateNode idref="kappa" />
             <stateNode idref="drift" />
@@ -174,8 +172,8 @@
             <stateNode idref="curveMaxY" />
             <stateNode idref="linearGrowthRate" />
             <stateNode idref="yV" />
-			<!--<stateNode idref="freqs" />-->
         </state>
+        -->
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
 
@@ -208,13 +206,6 @@
                     </distr>
                 </distribution>
             
-                <!--<distribution id="alphaPrior" spec="beast.base.inference.distribution.Prior" x="@alpha">
-                    <distr id="LogNormal.alpha" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-                        <parameter name="M" spec="parameter.RealParameter" value="5.0"/>
-                        <parameter name="S" spec="parameter.RealParameter" value="20.0"/>
-                    </distr>
-                </distribution>-->
-                
                 <!--
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
                     <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
@@ -307,9 +298,6 @@
         <!-- SubtreeSlide changes topology — disabled to fix topology -->
         <!-- <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/> -->        
 
-        <!--<operator id="alphaScale" spec="ScaleOperator" parameter="@alpha"
-            scaleFactor="0.75" weight="3.0"/>-->
-
         <!--
         <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
             scaleFactor="0.75" weight="3.0"/>
@@ -356,7 +344,6 @@
             <log idref="posterior" />
             <log idref="likelihood" />
             <log idref="prior" />
-            <!--<log idref="alpha" />-->
             <log idref="beta" />
             <log idref="epsilon" />
             <log idref="subst" />
@@ -368,7 +355,6 @@
             <log idref="linearGrowthRate" />
             <log idref="yV" />
             <log idref="rootHeightPrior" />
-            <!--<log idref="alphaPrior" />-->
             <!--
             <log idref="kappaPrior" />
             <log idref="epsilonPrior" />
