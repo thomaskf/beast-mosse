@@ -1435,11 +1435,34 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		} else {
 			boolean anyPositiveValue = false;
+			// Each patternLogLikelihoods[i] = log p(tree AND site_i).
+			// Correct for the tree probability being counted N times by using:
+			// logL = sum_i w_i * logL_i - (N-1) * log p(tree)
+			// where log p(tree) = log(sum_i w_i * exp(logL_i))
+
+			// Compute log p(tree) via weighted log-sum-exp for numerical stability
+			double maxLogL = Double.NEGATIVE_INFINITY;
+			int totalSites = 0;
+			for (int i = 0; i < patterns; i++) {
+				if (patternLogLikelihoods[i] > maxLogL)
+					maxLogL = patternLogLikelihoods[i];
+				totalSites += data.getPatternWeight(i);
+			}
+			double sumWeightedExp = 0.0;
+			for (int i = 0; i < patterns; i++) {
+				sumWeightedExp += data.getPatternWeight(i) * Math.exp(patternLogLikelihoods[i] - maxLogL);
+			}
+			double logPTree = maxLogL + Math.log(sumWeightedExp);
+
+			// sum_i w_i * logL_i
 			for (int i = 0; i < patterns; i++) {
 				if (patternLogLikelihoods[i] > 0.0)
 					anyPositiveValue = true;
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
+			// subtract (N-1) * log p(tree)
+			logP -= (totalSites - 1) * logPTree;
+
 			if (anyPositiveValue)
 				logP = Double.NEGATIVE_INFINITY;
 		}
