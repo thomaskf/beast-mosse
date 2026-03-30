@@ -469,11 +469,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 								patnPartials[k++] = tipLikelihoods[i];
 							}
 						} else {
+							// padLeft leading zeros before the tip likelihoods
+							for (int i = 0; i < padLeft_leaf; i++) {
+								patnPartials[k++] = 0.0;
+							}
 							for (int i = 0; i < numEntries_leaf; i++) {
 								patnPartials[k++] = tipLikelihoods[i];
 							}
-							// set to zeros for the rest
-							for (int i = numEntries_leaf; i < numRateBins_leaf; i++) {
+							// set to zeros for the rest (padRight + 1)
+							for (int i = padLeft_leaf + numEntries_leaf; i < numRateBins_leaf; i++) {
 								patnPartials[k++] = 0.0;
 							}
 						}
@@ -1274,24 +1278,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		} else {
 			boolean anyPositiveValue = false;
-			// Each patternLogLikelihoods[i] = log p(tree AND site_i).
-			// Correct for the tree probability being counted N times by using:
-			// logL = sum_i w_i * logL_i - (N-1) * log p(tree)
-			// where log p(tree) = log(sum_i w_i * exp(logL_i))
+			// Each patternLogLikelihoods[i] = log p(tree AND site_i AND tip traits).
+			// Correct for the tree-and-traits probability being counted N times:
+			// logL = sum_i w_i * logL_i - (N-1) * logL_flat
+			// where logL_flat = log p(tree AND tip traits) computed with flat tip likelihoods
+			// (D_tip[s][bin] = tipLikelihoods[bin] for all nucleotide states s).
 
-			// Compute log p(tree) via weighted log-sum-exp for numerical stability
-			double maxLogL = Double.NEGATIVE_INFINITY;
 			int totalSites = 0;
 			for (int i = 0; i < patterns; i++) {
-				if (patternLogLikelihoods[i] > maxLogL)
-					maxLogL = patternLogLikelihoods[i];
 				totalSites += data.getPatternWeight(i);
 			}
-			double sumWeightedExp = 0.0;
-			for (int i = 0; i < patterns; i++) {
-				sumWeightedExp += data.getPatternWeight(i) * Math.exp(patternLogLikelihoods[i] - maxLogL);
-			}
-			double logPTree = maxLogL + Math.log(sumWeightedExp);
+
+			// Compute logL_flat via a separate flat tree traversal.
+			double logL_flat = computeFlatTreeLogLikelihood();
 
 			// sum_i w_i * logL_i
 			for (int i = 0; i < patterns; i++) {
@@ -1299,12 +1298,133 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					anyPositiveValue = true;
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
-			// subtract (N-1) * log p(tree)
-			logP -= (totalSites - 1) * logPTree;
+			// subtract (N-1) * logL_flat
+			logP -= (totalSites - 1) * logL_flat;
 
 			if (anyPositiveValue)
 				logP = Double.NEGATIVE_INFINITY;
 		}
+	}
+
+	/**
+	 * Compute the flat tree log-likelihood: log p(tree AND tip traits) using flat
+	 * tip likelihoods where D_tip[s][bin] = tipLikelihoods[bin] for ALL nucleotide
+	 * states s. Used in: logP = sum_p w_p * logL_p - (N-1) * computeFlatTreeLogLikelihood()
+	 */
+	protected double computeFlatTreeLogLikelihood() {
+		int N = tree.getNodeCount();
+		double[][] flatPartials = new double[N][];
+		double[] compensates = new double[N];
+		doFlatTraversal(tree.getRoot(), flatPartials, compensates);
+		Node root = tree.getRoot();
+		boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+		int nx_root = rootIsLow ? numRateBins_l : numRateBins_h;
+		double dx_root = rootIsLow ? dx_l : dx_h;
+		double logProb = makeRootFuncMosse(nx_root, dx_root, resolution, flatPartials[root.getNr()], true);
+		return logProb + compensates[root.getNr()];
+	}
+
+	/**
+	 * Post-order traversal for the flat computation.
+	 * Stores propagated flat partials in flatPartials[] and accumulated log-compensations in compensates[].
+	 */
+	private void doFlatTraversal(Node node, double[][] flatPartials, double[] compensates) {
+		if (node.isLeaf()) {
+			flatPartials[node.getNr()] = computeFlatLeafAndPropagate(node, compensates);
+			return;
+		}
+		doFlatTraversal(node.getLeft(), flatPartials, compensates);
+		doFlatTraversal(node.getRight(), flatPartials, compensates);
+
+		boolean nodeIsLow = isLowResolution(node);
+		int numRateBins_curr  = nodeIsLow ? numRateBins_l : numRateBins_h;
+		int numEntries_curr   = nodeIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+		double[] lambdas_curr = nodeIsLow ? lambdas_l : lambdas_h;
+		int partialSizeCurr   = numPlan * numRateBins_curr;
+
+		double[] partialsLeft  = flatPartials[node.getLeft().getNr()];
+		double[] partialsRight = flatPartials[node.getRight().getNr()];
+
+		double[] patnPartials = new double[partialSizeCurr];
+		int k = 0;
+		System.arraycopy(partialsLeft, 0, patnPartials, 0, numRateBins_curr); // E from left
+		k += numRateBins_curr;
+
+		if (numRateBins_curr <= numEntries_curr) {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numRateBins_curr; j++) {
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdas_curr[j];
+					k++;
+				}
+			}
+		} else {
+			for (int i = 1; i < numPlan; i++) {
+				for (int j = 0; j < numEntries_curr; j++) {
+					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdas_curr[j];
+					k++;
+				}
+				for (int j = numEntries_curr; j < numRateBins_curr; j++) {
+					patnPartials[k++] = 0.0;
+				}
+			}
+		}
+
+		double logCompensate;
+		if (node.isRoot()) {
+			boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
+			logCompensate = normalization(rootIsLow, patnPartials);
+			flatPartials[node.getNr()] = patnPartials;
+		} else {
+			double[] logp = new double[1];
+			double[] result = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp, 0, 0);
+			flatPartials[node.getNr()] = result;
+			logCompensate = logp[0];
+		}
+
+		compensates[node.getNr()] = logCompensate
+				+ compensates[node.getLeft().getNr()]
+				+ compensates[node.getRight().getNr()];
+	}
+
+	/**
+	 * Compute the flat leaf partial (D[s][bin] = tipLikelihoods[bin] for all states s)
+	 * and propagate it along the leaf's parent branch.
+	 * Stores the resulting log-compensation in compensates[leaf.getNr()].
+	 */
+	private double[] computeFlatLeafAndPropagate(Node leaf, double[] compensates) {
+		boolean leafIsLow = RESOLUTION_MODE_LOW.equals(resolutionMode);
+		int numRateBins_leaf    = leafIsLow ? numRateBins_l : numRateBins_h;
+		int numEntries_leaf     = leafIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
+		int padLeft_leaf        = leafIsLow ? treeModel.padLeft_l : treeModel.padLeft_h;
+		double startSubsRate_leaf = leafIsLow ? startSubsRate_l : startSubsRate_h;
+		double dx_leaf          = leafIsLow ? dx_l : dx_h;
+		int singlePartialSizeLeaf = (stateCount + 1) * numRateBins_leaf;
+
+		double[] traitValues = getTraits(leaf);
+		double[] tipLikelihoods = tipModel.getTipLikelihoods(traitValues, numEntries_leaf,
+				startSubsRate_leaf + padLeft_leaf * dx_leaf, dx_leaf);
+
+		double[] patnPartials = new double[singlePartialSizeLeaf];
+		// E values are zero at the tip (Java array initialization)
+
+		int k = numRateBins_leaf;
+		for (int state = 0; state < stateCount; state++) {
+			// Flat: all nucleotide states receive tipLikelihoods (no observed-state indicator)
+			if (numRateBins_leaf <= numEntries_leaf) {
+				for (int i = 0; i < numRateBins_leaf; i++) {
+					patnPartials[k++] = tipLikelihoods[i];
+				}
+			} else {
+				for (int i = 0; i < padLeft_leaf; i++) { patnPartials[k++] = 0.0; }
+				for (int i = 0; i < numEntries_leaf; i++) { patnPartials[k++] = tipLikelihoods[i]; }
+				for (int i = padLeft_leaf + numEntries_leaf; i < numRateBins_leaf; i++) { patnPartials[k++] = 0.0; }
+			}
+		}
+
+		double[] logp = new double[1];
+		double[] result = computeSingleBranchLikelihood(leaf.getParent(), leaf, patnPartials, logp, 0, 0);
+		compensates[leaf.getNr()] = logp[0];
+		return result;
 	}
 
 	@Override
