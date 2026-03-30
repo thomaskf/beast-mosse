@@ -11,3 +11,4 @@ test/.DS_Store
 *.log
 *.xml.state
 *.trees
+*.class
