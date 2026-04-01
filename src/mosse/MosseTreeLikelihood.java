@@ -340,7 +340,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	
 	protected void computeLambdaMus() {
 		
-		// update the values of pads and numEntries
+	    // Always sync drift/diffusion from BEAST2 parameter objects before computing pads.
+	    // This fixes a resume bug: requiresRecalculation() may not be called before the
+	    // first calculateLogP() after a resume, leaving treeModel.diffusion at the
+	    // initAndValidate() default instead of the restored state-file value.
+	    treeModel.drift     = treeModel.driftInput.get().getValue();
+	    treeModel.diffusion = treeModel.diffusionInput.get().getValue();
+
+	    // update the values of pads and numEntries
 		treeModel.computePadNumEntries(dx_h);
 
 		// compute the padLeft, padRight, and numEntries for low and high resolution
