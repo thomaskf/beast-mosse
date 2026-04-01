@@ -221,8 +221,8 @@
                 <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
                     <distr id="Normal.beta" spec="beast.base.inference.distribution.Normal">
                         <parameter name="mean" spec="parameter.RealParameter" value="1.0" estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="0.001" estimate="false"/>
-                    </distr>  <!--Beta prior is now changed to mean 1.0 and small sd 0.001-->
+                        <parameter name="sigma" spec="parameter.RealParameter" value="1.0" estimate="false"/>
+                    </distr>
                 </distribution>
                 
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
@@ -297,8 +297,11 @@
         
         
         <!--<operator id="TreeScaler" spec="ScaleOperator" tree="@tree" scaleFactor="0.75" weight="3.0"/>-->
+
+        <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
+        <operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/>
         
-        <operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>
+        <!--<operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>-->
 
         <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
             scaleFactor="0.75" weight="3.0"/>
@@ -339,9 +342,6 @@
                   delta="0.01"
                   weight="1.0"/>
         -->
-
-        <!-- Uniform: pick an internal node, move its height uniformly between parent/children -->
-        <!--<operator id="Uniform.t" spec="Uniform" tree="@tree" weight="3.0"/> -->
 
         <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
             <log idref="posterior" />
