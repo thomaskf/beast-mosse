@@ -316,8 +316,11 @@
 
         <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
             scaleFactor="0.75" weight="3.0" />
-        <operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
-            scaleFactor="0.75" weight="3.0" />
+            
+        <!--<operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
+            scaleFactor="0.75" weight="3.0" />-->
+        <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
+            windowSize="0.01" weight="3.0" />
 
         <operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
             scaleFactor="0.75" weight="3.0" />
