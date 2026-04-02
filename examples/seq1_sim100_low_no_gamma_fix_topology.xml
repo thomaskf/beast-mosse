@@ -310,9 +310,9 @@
         <!--<operator id="BetaScaler" spec="ScaleOperator" parameter="@beta"
             scaleFactor="0.25" weight="3.0" />-->
         <operator id="SubstScaler" spec="ScaleOperator" parameter="@subst"
-            scaleFactor="0.25" weight="3.0" />
+            scaleFactor="0.5" weight="3.0" />
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-            scaleFactor="0.25" weight="3.0" />
+            scaleFactor="0.5" weight="3.0" />
 
         <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
             scaleFactor="0.75" weight="3.0" />
@@ -329,12 +329,12 @@
              by placing an Exponential prior on (curveMaxY - curveYBaseValue), which has zero density
              when the difference is negative, so proposals violating the constraint are always rejected -->
         <operator id="CurveMaxYScaler" spec="ScaleOperator" parameter="@curveMaxY"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.5" weight="3.0" />
         
         <operator id="LinearGrowthRateScaler" spec="ScaleOperator" parameter="@linearGrowthRate"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.5" weight="3.0" />
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
-            scaleFactor="0.75" weight="3.0" />
+            scaleFactor="0.5" weight="3.0" />
 
 
         <!-- Base frequency operators (sum stays 1) -->
