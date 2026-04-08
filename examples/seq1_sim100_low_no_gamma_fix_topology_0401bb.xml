@@ -204,7 +204,100 @@
                         <parameter name="sigma" spec="parameter.RealParameter" value="1e-3" estimate="false"/>
                     </distr>
                 </distribution>
-            
+
+                <!-- Logger-only MRCAPriors for every non-root internal node (topology is fixed). -->
+                <!-- No <distr> means they contribute 0 to logP and act purely as height loggers. -->
+                <distribution id="height.nd2" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd2" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp2"/><taxon idref="sp3"/><taxon idref="sp4"/><taxon idref="sp5"/><taxon idref="sp6"/><taxon idref="sp8"/><taxon idref="sp9"/><taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/><taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd3" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd3" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp1"/><taxon idref="sp7"/><taxon idref="sp11"/><taxon idref="sp12"/><taxon idref="sp13"/><taxon idref="sp19"/><taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd4" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd4" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp7"/><taxon idref="sp11"/><taxon idref="sp12"/><taxon idref="sp13"/><taxon idref="sp19"/><taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd5" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd5" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp3"/><taxon idref="sp4"/><taxon idref="sp8"/><taxon idref="sp9"/><taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/><taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd6" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd6" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp2"/><taxon idref="sp5"/><taxon idref="sp6"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd7" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd7" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp5"/><taxon idref="sp6"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd8" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd8" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp12"/><taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd9" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd9" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp7"/><taxon idref="sp11"/><taxon idref="sp19"/><taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd10" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd10" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp4"/><taxon idref="sp8"/><taxon idref="sp9"/><taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/><taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd11" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd11" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp8"/><taxon idref="sp9"/><taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/><taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd12" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd12" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp9"/><taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd13" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd13" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp8"/><taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd14" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd14" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp11"/><taxon idref="sp19"/><taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd15" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd15" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp17"/><taxon idref="sp18"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd16" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd16" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp10"/><taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd17" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd17" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp14"/><taxon idref="sp15"/><taxon idref="sp16"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd18" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd18" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp19"/><taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.nd19" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.nd19" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp15"/><taxon idref="sp16"/>
+                    </taxonset>
+                </distribution>
+
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
                     <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter name="M" spec="parameter.RealParameter" value="1.0" />
@@ -360,6 +453,24 @@
             <log idref="curveMaxY" />
             <log idref="linearGrowthRate" />
             <log idref="yV" />
+            <log idref="height.nd2" />
+            <log idref="height.nd3" />
+            <log idref="height.nd4" />
+            <log idref="height.nd5" />
+            <log idref="height.nd6" />
+            <log idref="height.nd7" />
+            <log idref="height.nd8" />
+            <log idref="height.nd9" />
+            <log idref="height.nd10" />
+            <log idref="height.nd11" />
+            <log idref="height.nd12" />
+            <log idref="height.nd13" />
+            <log idref="height.nd14" />
+            <log idref="height.nd15" />
+            <log idref="height.nd16" />
+            <log idref="height.nd17" />
+            <log idref="height.nd18" />
+            <log idref="height.nd19" />
             <log idref="rootHeightPrior" />
             <log idref="kappaPrior" />
             <log idref="epsilonPrior" />
