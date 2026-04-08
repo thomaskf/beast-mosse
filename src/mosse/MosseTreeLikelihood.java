@@ -152,8 +152,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	// lower bound
 	double beta_upbound = 3.0;
 	double beta_lowbound = -3.0;
-	double epsilon_lowbound = 0.001;
-	double diffusion_lowbound = 0.0005;
+	double epsilon_lowbound = 1e-4;   // relaxed: allow exploration below true value
+	double diffusion_lowbound = 1e-5; // relaxed: allow exploration below true value
+
+	// trait range stored for grid-boundary checks (set in computeRminRmaxDx)
+	protected double traitmin_global = Double.MAX_VALUE;
+	protected double traitmax_global = -Double.MAX_VALUE;
 
 	@Override
 	public void initAndValidate() {
@@ -306,6 +310,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		double traitmin = Collections.min(traitList).doubleValue();
 		double traitmax = Collections.max(traitList).doubleValue();
+		traitmin_global = traitmin;
+		traitmax_global = traitmax;
 		double w = 5.0;
 		double betamin = -3.0; // lower bound of beta
 		double betamax = 3.0; // upper bound of beta
@@ -1233,7 +1239,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		traverseFull(tree.getRoot());
 		calcLogP();
-		printLogP();
+		// printLogP();  // disabled: per-proposal verbose output slows MCMC significantly
 		return logP;
 	}
 	
@@ -1247,7 +1253,40 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// check whether diffusion is too small
 		if (treeModel.diffusion < diffusion_lowbound)
 			return true;
-		
+
+		// Check that tip substitution-rate distributions stay within the FFT grid.
+		// If subst+epsilon shifts the distribution outside [rmin, rmax], the
+		// tip likelihoods are truncated and the likelihood computation is inaccurate.
+		double substV   = tipModel.meanSubstitution.getValue();
+		double epsilonV = tipModel.epsilon.getValue();
+		double maxEffect = 0.0;
+		double minEffect = 0.0;
+		for (int i = 0; i < tipModel.beta.getDimension(); i++) {
+			double b = tipModel.beta.getValue(i);
+			maxEffect += Math.max(b * traitmax_global, b * traitmin_global);
+			minEffect += Math.min(b * traitmax_global, b * traitmin_global);
+		}
+		// require 3-sigma coverage within the grid
+		if (substV + maxEffect + 3.0 * epsilonV > rmax) return true;
+		if (substV + minEffect - 3.0 * epsilonV < rmin) return true;
+
+		// Prevent LinearFunction degeneracy: when linearGrowthRate is so high that
+		// the ramp saturates for all tip rate distributions, r becomes non-identifiable.
+		// The ramp: y = y0 + r*x for 0 < x < (y1-y0)/r, then caps at y1.
+		// Require the cap threshold (y1-y0)/r >= maxPositiveRate / 3.
+		// Equivalently: r * maxPositiveRate <= 3 * (y1-y0).
+		if (lambdaFunc instanceof LinearFunction) {
+			LinearFunction lf = (LinearFunction) lambdaFunc;
+			double y0_lf = lf.curveYBaseValueInput.get().getValue();
+			double y1_lf = lf.curveMaxYInput.get().getValue();
+			double r_lf  = lf.linearGrowthRateInput.get().getValue();
+			double yRange = y1_lf - y0_lf;
+			double maxPosRate = substV + maxEffect;
+			if (yRange > 0 && maxPosRate > 0 && r_lf * maxPosRate > 3.0 * yRange) {
+				return true;
+			}
+		}
+
 		return false;
 	}
 	

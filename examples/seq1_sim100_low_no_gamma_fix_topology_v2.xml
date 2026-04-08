@@ -146,7 +146,7 @@
 	</RPNcalculator>
 
     <run
-        chainLength="2000000" id="mcmc" spec="MCMC">
+        chainLength="10000" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<!--<init id="RandomTreeInit"
@@ -214,8 +214,8 @@
                 
                 <distribution id="epsilonPrior" spec="beast.base.inference.distribution.Prior" x="@epsilon">
                     <distr id="Exponential.epsilon" spec="beast.base.inference.distribution.Exponential">
-                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-                    </distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
+                        <parameter name="mean" spec="parameter.RealParameter" value="0.005" estimate="false"/>
+                    </distr> <!--tightened: true epsilon=0.001, use mean=0.005-->
                 </distribution>
 
                 <distribution id="betaPrior" spec="beast.base.inference.distribution.Prior" x="@beta">
@@ -228,8 +228,8 @@
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
                     <distr id="LogNormal.subst" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter name="M" spec="parameter.RealParameter" value="-4.0" estimate="false" />
-                        <parameter name="S" spec="parameter.RealParameter" value="1.0" estimate="false" />
-                    </distr>
+                        <parameter name="S" spec="parameter.RealParameter" value="0.5" estimate="false" />
+                    </distr> <!--tightened: true subst=0.015~exp(-4.2), reduced S from 1.0 to 0.5-->
                 </distribution>
 
                 <distribution id="driftPrior" spec="beast.base.inference.distribution.Prior" x="@drift">
@@ -262,19 +262,19 @@
             	
 				<distribution id="curveYDiffPrior" spec="beast.base.inference.distribution.Prior" x="@curveYDiff">
 					<distr id="Exponential.curveYDiff" spec="beast.base.inference.distribution.Exponential">
-						<parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
-					</distr>
+						<parameter name="mean" spec="parameter.RealParameter" value="1.0" estimate="false"/>
+					</distr> <!--tightened: true curveMaxY=2.25, use mean=0.5 for curveYDiff to concentrate near small values-->
 				</distribution>
             	
             	<distribution id="linearGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@linearGrowthRate">
             		<distr id="LogNormal.linearGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-            			<parameter name="M" spec="parameter.RealParameter" value="0.0" estimate="false" />
-            			<parameter name="S" spec="parameter.RealParameter" value="10.0" estimate="false" />
-            		</distr> <!--XH:increase sd=10-->
+            			<parameter name="M" spec="parameter.RealParameter" value="3.4" estimate="false" />
+            			<parameter name="S" spec="parameter.RealParameter" value="0.5" estimate="false" />
+            		</distr> <!--tightened: S=0.5 gives 95%CI=[11,81] covering true r=30; prevents r->inf ridge-->
             	</distribution>
             	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
             		<distr id="Exponential.yV" spec="beast.base.inference.distribution.Exponential">
-                        <parameter name="mean" spec="parameter.RealParameter" value="2.0" estimate="false"/>
+                        <parameter name="mean" spec="parameter.RealParameter" value="0.05" estimate="false"/>
             		</distr> <!--XH:use exponential with rate = 0.5 => mean = 2.0-->
             	</distribution>
                 
@@ -316,11 +316,8 @@
 
         <operator id="DiffusionScaler" spec="ScaleOperator" parameter="@diffusion"
             scaleFactor="0.75" weight="3.0" />
-            
-        <!--<operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
-            scaleFactor="0.75" weight="3.0" />-->
-        <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-            windowSize="0.01" weight="3.0" />
+        <operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
+            scaleFactor="0.75" weight="3.0" />
 
         <operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
             scaleFactor="0.75" weight="3.0" />
@@ -346,7 +343,7 @@
                   weight="1.0"/>
         -->
 
-        <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
+        <logger id="tracelog" logEvery="10" fileName="$(filebase)_v4.log">
             <log idref="posterior" />
             <log idref="likelihood" />
             <log idref="prior" />
@@ -372,7 +369,7 @@
             <log idref="linearGrowthRatePrior" />
             <log idref="yVPrior" />
         </logger>
-        <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
+        <logger id="treelog" logEvery="10" fileName="$(filebase)_v4.trees" mode="tree">
             <log idref="tree" />
         </logger>
     </run>
