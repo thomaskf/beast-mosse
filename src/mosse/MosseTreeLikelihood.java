@@ -1275,17 +1275,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// The ramp: y = y0 + r*x for 0 < x < (y1-y0)/r, then caps at y1.
 		// Require the cap threshold (y1-y0)/r >= maxPositiveRate / 3.
 		// Equivalently: r * maxPositiveRate <= 3 * (y1-y0).
-		if (lambdaFunc instanceof LinearFunction) {
-			LinearFunction lf = (LinearFunction) lambdaFunc;
-			double y0_lf = lf.curveYBaseValueInput.get().getValue();
-			double y1_lf = lf.curveMaxYInput.get().getValue();
-			double r_lf  = lf.linearGrowthRateInput.get().getValue();
-			double yRange = y1_lf - y0_lf;
-			double maxPosRate = substV + maxEffect;
-			if (yRange > 0 && maxPosRate > 0 && r_lf * maxPosRate > 3.0 * yRange) {
-				return true;
-			}
-		}
+//		if (lambdaFunc instanceof LinearFunction) {
+//			LinearFunction lf = (LinearFunction) lambdaFunc;
+//			double y0_lf = lf.curveYBaseValueInput.get().getValue();
+//			double y1_lf = lf.curveMaxYInput.get().getValue();
+//			double r_lf  = lf.linearGrowthRateInput.get().getValue();
+//			double yRange = y1_lf - y0_lf;
+//			double maxPosRate = substV + maxEffect;
+//			if (yRange > 0 && maxPosRate > 0 && r_lf * maxPosRate > 3.0 * yRange) {
+//				return true;
+//			}
+//		}
 
 		return false;
 	}
