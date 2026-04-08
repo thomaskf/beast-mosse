@@ -267,9 +267,9 @@
 				</distribution>
             	
             	<distribution id="linearGrowthRatePrior" spec="beast.base.inference.distribution.Prior" x="@linearGrowthRate">
-            		<distr id="LogNormal.linearGrowthRate" spec="beast.base.inference.distribution.LogNormalDistributionModel">
-            			<parameter name="M" spec="parameter.RealParameter" value="30.0" estimate="false" />
-            			<parameter name="S" spec="parameter.RealParameter" value="20.0" estimate="false" />
+            		<distr id="Normal.linearGrowthRate" spec="beast.base.inference.distribution.Normal">
+            			<parameter name="mean" spec="parameter.RealParameter" value="30.0" estimate="false" />
+            			<parameter name="sigma" spec="parameter.RealParameter" value="20.0" estimate="false" />
             		</distr>
             	</distribution>
             	<distribution id="yVPrior" spec="beast.base.inference.distribution.Prior" x="@yV">
