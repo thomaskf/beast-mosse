@@ -146,7 +146,7 @@
 	</RPNcalculator>
 
     <run
-        chainLength="50000" id="mcmc" spec="MCMC">
+        chainLength="100000" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<!--<init id="RandomTreeInit"
@@ -452,7 +452,7 @@
                   weight="1.0"/>
         -->
 
-        <logger id="tracelog" logEvery="50" fileName="$(filebase).log">
+        <logger id="tracelog" logEvery="500" fileName="$(filebase).log">
             <log idref="posterior" />
             <log idref="likelihood" />
             <log idref="prior" />
@@ -496,7 +496,7 @@
             <log idref="linearGrowthRatePrior" />
             <log idref="yVPrior" />
         </logger>
-        <logger id="treelog" logEvery="50" fileName="$(filebase).trees" mode="tree">
+        <logger id="treelog" logEvery="500" fileName="$(filebase).trees" mode="tree">
             <log idref="tree" />
         </logger>
     </run>
