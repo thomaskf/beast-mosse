@@ -1,6 +1,8 @@
 CC=gcc
 JAVA_HOME := $(shell /usr/libexec/java_home)
-CFLAGS=-I. -g -O2 -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/darwin/ -Werror
+GSL_CFLAGS := $(shell /usr/local/bin/gsl-config --cflags)
+GSL_LIBS   := $(shell /usr/local/bin/gsl-config --libs)
+CFLAGS=-I. -g -O2 -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/darwin/ $(GSL_CFLAGS) -Werror -Wno-unused-function
 DEPS = mosse-eqs-fftC.h quasse_eqs-fftC.h rfftw.h
 OBJ = main.o
 LFLAGS = -shared -fPIC
@@ -9,7 +11,7 @@ LFLAGS = -shared -fPIC
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 libtest.dylib: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) -lm -lfftw3
+	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) -lm -lfftw3 $(GSL_LIBS)
 
 
 .PHONY: clean

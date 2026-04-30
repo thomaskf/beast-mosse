@@ -109,7 +109,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double startSubsRate_h;
 	protected double[] lambdas_h;
 	protected double[] mus_h;
-	protected double[] flatTransitionMatrices_h;
+	protected double[] flatTransitionMatrices_h; // legacy: now unused by punc path (kept to minimise diffs elsewhere)
+	protected double[] rates_h;                  // PUNC: per-bin substitution rate (high resolution)
 
 	// variables for low resolution
 	protected int numRateBins_l;
@@ -117,7 +118,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double startSubsRate_l;
 	protected double[] lambdas_l;
 	protected double[] mus_l;
-	protected double[] flatTransitionMatrices_l;
+	protected double[] flatTransitionMatrices_l; // legacy: now unused by punc path
+	protected double[] rates_l;                  // PUNC: per-bin substitution rate (low resolution)
+	protected double[] qFlat;                    // PUNC: single 4x4 substitution-rate matrix flattened
 
 	protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
@@ -655,6 +658,52 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}*/
 
 	/**
+	 * PUNC: build the per-bin substitution-rate vector.
+	 *
+	 * Convention: bin i (0-indexed) corresponds to rate (padLeft + i) * dx.
+	 * This matches the rate axis the old createFlatTransitionMatrice used
+	 * implicitly when it computed transitionMatrix^(padLeft + i), and it is
+	 * what allows the punc path with a = 0 to reproduce the old result.
+	 */
+	protected double[] buildRateVector(int numEntries, double dx, int padLeft) {
+		double[] rates = new double[numEntries];
+		for (int i = 0; i < numEntries; i++) {
+			rates[i] = (padLeft + i) * dx;
+		}
+		return rates;
+	}
+
+	/**
+	 * PUNC: extract the underlying substitution-rate matrix Q from the
+	 * BEAST2 SubstitutionModel and return it as a length-(stateCount^2)
+	 * flat vector in row-major order.
+	 *
+	 * This uses a numerical approximation:
+	 *
+	 *   Q ≈ (P(τ) − I) / τ      for a small τ
+	 *
+	 * where P(τ) is obtained from substitutionModel.getTransitionProbabilities
+	 * with dt = τ and rate = 1. This works for any SubstitutionModel
+	 * implementation without requiring it to expose its rate matrix directly.
+	 * The error is O(τ) so τ is chosen small enough that downstream matrix
+	 * exponentials are accurate to machine precision.
+	 */
+	protected double[] buildQFlat(Node node) {
+		final double tau = 1e-8;
+		int sq = stateCount * stateCount;
+		double[] Pt = new double[sq];
+		substitutionModel.getTransitionProbabilities(node, tau, 0, 1.0, Pt);
+		double[] Qf = new double[sq];
+		for (int i = 0; i < stateCount; i++) {
+			for (int j = 0; j < stateCount; j++) {
+				double identity = (i == j) ? 1.0 : 0.0;
+				Qf[i * stateCount + j] = (Pt[i * stateCount + j] - identity) / tau;
+			}
+		}
+		return Qf;
+	}
+
+	/**
 	 * create a flatTransitionMatrice
 	 */
 	protected double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
@@ -746,14 +795,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					flatTransitionMatrices_h, lowResolution, threadID);
+					rates_h, qFlat, lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationL(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
-					flatTransitionMatrices_l, lowResolution, threadID);
+					rates_l, qFlat, lowResolution, threadID);
 		} else {
 			// combination of high and low resolutions along the branch
 			// high resolutions between child.getHight() and t_mid
@@ -766,7 +815,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = false;
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					flatTransitionMatrices_h, lowResolution, threadID);
+					rates_h, qFlat, lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
 			partialsOut = reduceSize(partialsOut);
 			// then low resolution between t_mid and node.getHeight()
@@ -775,7 +824,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (branchTime > 0.0) {
 				logCompen[0] += normalizationL(partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
-						flatTransitionMatrices_l, lowResolution, threadID);
+						rates_l, qFlat, lowResolution, threadID);
 			}
 		}
 		// normalization (log compensation) on the output partials
@@ -802,12 +851,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			computeLambdaMus();
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
-			// recompute flatTransitionMatrices only when the substitution
-			// model parameters or pad parameters have changed (dirty flag set by
-			// computeLambdaMus / requiresRecalculation).
+			// PUNC: instead of precomputing per-bin transition probability stacks,
+			// the punc integrator takes a per-bin substitution-rate vector r and
+			// the single underlying rate matrix Q. Build them when dirty.
 			if (transitionMatricesDirty) {
-				flatTransitionMatrices_l = createFlatTransitionMatrice(node, true);
-				flatTransitionMatrices_h = createFlatTransitionMatrice(node, false);
+				rates_h = buildRateVector(numRateBins_h, dx_h, treeModel.padLeft_h);
+				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l);
+				qFlat   = buildQFlat(node);
 				transitionMatricesDirty = false;
 			}
 			// compute the partials for all leaves

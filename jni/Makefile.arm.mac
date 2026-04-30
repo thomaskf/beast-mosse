@@ -1,6 +1,9 @@
 CC=gcc
 JAVA_HOME := $(shell /usr/libexec/java_home)
-CFLAGS=-I. -g -O2 -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/darwin/ -Werror -I/opt/homebrew/include
+# Pick up GSL include/lib paths from gsl-config (Apple Silicon Homebrew prefix is /opt/homebrew).
+GSL_CFLAGS := $(shell /opt/homebrew/bin/gsl-config --cflags)
+GSL_LIBS   := $(shell /opt/homebrew/bin/gsl-config --libs)
+CFLAGS=-I. -g -O2 -I$(JAVA_HOME)/include/ -I$(JAVA_HOME)/include/darwin/ -I/opt/homebrew/include $(GSL_CFLAGS) -Werror -Wno-unused-function
 DEPS = mosse-eqs-fftC.h quasse_eqs-fftC.h rfftw.h
 OBJ = main.o
 LFLAGS =-L/opt/homebrew/lib -shared -fPIC
@@ -9,7 +12,7 @@ LFLAGS =-L/opt/homebrew/lib -shared -fPIC
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 libtest.dylib: $(OBJ)
-	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) -lfftw3 -lm
+	$(CC) -o $@ $^ $(CFLAGS) $(LFLAGS) -lfftw3 -lm $(GSL_LIBS)
 
 
 .PHONY: clean

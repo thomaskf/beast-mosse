@@ -10,6 +10,9 @@
 #include "quasse-eqs-fftC.h"
 #include "mosse-eqs-fftC.h"
 
+#include <gsl/gsl_matrix.h>
+#include <gsl/gsl_linalg.h>
+
 #define R_D__0 (give_log ? -INFINITY : 0.)
 #define M_LN_SQRT_2PI 0.918938533204672741780329736406
 #define M_1_SQRT_2PI 0.398942280401432677939946059934
@@ -52,6 +55,7 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_getX(JNIEnv *env, jo
 
 JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     JNIEnv *env, jobject thisObject, jlong mosse_ptr, jdoubleArray vars, jdoubleArray lambda, jdoubleArray mu,
+    jdoubleArray r, jdouble a,
     jdouble drift, jdouble diffusion, jdoubleArray Q, jint nt, jdouble dt, jint pad_left, jint pad_right) {
   
   mosse_fft *obj = (mosse_fft *)(mosse_ptr);
@@ -104,6 +108,13 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   memcpy(c_Q, const_array_body_Q, sizeof(double) * n_Q);
   (*env)->ReleaseDoubleArrayElements(env, Q, const_array_body_Q, 0);
 
+  jsize n_r = (int)((*env)->GetArrayLength(env, r));
+  jdouble *const_array_body_r = (*env)->GetDoubleArrayElements(env, r, 0);
+  double *c_r = malloc(sizeof(double) * n_r);
+  assert(c_r);
+  memcpy(c_r, const_array_body_r, sizeof(double) * n_r);
+  (*env)->ReleaseDoubleArrayElements(env, r, const_array_body_r, 0);
+
   idx = lookup(nd, obj->nd, obj->n_fft);
   if (idx < 0) {
     printf("Failed to find nd = %d\n", nd);
@@ -114,10 +125,18 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
 
   obj->lambda = c_lambda;
   obj->mu = c_mu;
-  obj->Q = c_Q;
+  {
+    gsl_matrix_view Q_view = gsl_matrix_view_array(c_Q, 4, 4);
+    gsl_matrix_memcpy(obj->Q, &Q_view.matrix);
+  }
+  obj->r  = c_r;
+  obj->a  = (double)a;
+  obj->dt = c_dt;
 
-  for (i = 0; i < ndat; i++)
-    obj->z[i] = exp(c_dt * (c_lambda[i] - c_mu[i]));
+  for (i = 0; i < ndat; i++) {
+    obj->z[i]  = exp(c_dt * (c_lambda[i] - c_mu[i]));
+    obj->zz[i] = exp(c_dt * (c_lambda[i] + c_mu[i]));
+  }
 
   qf_setup_kern_mosse(obj, c_drift, c_diffusion, c_dt, nkl, nkr);
 
@@ -141,6 +160,7 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   free(c_mu);
   free(c_vars);
   free(c_Q);
+  free(c_r);
 
   return j_result;
 }
@@ -275,8 +295,13 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->max_nd = max_nd;
 
   obj->z = (double *)calloc(nx, sizeof(double));
+  obj->zz = (double *)calloc(nx, sizeof(double));
   obj->wrk = (double *)calloc(nx, sizeof(double));
   obj->wrkd = (double *)calloc(max_nd * nx, sizeof(double));
+
+  obj->Q  = gsl_matrix_alloc(4, 4);
+  obj->eQ = gsl_matrix_alloc(4, 4);
+  obj->Qx = gsl_matrix_alloc(4, 4);
 
   obj->fft = (rfftw_plan_real **)calloc(n_fft, sizeof(rfftw_plan_real *));
 
@@ -311,8 +336,13 @@ JNIEXPORT void JNICALL Java_mosse_MosseDistribution_mosseFinalize(JNIEnv *env, j
   fftw_free(obj->y);
 
   free(obj->z);
+  free(obj->zz);
   free(obj->wrk);
   free(obj->wrkd);
+
+  gsl_matrix_free(obj->Q);
+  gsl_matrix_free(obj->eQ);
+  gsl_matrix_free(obj->Qx);
 
   fftw_destroy_plan(obj->kernel->plan_f);
   fftw_destroy_plan(obj->kernel->plan_b);
@@ -385,9 +415,11 @@ void do_integrate_mosse(mosse_fft *obj, int nt, int idx) {
 /* Lower level functions */
 void propagate_t_mosse(mosse_fft *obj, int idx) {
   int ix, id, ik, nx = obj->nx, ndat = obj->ndat, nd = obj->nd[idx],
-                  nk = nd - 1, nk2 = nk * nk;
+                  nk = nd - 1;
   double *vars = obj->x, *d, *dd = obj->wrk;
   double e, tmp1, tmp2, lambda_x, mu_x, z_x, Q_x, d_x;
+  double r_x;
+  double dt = obj->dt;
 
   for (ix = 0; ix < ndat; ix++) {
     lambda_x = obj->lambda[ix];
@@ -418,14 +450,20 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
     }
   }
 
-  for (id = 1; id < nd; id++) {
-    d = obj->wrkd + nx * id;
+  for (ix = 0; ix < ndat; ix++) {
+    r_x = obj->r[ix];
+    z_x = obj->zz[ix];
+    tmp1 = r_x * dt + obj->a * log(dd[ix] * z_x);
 
-    for (ix = 0; ix < ndat; ix++) {
+    gsl_matrix_memcpy(obj->Qx, obj->Q);
+    gsl_matrix_scale(obj->Qx, tmp1);
+    gsl_linalg_exponential_ss(obj->Qx, obj->eQ, GSL_MODE_DEFAULT);
+
+    for (id = 1; id < nd; id++) {
+      d = obj->wrkd + nx * id;
       d[ix] = 0;
-
       for (ik = 0; ik < nk; ik++) {
-        Q_x = obj->Q[ix * nk2 + nk * ik + (id - 1)];
+        Q_x = gsl_matrix_get(obj->eQ, id - 1, ik);
         d_x = obj->x[nx * (ik + 1) + ix];
         d[ix] += d_x * Q_x;
       }

@@ -1,4 +1,6 @@
-/* 
+#include <gsl/gsl_matrix.h> /* for matrix exponential*/
+
+/*
    In this more simple version of the integrator, there is just one
    structure: 
      "mosse_fft"
@@ -26,16 +28,22 @@ typedef struct {
   /* Diversification information */
   double *lambda;
   double *mu;
-  double *Q;
+  double *r;     /* for matrix exponential: substitution rate per bin (length ndat) */
+  double a;      /* for matrix exponential: punctuational amplitude (scalar; a >= 0) */
+  gsl_matrix *Q; /* for matrix exponential: 4x4 substitution-rate matrix */
 
   /* Drift and diffusion parameters */
   double drift;
   double diffusion;
+  double dt;     /* for matrix exponential: time step (so propagate_t_mosse can read it) */
 
   /* Scratch space */
   double *z; /* Generally stores exp(-rt) */
+  double *zz; /*for matrix exponential*/
   double *wrk;
   double *wrkd;
+  gsl_matrix *Qx; /*for matrix exponential*/
+  gsl_matrix *eQ; /*for matrix exponential*/
 
   /* Transform for x propagation */
   rfftw_plan_real **fft;

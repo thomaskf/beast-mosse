@@ -34,6 +34,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			new IntegerParameter("10"));
 	final public Input<IntegerParameter> resolutionInput = new Input<>("resolution",
 			"scale factor for resolution of bins", new IntegerParameter("4"));
+
+	// PUNC: punctuational-evolution amplitude. P = I + a*Q at speciation events.
+	// When a = 0 the punc integrator reduces to the original Mosse algorithm.
+	final public Input<RealParameter> aInput = new Input<>("a",
+			"punctuational evolution amplitude (P = I + a*Q); a >= 0; default 0",
+			new RealParameter("0.0"));
 	
 	// number of cpu threads (not for this class)
     final public Input<Integer> threadsInput =
@@ -58,6 +64,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	protected double diffusion;
 	protected double dt;
 	protected int width;
+	protected double a; // PUNC: punctuational amplitude (read in initAndValidate)
 	
 	// number of threads
 	protected int numThreads;
@@ -128,8 +135,19 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 */
 	private native void mosseFinalize(long obj_ptr);
 
-	private native double[] doIntegrateMosse(long obj_ptr, double[] vars, double[] lambda, double[] mu, double drift,
-			double diffusion, double[] Q, int nt, double dt, int pad_left, int pad_right);
+	/**
+	 * NEW signature for the punctuational integrator.
+	 * Compared to the original:
+	 *   - r:  per-bin substitution rate vector (length numEntries), NEW
+	 *   - a:  scalar punctuational amplitude (>= 0), NEW
+	 *   - q:  single 4x4 substitution-rate matrix flattened to length 16
+	 *         — replaces the old per-bin precomputed P stack.
+	 */
+	private native double[] doIntegrateMosse(long obj_ptr, double[] vars, double[] lambda, double[] mu,
+			double[] r, double a,
+			double drift, double diffusion,
+			double[] q,
+			int nt, double dt, int pad_left, int pad_right);
 
 	@Override
 	public void initAndValidate() {
@@ -150,6 +168,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		drift = driftInput.get().getValue();
 		diffusion = diffusionInput.get().getValue();
 		dt = dtInput.get().getValue();
+		a = aInput.get().getValue(); // PUNC
 
 		width = widthInput.get().getValue();
 		
@@ -248,17 +267,27 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 * System.arraycopy(the_result, 0, result, 0, the_result.length); }
 	 */
 
-	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu, double[] Q,
+	/**
+	 * Integrate one branch under the punctuational integrator.
+	 *
+	 * Compared to the non-punc version this method takes:
+	 *   - r:  per-bin substitution rate vector (length numEntries), the rate axis
+	 *         (e.g. r[i] = dx*(i+1) on linear scale)
+	 *   - q:  single 4x4 substitution-rate matrix flattened to length 16,
+	 *         instead of the old per-bin precomputed P stack.
+	 */
+	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu,
+			double[] r, double[] q,
 			boolean lowResolution, int threadID) {
-		// double logP = 0.0;
-		// getting parameter values
 		int nt = (int) Math.ceil(branchTime / dt);
 		double[] result_native;
 		
 		if (lowResolution) {
-			result_native = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
+			result_native = doIntegration(vars, lambda, mu, r, q, drift, diffusion,
+					nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			result_native = doIntegration(vars, lambda, mu, drift, diffusion, Q, nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
+			result_native = doIntegration(vars, lambda, mu, r, q, drift, diffusion,
+					nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 		
 		double[] result = new double[vars.length];
@@ -268,42 +297,42 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	}
 
 	/**
-	 * perform integration along a single branch
+	 * Perform punctuational integration along a single branch.
 	 *
 	 * @param vars      array of tips or partials
 	 * @param lambda    array of birth-rates
 	 * @param mu        array of death-rates
+	 * @param r         per-bin substitution rate (length numEntries) — NEW
+	 * @param q         flat 4x4 substitution-rate matrix (length 16) — replaces old Q stack
 	 * @param drift     drift parameter
 	 * @param diffusion diffusion parameter
-	 * @param Q         exponentiated form of the Q matrix
 	 * @param nt        number of time steps
 	 * @param dt_max    maximum time step
 	 * @param pad_left  padding size left of the kernel (zero padding)
 	 * @param pad_right padding size right of the kernel (zero padding)
-	 * @param lq        log-scaling
 	 * @return partial probabilities
 	 */
-	public double[] doIntegration(double[] vars, double[] lambda, double[] mu, double drift, double diffusion, double[] Q, int nt,
-			double dt_max, int pad_left, int pad_right, boolean lowResolution, int threadID) {
+	public double[] doIntegration(double[] vars, double[] lambda, double[] mu,
+			double[] r, double[] q,
+			double drift, double diffusion,
+			int nt, double dt_max, int pad_left, int pad_right,
+			boolean lowResolution, int threadID) {
 
-		// make mosse fft object pointer
 		long ptr;
-		
 		if (ptr_l_pool.size() <= threadID) {
 			resizePtrPool(threadID + 1);
 		}
-		
 		if (lowResolution)
 			ptr = ptr_l_pool.get(threadID).longValue();
 		else
 			ptr = ptr_h_pool.get(threadID).longValue();
-		
-		// long ptr = makeMosseFFT(nx, dx, nd, flags);
 
-		// integrate using C propagate x and propagate t
-		double[] result = doIntegrateMosse(ptr, vars, lambda, mu, drift, diffusion, Q, nt, dt_max, pad_left, pad_right);
+		double[] result = doIntegrateMosse(ptr, vars, lambda, mu,
+				r, a,                       // PUNC: rate vector + scalar amplitude
+				drift, diffusion,
+				q,                          // PUNC: single 4x4 instead of per-bin P stack
+				nt, dt_max, pad_left, pad_right);
 
-		// mosseFinalize(ptr); // destroy obj pointer
 		return result; // return non logged results
 	}
 
