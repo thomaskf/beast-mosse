@@ -660,15 +660,24 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	/**
 	 * PUNC: build the per-bin substitution-rate vector.
 	 *
-	 * Convention: bin i (0-indexed) corresponds to rate (padLeft + i) * dx.
-	 * This matches the rate axis the old createFlatTransitionMatrice used
-	 * implicitly when it computed transitionMatrix^(padLeft + i), and it is
-	 * what allows the punc path with a = 0 to reproduce the old result.
+	 * Convention: bin i (0-indexed) corresponds to effective rate
+	 *   max(0, rmin + (padLeft + i) * dx)
+	 * which is what the old createFlatTransitionMatrice produced
+	 * implicitly. Specifically, that routine multiplies its per-bin
+	 * cumulative matrix by an extra factor of matrixTran each iteration
+	 * but ONLY when the "actual" rate (rmin + j*dx) exceeds a small
+	 * threshold delta = dx/100. For rmin < 0 (which happens whenever the
+	 * GLM might predict a negative tip rate), this clamps the leftmost
+	 * bins to the identity matrix — i.e. an effective substitution rate
+	 * of 0. We mirror that here by clamping non-positive rates to 0, so
+	 * the punc integrator with a = 0 reproduces the baseline result
+	 * bit-for-bit (modulo the gsl_linalg_exponential_ss precision).
 	 */
-	protected double[] buildRateVector(int numEntries, double dx, int padLeft) {
+	protected double[] buildRateVector(int numEntries, double dx, int padLeft, double rmin) {
 		double[] rates = new double[numEntries];
 		for (int i = 0; i < numEntries; i++) {
-			rates[i] = (padLeft + i) * dx;
+			double r = rmin + (padLeft + i) * dx;
+			rates[i] = (r > 0.0) ? r : 0.0;
 		}
 		return rates;
 	}
@@ -855,8 +864,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// the punc integrator takes a per-bin substitution-rate vector r and
 			// the single underlying rate matrix Q. Build them when dirty.
 			if (transitionMatricesDirty) {
-				rates_h = buildRateVector(numRateBins_h, dx_h, treeModel.padLeft_h);
-				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l);
+				rates_h = buildRateVector(numRateBins_h, dx_h, treeModel.padLeft_h, rmin);
+				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l, rmin);
 				qFlat   = buildQFlat(node);
 				transitionMatricesDirty = false;
 			}

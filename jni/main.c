@@ -451,9 +451,30 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
   }
 
   for (ix = 0; ix < ndat; ix++) {
+    /* When dd[ix] == 0 (which happens iff lambda(r) == mu(r) at this bin),
+     * phase 2 has already zeroed F at this bin, so the matrix-exp output
+     * here is irrelevant — every output entry will be multiplied by zero
+     * F values. Skip the exp and write zeros directly. This avoids:
+     *   (a) log(0) = -inf in tmp1 (only an issue when a > 0),
+     *   (b) 0 * NaN = NaN poisoning when F is 0 but eQ has NaN entries
+     *       (an issue regardless of the value of a). */
+    if (dd[ix] == 0.0) {
+      for (id = 1; id < nd; id++) {
+        obj->wrkd[nx * id + ix] = 0.0;
+      }
+      continue;
+    }
+
     r_x = obj->r[ix];
     z_x = obj->zz[ix];
-    tmp1 = r_x * dt + obj->a * log(dd[ix] * z_x);
+    /* a == 0 short-circuit kept for clarity; the dd == 0 guard above
+     * already prevents log(0), so this `if` only spares one log() call
+     * in the common a == 0 path. */
+    if (obj->a != 0.0) {
+      tmp1 = r_x * dt + obj->a * log(dd[ix] * z_x);
+    } else {
+      tmp1 = r_x * dt;
+    }
 
     gsl_matrix_memcpy(obj->Qx, obj->Q);
     gsl_matrix_scale(obj->Qx, tmp1);
@@ -463,7 +484,13 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       d = obj->wrkd + nx * id;
       d[ix] = 0;
       for (ik = 0; ik < nk; ik++) {
-        Q_x = gsl_matrix_get(obj->eQ, id - 1, ik);
+        /* Read [ik, id-1] (not [id-1, ik]). The baseline code's
+         * effective access — once you trace BEAST2's row-major P through
+         * jblas's column-major DoubleMatrix and back through .toArray()
+         * — is (P^k)[ik, id-1]. Without this swap, the indexing is the
+         * transpose, which is invisible for symmetric Q (e.g. JC) but
+         * gives a different likelihood for asymmetric Q (e.g. HKY). */
+        Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
         d_x = obj->x[nx * (ik + 1) + ix];
         d[ix] += d_x * Q_x;
       }

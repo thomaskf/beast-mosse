@@ -46,7 +46,7 @@ public class MossePuncVsBaselineTest {
      * Set to Double.NaN to skip the equality assertion (useful on the
      * very first run, before the baseline value has been captured).
      */
-    private static final double EXPECTED_BASELINE_LOGP = Double.NaN;
+    private static final double EXPECTED_BASELINE_LOGP = -16.3544727367;
 
     /** Tolerance for the equality assertion. */
     private static final double TOLERANCE = 1e-6;
