@@ -163,6 +163,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double traitmax_global = -Double.MAX_VALUE;
 
 	// when logScale is true, the bin axis is uniform in log r
+	protected boolean logScale;
 
 	@Override
 	public void initAndValidate() {
