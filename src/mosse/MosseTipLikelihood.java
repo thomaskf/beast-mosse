@@ -28,6 +28,7 @@ public class MosseTipLikelihood extends CalculationNode {
 	public RealParameter beta;
 	public RealParameter meanSubstitution;
 	public RealParameter epsilon;
+	public boolean logScale;
 
 	public MosseTipLikelihood() {
 
@@ -65,13 +66,15 @@ public class MosseTipLikelihood extends CalculationNode {
 			mean += beta.getValue(i) * traits[i];
 		}
 		double sd = epsilon.getValue();
+		// When logScale = true, mean, sd, startSubsRate and subsInterval are all
+		// interpreted in log-rate space. The user is responsible
+		// for supplying the inputs in the appropriate space.
 		NormalDistribution normalDist = new NormalDistribution(mean, sd);
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double x = startSubsRate + i * subsInterval;
 			tipLikelihoods[i] = normalDist.density(x) * subsInterval;
 		}
-		// TODO make logscale consistent with TreeLikelihood
 
 		return tipLikelihoods;
 	}
@@ -140,6 +143,13 @@ public class MosseTipLikelihood extends CalculationNode {
 		beta = betaInput.get();
 		meanSubstitution = meanSubstitutionInput.get();
 		epsilon = epsilonInput.get();
+		BooleanParameter ls = logScaleInput.get();
+		logScale = (ls != null) && ls.getValue();
+		if (logScale) {
+			System.err.println("MosseTipLikelihood: logscale=true — "
+					+ "meanSubstitution and epsilon are now interpreted in log-rate units "
+					+ "(lognormal tip rate). Make sure your priors reflect this.");
+		}
 	}
 	
 	public void printParams() {

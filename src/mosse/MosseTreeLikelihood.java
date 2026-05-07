@@ -110,7 +110,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] lambdas_h;
 	protected double[] mus_h;
 	protected double[] flatTransitionMatrices_h; // legacy: now unused by punc path (kept to minimise diffs elsewhere)
-	protected double[] rates_h;                  // PUNC: per-bin substitution rate (high resolution)
+	protected double[] rates_h;                  // Punctuational support: per-bin substitution rate (high resolution)
 
 	// variables for low resolution
 	protected int numRateBins_l;
@@ -119,8 +119,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] lambdas_l;
 	protected double[] mus_l;
 	protected double[] flatTransitionMatrices_l; // legacy: now unused by punc path
-	protected double[] rates_l;                  // PUNC: per-bin substitution rate (low resolution)
-	protected double[] qFlat;                    // PUNC: single 4x4 substitution-rate matrix flattened
+	protected double[] rates_l;                  // Punctuational support: per-bin substitution rate (low resolution)
+	protected double[] qFlat;                    // Punctuational support: single 4x4 substitution-rate matrix flattened
 
 	protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
@@ -162,6 +162,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double traitmin_global = Double.MAX_VALUE;
 	protected double traitmax_global = -Double.MAX_VALUE;
 
+	// when logScale is true, the bin axis is uniform in log r
+
 	@Override
 	public void initAndValidate() {
 
@@ -178,6 +180,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		treeModel = treeModelInput.get();
 		resolution = treeModel.resolution;
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
+		logScale = tipModel.logScale;
 
 		// compute the min and the max value of rate for the bins
 		double x0 = tipModel.meanSubstitutionInput.get().getValue();
@@ -330,12 +333,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		
 		int num_dec_pl = 5;
 		dx_h = BigDecimal.valueOf(dx_h).setScale(num_dec_pl, RoundingMode.HALF_UP).doubleValue(); // round to 5 decimal places
-		
-		if (rmin < 0) {
-			int nBins = ((int) (Math.abs(rmin) / dx_h / resolution) ) * resolution ; // has to be divisible by 4
-			rmin = - dx_h * nBins;
-		} else {
-			rmin = 0.0;
+
+		if (!logScale) {		
+			if (rmin < 0) {
+				int nBins = ((int) (Math.abs(rmin) / dx_h / resolution) ) * resolution ; // has to be divisible by 4
+				rmin = - dx_h * nBins;
+			} else {
+				rmin = 0.0;
+			}
 		}
 		
 		rmax = rmin + dx_h * nx * resolution;
@@ -344,9 +349,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected void computeLambdaMus() {
 		
 	    // Always sync drift/diffusion from BEAST2 parameter objects before computing pads.
-	    // This fixes a resume bug: requiresRecalculation() may not be called before the
-	    // first calculateLogP() after a resume, leaving treeModel.diffusion at the
-	    // initAndValidate() default instead of the restored state-file value.
 	    treeModel.drift     = treeModel.driftInput.get().getValue();
 	    treeModel.diffusion = treeModel.diffusionInput.get().getValue();
 
@@ -364,13 +366,18 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		lambdas_l = new double[numEntries_l];
 		mus_h = new double[numEntries_h];
 		mus_l = new double[numEntries_l];
-		// without recomputing every call.
-		cached_x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h); // substitution rates
-		cached_x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l); // substitution rates
-		lambdaFunc.getY(cached_x_h, lambdas_h);
-		lambdaFunc.getY(cached_x_l, lambdas_l);
-		muFunc.getY(cached_x_h, mus_h);
-		muFunc.getY(cached_x_l, mus_l);
+
+		// In linear-rate mode, cached_x_h (or cached_x_l) hold rate values directly and are
+		// passed straight to the LinkFns. 
+		// In log-scale mode, cached_x_h (or cached_x_l) hold log-rate values.
+		cached_x_h = getSubstitutionRates(numEntries_h, startSubsRate_h, dx_h, padLeft_h);
+		cached_x_l = getSubstitutionRates(numEntries_l, startSubsRate_l, dx_l, padLeft_l);
+		double[] linkFnX_h = logScale ? expArray(cached_x_h) : cached_x_h;
+		double[] linkFnX_l = logScale ? expArray(cached_x_l) : cached_x_l;
+		lambdaFunc.getY(linkFnX_h, lambdas_h);
+		lambdaFunc.getY(linkFnX_l, lambdas_l);
+		muFunc.getY(linkFnX_h, mus_h);
+		muFunc.getY(linkFnX_l, mus_l);
 
 		transitionMatricesDirty = true;
 	}
@@ -657,33 +664,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return Math.log(vsum);
 	}*/
 
-	/**
-	 * PUNC: build the per-bin substitution-rate vector.
-	 *
-	 * Convention: bin i (0-indexed) corresponds to effective rate
-	 *   max(0, rmin + (padLeft + i) * dx)
-	 * which is what the old createFlatTransitionMatrice produced
-	 * implicitly. Specifically, that routine multiplies its per-bin
-	 * cumulative matrix by an extra factor of matrixTran each iteration
-	 * but ONLY when the "actual" rate (rmin + j*dx) exceeds a small
-	 * threshold delta = dx/100. For rmin < 0 (which happens whenever the
-	 * GLM might predict a negative tip rate), this clamps the leftmost
-	 * bins to the identity matrix — i.e. an effective substitution rate
-	 * of 0. We mirror that here by clamping non-positive rates to 0, so
-	 * the punc integrator with a = 0 reproduces the baseline result
-	 * bit-for-bit (modulo the gsl_linalg_exponential_ss precision).
-	 */
 	protected double[] buildRateVector(int numEntries, double dx, int padLeft, double rmin) {
 		double[] rates = new double[numEntries];
-		for (int i = 0; i < numEntries; i++) {
-			double r = rmin + (padLeft + i) * dx;
-			rates[i] = (r > 0.0) ? r : 0.0;
+		if (logScale) {
+			// log-scale: the bin axis is uniform in log r, so the
+			// per-bin rate fed to the C kernel is exp(log_r). Always > 0,
+			for (int i = 0; i < numEntries; i++) {
+				double logr = rmin + (padLeft + i) * dx;
+				rates[i] = Math.exp(logr);
+			}
+		} else {
+			for (int i = 0; i < numEntries; i++) {
+				double r = rmin + (padLeft + i) * dx;
+				rates[i] = (r > 0.0) ? r : 0.0;
+			}
 		}
 		return rates;
 	}
 
 	/**
-	 * PUNC: extract the underlying substitution-rate matrix Q from the
+	 * extract the underlying substitution-rate matrix Q from the
 	 * BEAST2 SubstitutionModel and return it as a length-(stateCount^2)
 	 * flat vector in row-major order.
 	 *
@@ -860,7 +860,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			computeLambdaMus();
 			// compute taxon indices under all children of each node
 			setTaxonIndices(node);
-			// PUNC: instead of precomputing per-bin transition probability stacks,
+			// Punctuational support: instead of precomputing per-bin transition probability stacks,
 			// the punc integrator takes a per-bin substitution-rate vector r and
 			// the single underlying rate matrix Q. Build them when dirty.
 			if (transitionMatricesDirty) {
@@ -1260,8 +1260,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			Arrays.fill(p, val);
 		} else if (rootOption == ROOT_GIVEN && rootFunc != null) {
 			// p <- root.f(x)
-			double[] y = new double[x.length];
-			y = rootFunc.getY(x, y);
+			// In log-scale mode, x[] holds log-rate values; LinkFns expect rate-space input.
+			double[] xForLinkFn = logScale ? expArray(x) : x;
+			double[] y = new double[xForLinkFn.length];
+			y = rootFunc.getY(xForLinkFn, y);
 			for (int i = 0; i < numEntries; i++) {
 				p[i] = (i < y.length) ? y[i] : 0.0;
 			}
@@ -1269,6 +1271,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			throw new RuntimeException("Unsupported root option: " + rootOption);
 		}
 		return p;
+	}
+
+	// Punctuational support: elementwise exp, used at the LinkFn boundary in log-scale mode.
+	private static double[] expArray(double[] x) {
+		double[] out = new double[x.length];
+		for (int i = 0; i < x.length; i++) out[i] = Math.exp(x[i]);
+		return out;
 	}
 
 	private double[] getSubstitutionRates(int numElements, double startRate, double dx, double padLeft) {
