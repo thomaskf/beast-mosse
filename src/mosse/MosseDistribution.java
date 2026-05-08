@@ -147,6 +147,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			double[] r, double a,
 			double drift, double diffusion,
 			double[] q,
+			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			int nt, double dt, int pad_left, int pad_right);
 
 	@Override
@@ -278,15 +279,18 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 */
 	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu,
 			double[] r, double[] q,
+			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			boolean lowResolution, int threadID) {
 		int nt = (int) Math.ceil(branchTime / dt);
 		double[] result_native;
 		
 		if (lowResolution) {
-			result_native = doIntegration(vars, lambda, mu, r, q, drift, diffusion,
+			result_native = doIntegration(vars, lambda, mu, r, q,
+					eVal, eVec, iEvec, useEigen, drift, diffusion,
 					nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			result_native = doIntegration(vars, lambda, mu, r, q, drift, diffusion,
+			result_native = doIntegration(vars, lambda, mu, r, q,
+					eVal, eVec, iEvec, useEigen, drift, diffusion,
 					nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 		
@@ -314,6 +318,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 */
 	public double[] doIntegration(double[] vars, double[] lambda, double[] mu,
 			double[] r, double[] q,
+			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			double drift, double diffusion,
 			int nt, double dt_max, int pad_left, int pad_right,
 			boolean lowResolution, int threadID) {
@@ -331,6 +336,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 				r, a,                       // PUNC: rate vector + scalar amplitude
 				drift, diffusion,
 				q,                          // PUNC: single 4x4 instead of per-bin P stack
+				eVal, eVec, iEvec, useEigen, // SPEED: eigendecomposition fast-path
 				nt, dt_max, pad_left, pad_right);
 
 		return result; // return non logged results

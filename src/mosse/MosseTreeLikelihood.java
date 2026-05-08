@@ -21,6 +21,7 @@ import beast.base.core.Log;
 import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.sitemodel.SiteModel;
+import beast.base.evolution.substitutionmodel.EigenDecomposition;
 import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
@@ -121,6 +122,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] flatTransitionMatrices_l; // legacy: now unused by punc path
 	protected double[] rates_l;                  // Punctuational support: per-bin substitution rate (low resolution)
 	protected double[] qFlat;                    // Punctuational support: single 4x4 substitution-rate matrix flattened
+
+	// eigendecomposition of Q
+	protected double[] eVal; // eigenvalues
+	protected double[] eVec; // eigenvectors
+	protected double[] iEvec; // inverses of eigenvectors
+	protected boolean hasEigen;
 
 	protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
@@ -714,6 +721,54 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	/**
+	 * extract the substitution model's eigendecomposition
+	 */
+	protected void buildEigenDecomp(Node node, double[] qFlatRef) {
+		hasEigen = false;
+		eVal = null; eVec = null; iEvec = null;
+		// set -Dmosse.disableEigen=true to disable using eigendecomposition method
+		if (Boolean.getBoolean("mosse.disableEigen")) {
+			return;
+		}
+		if (substitutionModel.canReturnComplexDiagonalization()) {
+			// whether it contains non-real (i.e. complex) eigenvalues and eigenvectors
+			return;
+		}
+		EigenDecomposition ed;
+		try {
+			ed = substitutionModel.getEigenDecomposition(node);
+		} catch (Exception e) {
+			return;
+		}
+		if (ed == null) return;
+		double[] eValTry  = ed.getEigenValues();
+		double[] eVecTry  = ed.getEigenVectors();
+		double[] iEvecTry = ed.getInverseEigenVectors();
+		if (eValTry == null || eVecTry == null || iEvecTry == null) return;
+		if (eValTry.length != stateCount
+				|| eVecTry.length  != stateCount * stateCount
+				|| iEvecTry.length != stateCount * stateCount) {
+			return;
+		}
+		// Verify the eigenvalues and eigenvectors by reconstructing Q from U · diag(λ) · U^-1 and comparing with qFlat.
+		final double TOL = 1e-6;
+		for (int i = 0; i < stateCount; i++) {
+			for (int j = 0; j < stateCount; j++) {
+				double v = 0.0;
+				for (int k = 0; k < stateCount; k++) {
+					v += eVecTry[i * stateCount + k] * eValTry[k] * iEvecTry[k * stateCount + j];
+				}
+				if (Math.abs(v - qFlatRef[i * stateCount + j]) > TOL) {
+					return;   // layout mismatch — fall back to GSL path
+				}
+			}
+		}
+		// Store the eigenvalues and eigenvectors after verification
+		eVal = eValTry; eVec = eVecTry; iEvec = iEvecTry;
+		hasEigen = true;
+	}
+
+	/**
 	 * create a flatTransitionMatrice
 	 */
 	protected double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
@@ -805,14 +860,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationL(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
-					rates_l, qFlat, lowResolution, threadID);
+					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
 		} else {
 			// combination of high and low resolutions along the branch
 			// high resolutions between child.getHight() and t_mid
@@ -825,7 +880,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = false;
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
 			partialsOut = reduceSize(partialsOut);
 			// then low resolution between t_mid and node.getHeight()
@@ -834,7 +889,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (branchTime > 0.0) {
 				logCompen[0] += normalizationL(partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
-						rates_l, qFlat, lowResolution, threadID);
+						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
 			}
 		}
 		// normalization (log compensation) on the output partials
@@ -868,6 +923,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				rates_h = buildRateVector(numRateBins_h, dx_h, treeModel.padLeft_h, rmin);
 				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l, rmin);
 				qFlat   = buildQFlat(node);
+				buildEigenDecomp(node, qFlat);
 				transitionMatricesDirty = false;
 			}
 			// compute the partials for all leaves

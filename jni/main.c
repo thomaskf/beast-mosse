@@ -56,7 +56,9 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_getX(JNIEnv *env, jo
 JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     JNIEnv *env, jobject thisObject, jlong mosse_ptr, jdoubleArray vars, jdoubleArray lambda, jdoubleArray mu,
     jdoubleArray r, jdouble a,
-    jdouble drift, jdouble diffusion, jdoubleArray Q, jint nt, jdouble dt, jint pad_left, jint pad_right) {
+    jdouble drift, jdouble diffusion, jdoubleArray Q,
+    jdoubleArray eVal, jdoubleArray eVec, jdoubleArray iEvec, jboolean useEigen,
+    jint nt, jdouble dt, jint pad_left, jint pad_right) {
   
   mosse_fft *obj = (mosse_fft *)(mosse_ptr);
   assert(obj);
@@ -132,6 +134,26 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   obj->r  = c_r;
   obj->a  = (double)a;
   obj->dt = c_dt;
+
+  /* Copy eigendecomposition arrays */
+  if (useEigen && eVal != NULL && eVec != NULL && iEvec != NULL) {
+    jdouble *src;
+    src = (*env)->GetDoubleArrayElements(env, eVal, 0);
+    memcpy(obj->eVal, src, 4 * sizeof(double));
+    (*env)->ReleaseDoubleArrayElements(env, eVal, src, 0);
+
+    src = (*env)->GetDoubleArrayElements(env, eVec, 0);
+    memcpy(obj->eVec, src, 16 * sizeof(double));
+    (*env)->ReleaseDoubleArrayElements(env, eVec, src, 0);
+
+    src = (*env)->GetDoubleArrayElements(env, iEvec, 0);
+    memcpy(obj->iEvec, src, 16 * sizeof(double));
+    (*env)->ReleaseDoubleArrayElements(env, iEvec, src, 0);
+
+    obj->useEigen = 1;
+  } else {
+    obj->useEigen = 0;
+  }
 
   for (i = 0; i < ndat; i++) {
     obj->z[i]  = exp(c_dt * (c_lambda[i] - c_mu[i]));
@@ -303,6 +325,12 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->eQ = gsl_matrix_alloc(4, 4);
   obj->Qx = gsl_matrix_alloc(4, 4);
 
+  /* Eigenvalues, Eigenvectors, and Inverses of Eigenvectors */
+  obj->eVal     = (double *)calloc(4,  sizeof(double));
+  obj->eVec     = (double *)calloc(16, sizeof(double));
+  obj->iEvec    = (double *)calloc(16, sizeof(double));
+  obj->useEigen = 0;
+
   obj->fft = (rfftw_plan_real **)calloc(n_fft, sizeof(rfftw_plan_real *));
 
   for (i = 0; i < n_fft; i++) {
@@ -343,6 +371,10 @@ JNIEXPORT void JNICALL Java_mosse_MosseDistribution_mosseFinalize(JNIEnv *env, j
   gsl_matrix_free(obj->Q);
   gsl_matrix_free(obj->eQ);
   gsl_matrix_free(obj->Qx);
+
+  free(obj->eVal);
+  free(obj->eVec);
+  free(obj->iEvec);
 
   fftw_destroy_plan(obj->kernel->plan_f);
   fftw_destroy_plan(obj->kernel->plan_b);
@@ -476,20 +508,34 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       tmp1 = r_x * dt;
     }
 
-    gsl_matrix_memcpy(obj->Qx, obj->Q);
-    gsl_matrix_scale(obj->Qx, tmp1);
-    gsl_linalg_exponential_ss(obj->Qx, obj->eQ, GSL_MODE_DEFAULT);
+    /* --- Build obj->eQ = exp(Q * tmp1) --- */
+    if (obj->useEigen) {
+      /* Fast computation: exp(Q * tmp1) = U * diag(exp(eVal[k] * tmp1)) * U^-1. */
+      double eL[4];
+      for (int k = 0; k < 4; k++) {
+        eL[k] = exp(obj->eVal[k] * tmp1);
+      }
+      for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 4; j++) {
+          double sum = 0.0;
+          for (int k = 0; k < 4; k++) {
+            sum += obj->eVec[i * 4 + k] * eL[k] * obj->iEvec[k * 4 + j];
+          }
+          gsl_matrix_set(obj->eQ, i, j, sum);
+        }
+      }
+    } else {
+      /* GSL method. General-purpose, works for any 4x4 matrix (incl. complex eigenstructure) */
+      gsl_matrix_memcpy(obj->Qx, obj->Q);
+      gsl_matrix_scale(obj->Qx, tmp1);
+      gsl_linalg_exponential_ss(obj->Qx, obj->eQ, GSL_MODE_DEFAULT);
+    }
 
+    /* --- Apply eQ^T to F */
     for (id = 1; id < nd; id++) {
       d = obj->wrkd + nx * id;
       d[ix] = 0;
       for (ik = 0; ik < nk; ik++) {
-        /* Read [ik, id-1] (not [id-1, ik]). The baseline code's
-         * effective access — once you trace BEAST2's row-major P through
-         * jblas's column-major DoubleMatrix and back through .toArray()
-         * — is (P^k)[ik, id-1]. Without this swap, the indexing is the
-         * transpose, which is invisible for symmetric Q (e.g. JC) but
-         * gives a different likelihood for asymmetric Q (e.g. HKY). */
         Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
         d_x = obj->x[nx * (ik + 1) + ix];
         d[ix] += d_x * Q_x;

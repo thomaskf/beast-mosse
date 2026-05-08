@@ -32,6 +32,12 @@ typedef struct {
   double a;      /* for matrix exponential: punctuational amplitude (scalar; a >= 0) */
   gsl_matrix *Q; /* for matrix exponential: 4x4 substitution-rate matrix */
 
+  /* Eigendecomposition fast computation for exp(Q*scalar): Q = U * diag(eVal) * U^-1 */
+  double *eVal;   /* eigenvalues -- length 4 */
+  double *eVec;   /* eigenvectors -- length 16 */
+  double *iEvec;  /* inverses of eigenvectors -- length 16 */
+  int useEigen;   /* 0 = use GSL, 1 = use eigendecomposition */
+
   /* Drift and diffusion parameters */
   double drift;
   double diffusion;
