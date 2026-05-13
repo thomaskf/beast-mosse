@@ -511,6 +511,7 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
     /* --- Build obj->eQ = exp(Q * tmp1) --- */
     if (obj->useEigen) {
       /* Fast computation: exp(Q * tmp1) = U * diag(exp(eVal[k] * tmp1)) * U^-1. */
+      double eQ_loc[4][4];
       double eL[4];
       for (int k = 0; k < 4; k++) {
         eL[k] = exp(obj->eVal[k] * tmp1);
@@ -521,7 +522,20 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
           for (int k = 0; k < 4; k++) {
             sum += obj->eVec[i * 4 + k] * eL[k] * obj->iEvec[k * 4 + j];
           }
-          gsl_matrix_set(obj->eQ, i, j, sum);
+          // gsl_matrix_set(obj->eQ, i, j, sum);
+          eQ_loc[i][j] = sum;
+        }
+      }
+
+      /* --- Apply eQ^T to F */
+      for (id = 1; id < nd; id++) {
+        d = obj->wrkd + nx * id;
+        d[ix] = 0;
+        for (ik = 0; ik < nk; ik++) {
+          // Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
+          Q_x = eQ_loc[ik][id - 1];
+          d_x = obj->x[nx * (ik + 1) + ix];
+          d[ix] += d_x * Q_x;
         }
       }
     } else {
@@ -529,18 +543,19 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       gsl_matrix_memcpy(obj->Qx, obj->Q);
       gsl_matrix_scale(obj->Qx, tmp1);
       gsl_linalg_exponential_ss(obj->Qx, obj->eQ, GSL_MODE_DEFAULT);
-    }
 
-    /* --- Apply eQ^T to F */
-    for (id = 1; id < nd; id++) {
-      d = obj->wrkd + nx * id;
-      d[ix] = 0;
-      for (ik = 0; ik < nk; ik++) {
-        Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
-        d_x = obj->x[nx * (ik + 1) + ix];
-        d[ix] += d_x * Q_x;
+      /* --- Apply eQ^T to F */
+      for (id = 1; id < nd; id++) {
+        d = obj->wrkd + nx * id;
+        d[ix] = 0;
+        for (ik = 0; ik < nk; ik++) {
+          Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
+          d_x = obj->x[nx * (ik + 1) + ix];
+          d[ix] += d_x * Q_x;
+        }
       }
     }
+
   }
 
   for (id = 1; id < nd; id++) {
