@@ -58,6 +58,7 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     jdoubleArray r, jdouble a,
     jdouble drift, jdouble diffusion, jdoubleArray Q,
     jdoubleArray eVal, jdoubleArray eVec, jdoubleArray iEvec, jboolean useEigen,
+    jdoubleArray eQCache,
     jint nt, jdouble dt, jint pad_left, jint pad_right) {
   
   mosse_fft *obj = (mosse_fft *)(mosse_ptr);
@@ -158,6 +159,21 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   for (i = 0; i < ndat; i++) {
     obj->z[i]  = exp(c_dt * (c_lambda[i] - c_mu[i]));
     obj->zz[i] = exp(c_dt * (c_lambda[i] + c_mu[i]));
+  }
+
+  /* a == 0 : the per-bin eQ = exp(Q * r[ix] * dt) cache is built
+   * once per likelihood call in Java (since it does not depend on which
+   * branch) and passed in here as eQCache. When non-null
+   * we copy it onto obj->eQ_cache and set the valid flag; propagate_t_mosse
+   * then reads from it without rebuilding. When null (a > 0 or hasEigen
+   * was false), we leave eQ_cache_valid at 0 and the per-step path runs. */
+  obj->eQ_cache_valid = 0;
+  if (eQCache != NULL) {
+    jsize n_cache = (*env)->GetArrayLength(env, eQCache);
+    jdouble *src = (*env)->GetDoubleArrayElements(env, eQCache, 0);
+    memcpy(obj->eQ_cache, src, n_cache * sizeof(double));
+    (*env)->ReleaseDoubleArrayElements(env, eQCache, src, 0);
+    obj->eQ_cache_valid = 1;
   }
 
   qf_setup_kern_mosse(obj, c_drift, c_diffusion, c_dt, nkl, nkr);
@@ -331,6 +347,10 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->iEvec    = (double *)calloc(16, sizeof(double));
   obj->useEigen = 0;
 
+  /* Per-bin eQ cache (a==0 fast path): one 4x4 matrix per bin, flat row-major. */
+  obj->eQ_cache       = (double *)calloc(nx * 16, sizeof(double));
+  obj->eQ_cache_valid = 0;
+
   obj->fft = (rfftw_plan_real **)calloc(n_fft, sizeof(rfftw_plan_real *));
 
   for (i = 0; i < n_fft; i++) {
@@ -375,6 +395,7 @@ JNIEXPORT void JNICALL Java_mosse_MosseDistribution_mosseFinalize(JNIEnv *env, j
   free(obj->eVal);
   free(obj->eVec);
   free(obj->iEvec);
+  free(obj->eQ_cache);
 
   fftw_destroy_plan(obj->kernel->plan_f);
   fftw_destroy_plan(obj->kernel->plan_b);
@@ -510,30 +531,39 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
 
     /* --- Build obj->eQ = exp(Q * tmp1) --- */
     if (obj->useEigen) {
-      /* Fast computation: exp(Q * tmp1) = U * diag(exp(eVal[k] * tmp1)) * U^-1. */
       double eQ_loc[4][4];
-      double eL[4];
-      for (int k = 0; k < 4; k++) {
-        eL[k] = exp(obj->eVal[k] * tmp1);
-      }
-      for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-          double sum = 0.0;
-          for (int k = 0; k < 4; k++) {
-            sum += obj->eVec[i * 4 + k] * eL[k] * obj->iEvec[k * 4 + j];
-          }
-          // gsl_matrix_set(obj->eQ, i, j, sum);
-          eQ_loc[i][j] = sum;
+      const double *eQ_src;
+
+      if (obj->eQ_cache_valid) {
+        /* a == 0 fast path: eQ for this bin was precomputed in the JNI
+         * entry point and is invariant across dt-steps. Just read it. */
+        eQ_src = &obj->eQ_cache[ix * 16];
+      } else {
+        /* a > 0 path: tmp1 depends on dd[ix] which evolves with the
+         * integration state, so eQ must be (re)built each step. Same
+         * arithmetic as the cache-build above. */
+        double eL[4];
+        for (int k = 0; k < 4; k++) {
+          eL[k] = exp(obj->eVal[k] * tmp1);
         }
+        for (int i = 0; i < 4; i++) {
+          for (int j = 0; j < 4; j++) {
+            double sum = 0.0;
+            for (int k = 0; k < 4; k++) {
+              sum += obj->eVec[i * 4 + k] * eL[k] * obj->iEvec[k * 4 + j];
+            }
+            eQ_loc[i][j] = sum;
+          }
+        }
+        eQ_src = &eQ_loc[0][0];
       }
 
-      /* --- Apply eQ^T to F */
+      /* --- Apply eQ^T to F (same loop for both cache-hit and per-step) */
       for (id = 1; id < nd; id++) {
         d = obj->wrkd + nx * id;
         d[ix] = 0;
         for (ik = 0; ik < nk; ik++) {
-          // Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
-          Q_x = eQ_loc[ik][id - 1];
+          Q_x = eQ_src[ik * 4 + (id - 1)];
           d_x = obj->x[nx * (ik + 1) + ix];
           d[ix] += d_x * Q_x;
         }

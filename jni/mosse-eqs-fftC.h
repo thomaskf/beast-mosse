@@ -38,6 +38,14 @@ typedef struct {
   double *iEvec;  /* inverses of eigenvectors -- length 16 */
   int useEigen;   /* 0 = use GSL, 1 = use eigendecomposition */
 
+  /* Per-bin cache of eQ = exp(Q * r[ix] * dt) for the a==0. When
+   * a == 0 the per-bin exponent is invariant across the dt-step loop, so the
+   * matrix is built once per likelihood call and reused. Length nx*16
+   * (row-major: eQ_cache[ix*16 + i*4 + j]). eQ_cache_valid signals whether
+   * the contents are current (set in JNI doIntegrateMosse, cleared otherwise). */
+  double *eQ_cache;     /* length nx*16 */
+  int    eQ_cache_valid; /* 0 = recompute per step (a > 0 or GSL path), 1 = use cache */
+
   /* Drift and diffusion parameters */
   double drift;
   double diffusion;

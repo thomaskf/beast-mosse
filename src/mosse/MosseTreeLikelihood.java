@@ -129,6 +129,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] iEvec; // inverses of eigenvectors
 	protected boolean hasEigen;
 
+	// per-bin eQ = exp(Q * r[ix] * dt) cache, built once per likelihood
+	// call (alongside qFlat / eVal / eVec / iEvec) and passed to every JNI
+	// branch call. Valid only when hasEigen && treeModel.a == 0 — otherwise
+	// null and the C kernel falls back to per-step build (a > 0) or GSL.
+	protected double[] eQCache_h;
+	protected double[] eQCache_l;
+
 	protected int numRateBins_max; // max{numRateBins_h,numRateBins_l}
 
 	// for each node, store indices of taxa under subtree rooted at the node
@@ -769,6 +776,37 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	/**
+	 * build the per-bin eQ = exp(Q * r[ix] * dt) cache.
+	 * Returns null when hasEigen is false (caller should use the
+	 * per-step path). When non-null, layout is row-major:
+	 *   cache[ix * 16 + i * 4 + j] = (U · diag(exp(eVal·r[ix]·dt)) · U⁻¹)[i, j]
+	 * The same cache is reused for every branch within a likelihood call
+	 * because tmp1 = r[ix] · dt has no branch-dependent quantities.
+	 */
+	protected double[] buildEQCache(double[] rates, double dt) {
+		if (!hasEigen) return null;
+		int n = rates.length;
+		double[] cache = new double[n * 16];
+		double[] eL = new double[stateCount];
+		for (int ix = 0; ix < n; ix++) {
+			double tmp1 = rates[ix] * dt;
+			for (int k = 0; k < stateCount; k++) {
+				eL[k] = Math.exp(eVal[k] * tmp1);
+			}
+			for (int i = 0; i < stateCount; i++) {
+				for (int j = 0; j < stateCount; j++) {
+					double sum = 0.0;
+					for (int k = 0; k < stateCount; k++) {
+						sum += eVec[i * stateCount + k] * eL[k] * iEvec[k * stateCount + j];
+					}
+					cache[ix * 16 + i * 4 + j] = sum;
+				}
+			}
+		}
+		return cache;
+	}
+
+	/**
 	 * create a flatTransitionMatrice
 	 */
 	protected double[] createFlatTransitionMatrice(Node node, boolean lowResolution) {
@@ -860,14 +898,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationL(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
-					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
+					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, lowResolution, threadID);
 		} else {
 			// combination of high and low resolutions along the branch
 			// high resolutions between child.getHight() and t_mid
@@ -880,7 +918,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = false;
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
 			partialsOut = reduceSize(partialsOut);
 			// then low resolution between t_mid and node.getHeight()
@@ -889,7 +927,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (branchTime > 0.0) {
 				logCompen[0] += normalizationL(partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
-						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, lowResolution, threadID);
+						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, lowResolution, threadID);
 			}
 		}
 		// normalization (log compensation) on the output partials
@@ -924,6 +962,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l, rmin);
 				qFlat   = buildQFlat(node);
 				buildEigenDecomp(node, qFlat);
+				// build per-bin eQ cache once per likelihood call. Only
+				// valid for the a == 0 path; for a > 0 the C kernel must rebuild
+				// eQ per step because tmp1 depends on dd[ix]. Caches are null
+				// when hasEigen is false (GSL path) — the JNI bridge accepts null.
+				if (hasEigen && treeModel.a == 0.0) {
+					eQCache_h = buildEQCache(rates_h, deltaT);
+					eQCache_l = buildEQCache(rates_l, deltaT);
+				} else {
+					eQCache_h = null;
+					eQCache_l = null;
+				}
 				transitionMatricesDirty = false;
 			}
 			// compute the partials for all leaves
