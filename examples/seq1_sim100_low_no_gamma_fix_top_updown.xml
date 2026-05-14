@@ -120,7 +120,7 @@
     <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dt="0.004" width="5" resolution="4" threads="48">
+        nx="1024" dt="0.004" width="5" resolution="4" threads="16">
         <drift id="drift" spec="parameter.RealParameter">0.0</drift>
         <diffusion id="diffusion" spec="parameter.RealParameter">0.0005</diffusion>
     </MosseDistribution>
@@ -146,7 +146,7 @@
 	</RPNcalculator>
 
     <run
-        chainLength="100000" id="mcmc" spec="MCMC">
+        chainLength="2000000" id="mcmc" spec="MCMC">
 
         <!-- Initialise the starting tree randomly -->
 		<!--<init id="RandomTreeInit"
@@ -416,8 +416,8 @@
 
         <!--<operator id="DriftScaler" spec="ScaleOperator" parameter="@drift"
             scaleFactor="0.75" weight="3.0" />-->
-        <!--<operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-            windowSize="0.01" weight="3.0" />-->
+        <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
+            windowSize="0.01" weight="3.0" />
 
         <!--<operator id="CurveYBaseValueScaler" spec="ScaleOperator" parameter="@curveYBaseValue"
             scaleFactor="0.75" weight="3.0" />-->
@@ -439,7 +439,8 @@
             <down idref="beta"/>
             <down idref="subst"/>
             <down idref="curveYBaseValue"/>
-            <down idref="drift"/>
+            <!-- drift removed: starts at 0 and scaling 0 always gives 0;
+                 drift is moved by DriftRandomWalk instead -->
         </operator>
 
 
