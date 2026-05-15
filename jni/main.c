@@ -351,6 +351,8 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->eQ_cache       = (double *)calloc(nx * 16, sizeof(double));
   obj->eQ_cache_valid = 0;
 
+  obj->xt = (double *)calloc(nx * max_nd, sizeof(double));
+
   obj->fft = (rfftw_plan_real **)calloc(n_fft, sizeof(rfftw_plan_real *));
 
   for (i = 0; i < n_fft; i++) {
@@ -469,8 +471,9 @@ void do_integrate_mosse(mosse_fft *obj, int nt, int idx) {
 void propagate_t_mosse(mosse_fft *obj, int idx) {
   int ix, id, ik, nx = obj->nx, ndat = obj->ndat, nd = obj->nd[idx],
                   nk = nd - 1;
-  double *vars = obj->x, *d, *dd = obj->wrk;
-  double e, tmp1, tmp2, lambda_x, mu_x, z_x, Q_x, d_x;
+  double *vars = obj->x, *dd = obj->wrk;
+  double *xt = obj->xt; /* transposed buffer: xt[ix * nd + id] */
+  double e, tmp1, tmp2, lambda_x, mu_x, z_x;
   double r_x;
   double dt = obj->dt;
 
@@ -491,106 +494,81 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
     dd[ix] = z_x * tmp1 * tmp1;
   }
 
-  /* Update the D values */
+  /* Transpose D values: x[id*nx+ix] -> xt[ix*nd+id], apply scaling */
   for (id = 1; id < nd; id++) {
-    d = obj->x + nx * id;
-
+    double *src = obj->x + nx * id;
     for (ix = 0; ix < ndat; ix++) {
-      if (d[ix] < 0)
-        d[ix] = 0;
-      else
-        d[ix] *= dd[ix];
+      double v = src[ix];
+      xt[ix * nd + id] = (v < 0) ? 0.0 : v * dd[ix];
     }
   }
 
   for (ix = 0; ix < ndat; ix++) {
-    /* When dd[ix] == 0 (which happens iff lambda(r) == mu(r) at this bin),
-     * phase 2 has already zeroed F at this bin, so the matrix-exp output
-     * here is irrelevant — every output entry will be multiplied by zero
-     * F values. Skip the exp and write zeros directly. This avoids:
-     *   (a) log(0) = -inf in tmp1 (only an issue when a > 0),
-     *   (b) 0 * NaN = NaN poisoning when F is 0 but eQ has NaN entries
-     *       (an issue regardless of the value of a). */
+    double *F = &xt[ix * nd + 1];
+    double *out = &xt[ix * nd + 1];
+    double F_loc[4];
+    for (ik = 0; ik < nk; ik++) F_loc[ik] = F[ik];
+
     if (dd[ix] == 0.0) {
-      for (id = 1; id < nd; id++) {
-        obj->wrkd[nx * id + ix] = 0.0;
-      }
+      for (id = 0; id < nk; id++) out[id] = 0.0;
       continue;
     }
 
     r_x = obj->r[ix];
     z_x = obj->zz[ix];
-    /* a == 0 short-circuit kept for clarity; the dd == 0 guard above
-     * already prevents log(0), so this `if` only spares one log() call
-     * in the common a == 0 path. */
     if (obj->a != 0.0) {
       tmp1 = r_x * dt + obj->a * log(dd[ix] * z_x);
     } else {
       tmp1 = r_x * dt;
     }
 
-    /* --- Build obj->eQ = exp(Q * tmp1) --- */
+    /* Build eQ = exp(Q * tmp1) */
     if (obj->useEigen) {
-      double eQ_loc[4][4];
       const double *eQ_src;
+      double eQ_loc[16];
 
       if (obj->eQ_cache_valid) {
-        /* a == 0 fast path: eQ for this bin was precomputed in the JNI
-         * entry point and is invariant across dt-steps. Just read it. */
         eQ_src = &obj->eQ_cache[ix * 16];
       } else {
-        /* a > 0 path: tmp1 depends on dd[ix] which evolves with the
-         * integration state, so eQ must be (re)built each step. Same
-         * arithmetic as the cache-build above. */
         double eL[4];
-        for (int k = 0; k < 4; k++) {
+        for (int k = 0; k < 4; k++)
           eL[k] = exp(obj->eVal[k] * tmp1);
-        }
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++)
           for (int j = 0; j < 4; j++) {
             double sum = 0.0;
-            for (int k = 0; k < 4; k++) {
+            for (int k = 0; k < 4; k++)
               sum += obj->eVec[i * 4 + k] * eL[k] * obj->iEvec[k * 4 + j];
-            }
-            eQ_loc[i][j] = sum;
+            eQ_loc[i * 4 + j] = sum;
           }
-        }
-        eQ_src = &eQ_loc[0][0];
+        eQ_src = eQ_loc;
       }
 
-      /* --- Apply eQ^T to F (same loop for both cache-hit and per-step) */
-      for (id = 1; id < nd; id++) {
-        d = obj->wrkd + nx * id;
-        d[ix] = 0;
-        for (ik = 0; ik < nk; ik++) {
-          Q_x = eQ_src[ik * 4 + (id - 1)];
-          d_x = obj->x[nx * (ik + 1) + ix];
-          d[ix] += d_x * Q_x;
-        }
+      /* Apply eQ^T to F */
+      for (id = 0; id < nk; id++) {
+        double sum = 0.0;
+        for (ik = 0; ik < nk; ik++)
+          sum += eQ_src[ik * 4 + id] * F_loc[ik];
+        out[id] = sum;
       }
     } else {
-      /* GSL method. General-purpose, works for any 4x4 matrix (incl. complex eigenstructure) */
       gsl_matrix_memcpy(obj->Qx, obj->Q);
       gsl_matrix_scale(obj->Qx, tmp1);
       gsl_linalg_exponential_ss(obj->Qx, obj->eQ, GSL_MODE_DEFAULT);
 
-      /* --- Apply eQ^T to F */
-      for (id = 1; id < nd; id++) {
-        d = obj->wrkd + nx * id;
-        d[ix] = 0;
-        for (ik = 0; ik < nk; ik++) {
-          Q_x = gsl_matrix_get(obj->eQ, ik, id - 1);
-          d_x = obj->x[nx * (ik + 1) + ix];
-          d[ix] += d_x * Q_x;
-        }
+      for (id = 0; id < nk; id++) {
+        double sum = 0.0;
+        for (ik = 0; ik < nk; ik++)
+          sum += gsl_matrix_get(obj->eQ, ik, id) * F_loc[ik];
+        out[id] = sum;
       }
     }
-
   }
 
+  /* Transpose back */
   for (id = 1; id < nd; id++) {
+    double *dst = obj->x + nx * id;
     for (ix = 0; ix < ndat; ix++)
-      obj->x[nx * id + ix] = obj->wrkd[nx * id + ix];
+      dst[ix] = xt[ix * nd + id];
   }
 }
 

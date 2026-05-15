@@ -70,6 +70,8 @@ typedef struct {
   int npad;       /* nkl + nkr + 1 */
   int ndat;       /* nx - npad */
 
+  double *xt; /* transposed D-values buffer for propagate_t */
+
   /* The kernel itself */
   double  *kern_x;
   fftw_complex *kern_y;
