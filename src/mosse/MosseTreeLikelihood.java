@@ -1318,6 +1318,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// root.p is computed on the projected (scalar) d.root
 		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries);
 
+		// Jacobian correction: rootP is density on λ, bins are in log(λ) space
+		if (logScale) {
+			for (int i = 0; i < numEntries; i++)
+				rootP[i] *= Math.exp(x[i]);
+		}
+
 		if (conditionSurv) {
 			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2)
 			double denom = 0.0;
