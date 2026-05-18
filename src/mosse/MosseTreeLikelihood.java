@@ -633,11 +633,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		double inv = 1.0 / vsum;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
-			for (int i = 0; i < numEntries; i++) {
-				vars[colStart + i] /= vsum;
-			}
+			for (int i = 0; i < numEntries; i++)
+				vars[colStart + i] *= inv;
 		}
 		return Math.log(vsum);
 	}
@@ -650,16 +650,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double vsum = 0.0;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
-			for (int i = 0; i < numEntries; i++) {
+			for (int i = 0; i < numEntries; i++)
 				vsum += vars[colStart + i];
-			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
+		double inv = 1.0 / vsum;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
-			for (int i = 0; i < numEntries; i++) {
-				vars[colStart + i] /= vsum;
-			}
+			for (int i = 0; i < numEntries; i++)
+				vars[colStart + i] *= inv;
 		}
 		return Math.log(vsum);
 	}
