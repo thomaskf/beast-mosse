@@ -1087,32 +1087,28 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// E is topology independent
 		System.arraycopy(partialsLeft, k, patnPartials, k, numRateBins_curr);
 		k += numRateBins_curr;
-		
-		if (numRateBins_curr <= numEntries_curr) {
-			for (int i = 1; i < numPlan; i++) {
-				for (int j = 0; j < numRateBins_curr; j++) {
-					// non padded elements
-					// D_left * D_right * lambda(x)
-					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
-					k++;
-				}
+
+		// D_parent[s][r] = λ(r) × (P·D_left)[s][r] × (P·D_right)[s][r]
+		// where P = I + a·Q (punctuational substitution at speciation)
+		int nEntries = Math.min(numRateBins_curr, numEntries_curr);
+		double puncA = treeModel.a;
+		for (int j = 0; j < nEntries; j++) {
+			double[] dL = new double[stateCount];
+			double[] dR = new double[stateCount];
+			for (int s = 0; s < stateCount; s++) {
+				dL[s] = partialsLeft[(s + 1) * numRateBins_curr + j];
+				dR[s] = partialsRight[(s + 1) * numRateBins_curr + j];
 			}
-		} else {
-			for (int i = 1; i < numPlan; i++) {
-				for (int j = 0; j < numEntries_curr; j++) {
-					// non padded elements
-					// D_left * D_right * lambda(x)
-					double lambdaX = lambdas_curr[j]; // birth rate at substitution rate x
-					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdaX;
-					k++;
-				}
-				// leave the rest to zeros
-				for (int j = numEntries_curr; j <  numRateBins_curr; j++) {
-					patnPartials[k++] = 0.0;
-				}
-			}
+			applyPuncMatrix(dL, puncA);
+			applyPuncMatrix(dR, puncA);
+			double lambdaX = lambdas_curr[j];
+			for (int i = 0; i < stateCount; i++)
+				patnPartials[(i + 1) * numRateBins_curr + j] = dL[i] * dR[i] * lambdaX;
 		}
+		for (int j = nEntries; j < numRateBins_curr; j++)
+			for (int i = 0; i < stateCount; i++)
+				patnPartials[(i + 1) * numRateBins_curr + j] = 0.0;
+		k = numPlan * numRateBins_curr;
 		
 		double[] logp_patn = new double[1];
 		logp_patn[0] = 0.0; // log-compensate for this pattern
@@ -1391,6 +1387,22 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return out;
 	}
 
+	/**
+	 * Apply P = I + a*Q to a state vector d (in place).
+	 * When a == 0 this is a no-op (P = I).
+	 */
+	private void applyPuncMatrix(double[] d, double a) {
+		if (a == 0.0 || qFlat == null) return;
+		double[] result = new double[stateCount];
+		for (int i = 0; i < stateCount; i++) {
+			double sum = 0.0;
+			for (int s = 0; s < stateCount; s++)
+				sum += qFlat[i * stateCount + s] * d[s];
+			result[i] = d[i] + a * sum;
+		}
+		System.arraycopy(result, 0, d, 0, stateCount);
+	}
+
 	private double[] getSubstitutionRates(int numElements, double startRate, double dx, double padLeft) {
 		double[] res = new double[numElements];
 		res[0] = startRate + dx * padLeft;
@@ -1596,28 +1608,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] partialsRight = flatPartials[node.getRight().getNr()];
 
 		double[] patnPartials = new double[partialSizeCurr];
-		int k = 0;
 		System.arraycopy(partialsLeft, 0, patnPartials, 0, numRateBins_curr); // E from left
-		k += numRateBins_curr;
 
-		if (numRateBins_curr <= numEntries_curr) {
-			for (int i = 1; i < numPlan; i++) {
-				for (int j = 0; j < numRateBins_curr; j++) {
-					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdas_curr[j];
-					k++;
-				}
+		int nEntries = Math.min(numRateBins_curr, numEntries_curr);
+		double puncA = treeModel.a;
+		for (int j = 0; j < nEntries; j++) {
+			double[] dL = new double[stateCount];
+			double[] dR = new double[stateCount];
+			for (int s = 0; s < stateCount; s++) {
+				dL[s] = partialsLeft[(s + 1) * numRateBins_curr + j];
+				dR[s] = partialsRight[(s + 1) * numRateBins_curr + j];
 			}
-		} else {
-			for (int i = 1; i < numPlan; i++) {
-				for (int j = 0; j < numEntries_curr; j++) {
-					patnPartials[k] = partialsLeft[k] * partialsRight[k] * lambdas_curr[j];
-					k++;
-				}
-				for (int j = numEntries_curr; j < numRateBins_curr; j++) {
-					patnPartials[k++] = 0.0;
-				}
-			}
+			applyPuncMatrix(dL, puncA);
+			applyPuncMatrix(dR, puncA);
+			double lambdaX = lambdas_curr[j];
+			for (int i = 0; i < stateCount; i++)
+				patnPartials[(i + 1) * numRateBins_curr + j] = dL[i] * dR[i] * lambdaX;
 		}
+		for (int j = nEntries; j < numRateBins_curr; j++)
+			for (int i = 0; i < stateCount; i++)
+				patnPartials[(i + 1) * numRateBins_curr + j] = 0.0;
 
 		double logCompensate;
 		if (node.isRoot()) {
