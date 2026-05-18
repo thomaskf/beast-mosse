@@ -45,7 +45,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
     final public Input<Integer> threadsInput =
             new Input<>("threads", "Number of threads for within-node parallelism", 1);
 	
-	final public int FLAG_FFTW3_DEFAULT = 1; // FFTW_MEASURE
+	final public int FLAG_FFTW3_DEFAULT = 1; // FFTW_DESTROY_INPUT: allows faster FFT algorithms
 
 	protected int resolution;
 	protected int nx;
