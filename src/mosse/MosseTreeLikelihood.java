@@ -1428,31 +1428,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
 
-		// DEBUG: print all parameter values BEFORE likelihood computation
-		// so we know which values caused a crash if the native code segfaults.
-		{
-			StringBuilder dbg = new StringBuilder("DEBUG calculateLogP:");
-			dbg.append(" beta=").append(tipModel.beta.getValue());
-			dbg.append(" epsilon=").append(tipModel.epsilon.getValue());
-			dbg.append(" subst=").append(tipModel.meanSubstitution.getValue());
-			dbg.append(" drift=").append(treeModel.driftInput.get().getValue());
-			dbg.append(" diffusion=").append(treeModel.diffusionInput.get().getValue());
-			dbg.append(" curveYBaseValue=").append(((LinearFunction) lambdaFunc).curveYBaseValueInput.get().getValue());
-			dbg.append(" curveMaxY=").append(((LinearFunction) lambdaFunc).curveMaxYInput.get().getValue());
-			dbg.append(" linearGrowthRate=").append(((LinearFunction) lambdaFunc).linearGrowthRateInput.get().getValue());
-			dbg.append(" yV=").append(((ConstantLinkFn) muFunc).yValueInput.get().getValue());
-			dbg.append(" puncA=").append(treeModel.aInput.get().getValue());
-			// Node heights (internal nodes)
-			dbg.append(" | nodeHeights:");
-			for (int ni = 0; ni < tree.getInternalNodeCount(); ni++) {
-				beast.base.evolution.tree.Node nd = tree.getNode(tree.getLeafNodeCount() + ni);
-				dbg.append(" ").append(nd.getID() != null ? nd.getID() : ("n" + nd.getNr()));
-				dbg.append("=").append(String.format("%.6f", nd.getHeight()));
-			}
-			System.err.println(dbg.toString());
-			System.err.flush();
-		}
-
 		traverseFull(tree.getRoot());
 		calcLogP();
 		// printLogP();  // disabled: per-proposal verbose output slows MCMC significantly
