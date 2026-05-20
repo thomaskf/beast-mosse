@@ -1428,9 +1428,26 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
 
+		// DEBUG: print params before likelihood computation
+		{
+			StringBuilder dbg = new StringBuilder("DEBUG:");
+			dbg.append(" beta=").append(tipModel.beta.getValue());
+			dbg.append(" eps=").append(tipModel.epsilon.getValue());
+			dbg.append(" subst=").append(tipModel.meanSubstitution.getValue());
+			dbg.append(" drift=").append(treeModel.driftInput.get().getValue());
+			dbg.append(" diff=").append(treeModel.diffusionInput.get().getValue());
+			dbg.append(" yBase=").append(((LinearFunction) lambdaFunc).curveYBaseValueInput.get().getValue());
+			dbg.append(" yMax=").append(((LinearFunction) lambdaFunc).curveMaxYInput.get().getValue());
+			dbg.append(" r=").append(((LinearFunction) lambdaFunc).linearGrowthRateInput.get().getValue());
+			dbg.append(" yV=").append(((ConstantLinkFn) muFunc).yValueInput.get().getValue());
+			dbg.append(" a=").append(treeModel.aInput.get().getValue());
+			dbg.append(" | tree=").append(toNewick(tree.getRoot())).append(";");
+			System.err.println(dbg.toString());
+			System.err.flush();
+		}
+
 		traverseFull(tree.getRoot());
 		calcLogP();
-		// printLogP();  // disabled: per-proposal verbose output slows MCMC significantly
 		return logP;
 	}
 	
@@ -1526,20 +1543,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				totalSites += data.getPatternWeight(i);
 			}
 
-			// Compute logL_flat via a separate flat tree traversal.
 			double logL_flat = computeFlatTreeLogLikelihood();
+			if (!Double.isFinite(logL_flat)) { logP = Double.NEGATIVE_INFINITY; return; }
 
-			// sum_i w_i * logL_i
 			for (int i = 0; i < patterns; i++) {
-				if (patternLogLikelihoods[i] > 0.0)
-					anyPositiveValue = true;
+				if (!Double.isFinite(patternLogLikelihoods[i])) { logP = Double.NEGATIVE_INFINITY; return; }
+				if (patternLogLikelihoods[i] > 0.0) anyPositiveValue = true;
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
-			// subtract (N-1) * logL_flat
 			logP -= (totalSites - 1) * logL_flat;
 
-			if (anyPositiveValue)
-				logP = Double.NEGATIVE_INFINITY;
+			if (anyPositiveValue) logP = Double.NEGATIVE_INFINITY;
 		}
 	}
 

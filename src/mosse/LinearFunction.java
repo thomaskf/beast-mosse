@@ -92,6 +92,7 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 
 	@Override
 	protected boolean requiresRecalculation() {
-		return refreshParams();
+		refreshParams();
+		return true;
 	}
 }

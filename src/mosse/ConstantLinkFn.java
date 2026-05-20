@@ -61,6 +61,7 @@ public class ConstantLinkFn extends CalculationNode implements LinkFn {
 
 	@Override
 	protected boolean requiresRecalculation() {
-		return refreshParams();
+		refreshParams();
+		return true;
 	}
 }

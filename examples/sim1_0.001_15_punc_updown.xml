@@ -115,7 +115,7 @@
     <!-- drift and diffusion -->
     <MosseDistribution id="treemodel"
         spec="mosse.MosseDistribution" tree="@tree"
-        nx="512" dt="0.01" width="5" resolution="4" threads="32"
+        nx="1024" dt="0.01" width="5" resolution="4" threads="52"
         a="@puncA">
         <drift id="drift" spec="parameter.RealParameter">0.0</drift>
         <diffusion id="diffusion" spec="parameter.RealParameter">0.005</diffusion>
