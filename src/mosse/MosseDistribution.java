@@ -74,6 +74,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	// for storing during mcmc
 	protected double storedrift;
 	protected double storedDiffusion;
+	protected double storedA;
 	protected int storedPadLeft_h;
 	protected int storedPadLeft_l;
 	protected int storedPadRight_h;
@@ -379,6 +380,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
+		storedA = a;
 		storedPadLeft_h = padLeft_h;
 		storedPadLeft_l = padLeft_l;
 		storedPadRight_h = padRight_h;
@@ -393,6 +395,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
+		a = storedA;
 		padLeft_h = storedPadLeft_h;
 		padLeft_l = storedPadLeft_l;
 		padRight_h = storedPadRight_h;

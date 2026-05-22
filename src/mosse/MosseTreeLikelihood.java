@@ -155,6 +155,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	// recomputing flatTransitionMatrices_{h,l} in traverseFull().
 	protected boolean transitionMatricesDirty = true;
 
+	// store/restore copies
+	private double[] stored_lambdas_h, stored_lambdas_l;
+	private double[] stored_mus_h, stored_mus_l;
+	private double[] stored_cached_x_h, stored_cached_x_l;
+	private double[] stored_rates_h, stored_rates_l;
+	private double[] stored_qFlat;
+	private double[] stored_eVal, stored_eVec, stored_iEvec;
+	private double[] stored_eQCache_h, stored_eQCache_l;
+	private boolean stored_hasEigen;
+	private boolean stored_transitionMatricesDirty;
+
 	// Computed once per computeLambdaMus() call; valid until pad params change.
 	protected double[] cached_x_h;
 	protected double[] cached_x_l;
@@ -363,9 +374,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	
 	protected void computeLambdaMus() {
 		
-	    // Always sync drift/diffusion from BEAST2 parameter objects before computing pads.
 	    treeModel.drift     = treeModel.driftInput.get().getValue();
 	    treeModel.diffusion = treeModel.diffusionInput.get().getValue();
+	    treeModel.a         = treeModel.aInput.get().getValue();
 
 	    // update the values of pads and numEntries
 		treeModel.computePadNumEntries(dx_h);
@@ -1887,5 +1898,49 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		if (error_found)
 			System.exit(1);
+	}
+
+	@Override
+	public void store() {
+		super.store();
+		// Shallow copy: just swap references. Safe because computeLambdaMus
+		// creates NEW arrays on every calculateLogP call.
+		stored_lambdas_h = lambdas_h;
+		stored_lambdas_l = lambdas_l;
+		stored_mus_h = mus_h;
+		stored_mus_l = mus_l;
+		stored_cached_x_h = cached_x_h;
+		stored_cached_x_l = cached_x_l;
+		stored_rates_h = rates_h;
+		stored_rates_l = rates_l;
+		stored_qFlat = qFlat;
+		stored_eVal = eVal;
+		stored_eVec = eVec;
+		stored_iEvec = iEvec;
+		stored_eQCache_h = eQCache_h;
+		stored_eQCache_l = eQCache_l;
+		stored_hasEigen = hasEigen;
+		stored_transitionMatricesDirty = transitionMatricesDirty;
+	}
+
+	@Override
+	public void restore() {
+		super.restore();
+		lambdas_h = stored_lambdas_h;
+		lambdas_l = stored_lambdas_l;
+		mus_h = stored_mus_h;
+		mus_l = stored_mus_l;
+		cached_x_h = stored_cached_x_h;
+		cached_x_l = stored_cached_x_l;
+		rates_h = stored_rates_h;
+		rates_l = stored_rates_l;
+		qFlat = stored_qFlat;
+		eVal = stored_eVal;
+		eVec = stored_eVec;
+		iEvec = stored_iEvec;
+		eQCache_h = stored_eQCache_h;
+		eQCache_l = stored_eQCache_l;
+		hasEigen = stored_hasEigen;
+		transitionMatricesDirty = stored_transitionMatricesDirty;
 	}
 }
