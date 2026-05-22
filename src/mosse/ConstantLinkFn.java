@@ -16,6 +16,7 @@ public class ConstantLinkFn extends CalculationNode implements LinkFn {
 			"Constant value of dependent variable (quantitative trait).", Input.Validate.REQUIRED);
 
 	double yValue;
+	private double storedYValue;
 	private static final String LINKFUNCTION = "constant";
 
 	@Override
@@ -29,11 +30,28 @@ public class ConstantLinkFn extends CalculationNode implements LinkFn {
 		boolean refreshedSomething = false;
 
 		if (yValueInput.get().somethingIsDirty()) {
-			yValue = yValueInput.get().getValue();
 			refreshedSomething = true;
 		}
+		// Always re-read so the cache stays consistent (refreshParams() is only
+		// invoked when this Input is dirty, so without this the cache can diverge
+		// from the parameter after a rejected proposal).
+		yValue = yValueInput.get().getValue();
 
 		return refreshedSomething;
+	}
+
+	// store/restore so a rejected proposal does not leave the cached yValue at
+	// the rejected value. Same rationale as LinearFunction's store/restore.
+	@Override
+	public void store() {
+		super.store();
+		storedYValue = yValue;
+	}
+
+	@Override
+	public void restore() {
+		super.restore();
+		yValue = storedYValue;
 	}
 
 	@Override

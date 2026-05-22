@@ -22,6 +22,8 @@ import beast.base.evolution.alignment.Alignment;
 import beast.base.evolution.likelihood.TreeLikelihood;
 import beast.base.evolution.sitemodel.SiteModel;
 import beast.base.evolution.substitutionmodel.EigenDecomposition;
+import beast.base.evolution.substitutionmodel.Frequencies;
+import beast.base.evolution.substitutionmodel.HKY;
 import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
@@ -1441,6 +1443,19 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			dbg.append(" r=").append(((LinearFunction) lambdaFunc).linearGrowthRateInput.get().getValue());
 			dbg.append(" yV=").append(((ConstantLinkFn) muFunc).yValueInput.get().getValue());
 			dbg.append(" a=").append(treeModel.aInput.get().getValue());
+			if (substitutionModel instanceof HKY) {
+				HKY hky = (HKY) substitutionModel;
+				dbg.append(" kappa=").append(hky.kappaInput.get().getArrayValue(0));
+				Frequencies fr = hky.frequenciesInput.get();
+				if (fr != null && fr.frequenciesInput.get() != null) {
+					RealParameter fp = fr.frequenciesInput.get();
+					dbg.append(" freqs=");
+					for (int fi = 0; fi < fp.getDimension(); fi++) {
+						if (fi > 0) dbg.append(',');
+						dbg.append(fp.getValue(fi));
+					}
+				}
+			}
 			dbg.append(" | tree=").append(toNewick(tree.getRoot())).append(";");
 			System.err.println(dbg.toString());
 			System.err.flush();
@@ -1448,6 +1463,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		traverseFull(tree.getRoot());
 		calcLogP();
+		System.err.println("logP = " + logP);
+		System.err.flush();
 		return logP;
 	}
 	

@@ -28,6 +28,7 @@ public class LogisticFunction extends CalculationNode implements LinkFn {
 			"Growth rate of logistic curve.", Input.Validate.REQUIRED);
 
 	private double y0, y1, x0, r;
+	private double storedY0, storedY1, storedX0, storedR;
 	private static final String LINKFUNCTION = "logistic";
 
 	@Override
@@ -43,27 +44,40 @@ public class LogisticFunction extends CalculationNode implements LinkFn {
 
 		boolean refreshedSomething = false;
 
-		if (curveYBaseValueInput.get().somethingIsDirty()) {
-			y0 = curveYBaseValueInput.get().getValue();
-			refreshedSomething = true;
-		}
+		if (curveYBaseValueInput.get().somethingIsDirty())   refreshedSomething = true;
+		if (curveMaxYInput.get().somethingIsDirty())         refreshedSomething = true;
+		if (logisticGrowthRateInput.get().somethingIsDirty()) refreshedSomething = true;
+		if (sigmoidMidpointInput.get().somethingIsDirty())   refreshedSomething = true;
 
-		if (curveMaxYInput.get().somethingIsDirty()) {
-			y1 = curveMaxYInput.get().getValue();
-			refreshedSomething = true;
-		}
-
-		if (logisticGrowthRateInput.get().somethingIsDirty()) {
-			r = logisticGrowthRateInput.get().getValue();
-			refreshedSomething = true;
-		}
-
-		if (sigmoidMidpointInput.get().somethingIsDirty()) {
-			x0 = sigmoidMidpointInput.get().getValue();
-			refreshedSomething = true;
-		}
+		// Always re-read all values; refreshParams() is invoked only when some
+		// Input is dirty, so a partial refresh leaves the cache stale if only
+		// some subset was changed and then rejected.
+		y0 = curveYBaseValueInput.get().getValue();
+		y1 = curveMaxYInput.get().getValue();
+		r  = logisticGrowthRateInput.get().getValue();
+		x0 = sigmoidMidpointInput.get().getValue();
 
 		return refreshedSomething;
+	}
+
+	// store/restore the cached values so a rejected proposal does not leave
+	// the cache pointing at the rejected values. Same rationale as LinearFunction.
+	@Override
+	public void store() {
+		super.store();
+		storedY0 = y0;
+		storedY1 = y1;
+		storedX0 = x0;
+		storedR  = r;
+	}
+
+	@Override
+	public void restore() {
+		super.restore();
+		y0 = storedY0;
+		y1 = storedY1;
+		x0 = storedX0;
+		r  = storedR;
 	}
 
 	@Override

@@ -26,6 +26,7 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 			"Slope (growth rate) of the linear function.", Input.Validate.REQUIRED);
 
 	private double y0, y1, r;
+	private double storedY0, storedY1, storedR;
 	private static final String LINKFUNCTION = "linear";
 
 	@Override
@@ -41,21 +42,41 @@ public class LinearFunction extends CalculationNode implements LinkFn {
 		boolean refreshedSomething = false;
 
 		if (curveYBaseValueInput.get().somethingIsDirty()) {
-			y0 = curveYBaseValueInput.get().getValue();
 			refreshedSomething = true;
 		}
-
 		if (curveMaxYInput.get().somethingIsDirty()) {
-			y1 = curveMaxYInput.get().getValue();
 			refreshedSomething = true;
 		}
-
 		if (linearGrowthRateInput.get().somethingIsDirty()) {
-			r = linearGrowthRateInput.get().getValue();
 			refreshedSomething = true;
 		}
+		// Always re-read all three values so the cache stays consistent even
+		// if only a subset of the inputs is dirty in this proposal cycle.
+		y0 = curveYBaseValueInput.get().getValue();
+		y1 = curveMaxYInput.get().getValue();
+		r  = linearGrowthRateInput.get().getValue();
 
 		return refreshedSomething;
+	}
+
+	// store/restore the cached y0, y1, r so a rejected proposal does not leave
+	// the cache pointing at the rejected values (refreshParams() is only invoked
+	// when an input is dirty, so without explicit restore the cache can be stale
+	// until the same input is proposed again).
+	@Override
+	public void store() {
+		super.store();
+		storedY0 = y0;
+		storedY1 = y1;
+		storedR  = r;
+	}
+
+	@Override
+	public void restore() {
+		super.restore();
+		y0 = storedY0;
+		y1 = storedY1;
+		r  = storedR;
 	}
 
 	@Override
