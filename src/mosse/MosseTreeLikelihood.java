@@ -1609,8 +1609,17 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int N = tree.getNodeCount();
 		double[][] flatPartials = new double[N][];
 		double[] compensates = new double[N];
-		doFlatTraversal(tree.getRoot(), flatPartials, compensates);
 		Node root = tree.getRoot();
+		if (pool != null) {
+			// Empirically (jstack), the serial doFlatTraversal on the main thread was
+			// the dominant Amdahl bottleneck: while ~200 pool workers slept,
+			// the main thread did the same per-branch JNI work serially. Mirror the
+			// tree-level parallelism used in traverseFull (TraverseTask) so this
+			// second pass runs on the pool.
+			pool.invoke(new FlatTraverseTask(root, flatPartials, compensates));
+		} else {
+			doFlatTraversal(root, flatPartials, compensates);
+		}
 		boolean rootIsLow = !RESOLUTION_MODE_HIGH.equals(resolutionMode);
 		int nx_root = rootIsLow ? numRateBins_l : numRateBins_h;
 		double dx_root = rootIsLow ? dx_l : dx_h;
@@ -1627,9 +1636,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			flatPartials[node.getNr()] = computeFlatLeafAndPropagate(node, compensates);
 			return;
 		}
-		doFlatTraversal(node.getLeft(), flatPartials, compensates);
+		doFlatTraversal(node.getLeft(),  flatPartials, compensates);
 		doFlatTraversal(node.getRight(), flatPartials, compensates);
+		combineFlatInternalNode(node, flatPartials, compensates);
+	}
 
+	/**
+	 * Body of the post-order combine for a non-leaf node in the flat-likelihood
+	 * traversal. Reads both children's flatPartials/compensates, writes this node's.
+	 * Safe to call concurrently for different nodes — each task writes to its own
+	 * index in flatPartials[] / compensates[], and reads only from already-joined
+	 * children. Uses threadIndexInPool() so each pool worker gets its own per-thread
+	 * native FFT plan (previously hard-coded to slot 0, which would corrupt under
+	 * parallel execution).
+	 */
+	private void combineFlatInternalNode(Node node, double[][] flatPartials, double[] compensates) {
 		boolean nodeIsLow = isLowResolution(node);
 		int numRateBins_curr  = nodeIsLow ? numRateBins_l : numRateBins_h;
 		int numEntries_curr   = nodeIsLow ? treeModel.numEntries_l : treeModel.numEntries_h;
@@ -1668,7 +1689,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			flatPartials[node.getNr()] = patnPartials;
 		} else {
 			double[] logp = new double[1];
-			double[] result = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp, 0, 0);
+			double[] result = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp, 0, threadIndexInPool());
 			flatPartials[node.getNr()] = result;
 			logCompensate = logp[0];
 		}
@@ -1676,6 +1697,36 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		compensates[node.getNr()] = logCompensate
 				+ compensates[node.getLeft().getNr()]
 				+ compensates[node.getRight().getNr()];
+	}
+
+	/**
+	 * RecursiveAction mirror of TraverseTask, but for the flat-likelihood post-order.
+	 * Forks the right subtree, computes the left in the current worker, joins, then
+	 * combines this internal node. Leaves call the same computeFlatLeafAndPropagate
+	 * helper as the serial path.
+	 */
+	private final class FlatTraverseTask extends RecursiveAction {
+		private static final long serialVersionUID = 1L;
+		private final Node node;
+		private final double[][] flatPartials;
+		private final double[]   compensates;
+		FlatTraverseTask(Node node, double[][] flatPartials, double[] compensates) {
+			this.node = node;
+			this.flatPartials = flatPartials;
+			this.compensates  = compensates;
+		}
+		@Override
+		protected void compute() {
+			if (node.isLeaf()) {
+				flatPartials[node.getNr()] = computeFlatLeafAndPropagate(node, compensates);
+				return;
+			}
+			FlatTraverseTask right = new FlatTraverseTask(node.getRight(), flatPartials, compensates);
+			right.fork();
+			new FlatTraverseTask(node.getLeft(), flatPartials, compensates).compute();
+			right.join();
+			combineFlatInternalNode(node, flatPartials, compensates);
+		}
 	}
 
 	/**
@@ -1714,7 +1765,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 
 		double[] logp = new double[1];
-		double[] result = computeSingleBranchLikelihood(leaf.getParent(), leaf, patnPartials, logp, 0, 0);
+		double[] result = computeSingleBranchLikelihood(leaf.getParent(), leaf, patnPartials, logp, 0, threadIndexInPool());
 		compensates[leaf.getNr()] = logp[0];
 		return result;
 	}
