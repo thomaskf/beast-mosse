@@ -135,6 +135,21 @@ mkdir -p ~/mosse/beast-mosse/build/dist
 cp libtest.so ~/mosse/beast-mosse/build/dist/libtest.so
 ```
 
+**Never overwrite `libtest.so` while an MCMC is running.** `cp libtest.so dest`
+truncates+rewrites the destination file in place, which corrupts any process
+that has the .so mmap'd (the JVM crashes with SIGBUS in native code). If you
+need to swap the .so under a running JVM (unusual — you'd normally rebuild
+*before* launching), build to a temporary name and use `mv` to swap atomically:
+
+```bash
+gcc ... -o libtest.so.new main.c ...
+mv libtest.so.new ~/mosse/beast-mosse/build/dist/libtest.so
+```
+
+`mv` does unlink+rename, which leaves the old inode (still mapped by the JVM)
+intact. The new file inherits the old name. The running JVM continues with
+its already-loaded .so until shutdown.
+
 For **other machines**, replace `-march=znver2` with the right target:
 
 | Machine | `-march=` |
