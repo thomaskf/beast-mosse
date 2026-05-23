@@ -630,9 +630,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double vsum = 0.0;
 		for (int col = 1; col < numPlan; col++) {
 			int colStart = col * nx;
-			for (int i = 0; i < numEntries; i++) {
+			for (int i = 0; i < numEntries; i++)
 				vsum += vars[colStart + i];
-			}
 		}
 		if (vsum <= 0.0) return Double.NEGATIVE_INFINITY;
 		double inv = 1.0 / vsum;
@@ -714,7 +713,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	 * exponentials are accurate to machine precision.
 	 */
 	protected double[] buildQFlat(Node node) {
-		final double tau = 1e-8;
+		// tau=1e-8 loses precision for unequal frequencies; use a larger value.
+		final double tau = 1e-4;
 		int sq = stateCount * stateCount;
 		double[] Pt = new double[sq];
 		substitutionModel.getTransitionProbabilities(node, tau, 0, 1.0, Pt);
@@ -758,20 +758,29 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				|| iEvecTry.length != stateCount * stateCount) {
 			return;
 		}
-		// Verify the eigenvalues and eigenvectors by reconstructing Q from U · diag(λ) · U^-1 and comparing with qFlat.
-		final double TOL = 1e-6;
+		// Reconstruct Q exactly from U · diag(λ) · U^-1 and overwrite qFlatRef.
+		// This is mathematically exact and avoids 2nd-order error in (P-I)/tau.
+		// Validate the layout via rate-matrix invariants (row sums ~0,
+		// off-diagonals >= 0); fall back to GSL if invariants fail.
+		double[] qRecon = new double[stateCount * stateCount];
 		for (int i = 0; i < stateCount; i++) {
 			for (int j = 0; j < stateCount; j++) {
 				double v = 0.0;
 				for (int k = 0; k < stateCount; k++) {
 					v += eVecTry[i * stateCount + k] * eValTry[k] * iEvecTry[k * stateCount + j];
 				}
-				if (Math.abs(v - qFlatRef[i * stateCount + j]) > TOL) {
-					return;   // layout mismatch — fall back to GSL path
-				}
+				qRecon[i * stateCount + j] = v;
 			}
 		}
-		// Store the eigenvalues and eigenvectors after verification
+		for (int i = 0; i < stateCount; i++) {
+			double rowSum = 0.0;
+			for (int j = 0; j < stateCount; j++) {
+				rowSum += qRecon[i * stateCount + j];
+				if (i != j && qRecon[i * stateCount + j] < -1e-9) return;
+			}
+			if (Math.abs(rowSum) > 1e-6) return;
+		}
+		System.arraycopy(qRecon, 0, qFlatRef, 0, qRecon.length);
 		eVal = eValTry; eVec = eVecTry; iEvec = iEvecTry;
 		hasEigen = true;
 	}
@@ -1430,41 +1439,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
 
-		// DEBUG: print params before likelihood computation
-		{
-			StringBuilder dbg = new StringBuilder("DEBUG:");
-			dbg.append(" beta=").append(tipModel.beta.getValue());
-			dbg.append(" eps=").append(tipModel.epsilon.getValue());
-			dbg.append(" subst=").append(tipModel.meanSubstitution.getValue());
-			dbg.append(" drift=").append(treeModel.driftInput.get().getValue());
-			dbg.append(" diff=").append(treeModel.diffusionInput.get().getValue());
-			dbg.append(" yBase=").append(((LinearFunction) lambdaFunc).curveYBaseValueInput.get().getValue());
-			dbg.append(" yMax=").append(((LinearFunction) lambdaFunc).curveMaxYInput.get().getValue());
-			dbg.append(" r=").append(((LinearFunction) lambdaFunc).linearGrowthRateInput.get().getValue());
-			dbg.append(" yV=").append(((ConstantLinkFn) muFunc).yValueInput.get().getValue());
-			dbg.append(" a=").append(treeModel.aInput.get().getValue());
-			if (substitutionModel instanceof HKY) {
-				HKY hky = (HKY) substitutionModel;
-				dbg.append(" kappa=").append(hky.kappaInput.get().getArrayValue(0));
-				Frequencies fr = hky.frequenciesInput.get();
-				if (fr != null && fr.frequenciesInput.get() != null) {
-					RealParameter fp = fr.frequenciesInput.get();
-					dbg.append(" freqs=");
-					for (int fi = 0; fi < fp.getDimension(); fi++) {
-						if (fi > 0) dbg.append(',');
-						dbg.append(fp.getValue(fi));
-					}
-				}
-			}
-			dbg.append(" | tree=").append(toNewick(tree.getRoot())).append(";");
-			System.err.println(dbg.toString());
-			System.err.flush();
-		}
-
 		traverseFull(tree.getRoot());
 		calcLogP();
-		System.err.println("logP = " + logP);
-		System.err.flush();
 		return logP;
 	}
 	

@@ -97,11 +97,11 @@
     <MosseTipLikelihood id="mossetiplikelihood"
         spec="mosse.MosseTipLikelihood" logscale="true">
         <epsilon id="epsilon" spec="parameter.RealParameter">0.001</epsilon>
-        <subst id="subst" spec="parameter.RealParameter">0.001</subst>
+        <subst id="subst" spec="parameter.RealParameter">-3.912</subst>
         <beta id="beta" spec="parameter.RealParameter">1.0</beta>
     </MosseTipLikelihood>
 
-    <parameter id="freqs" dimension="4" value="0.25 0.25 0.25 0.25"/>
+    <parameter id="freqs" dimension="4" value="0.095475 0.158812 0.258425 0.487287" estimate="false"/>
     <frequencies id="estimatedFreqs" spec="Frequencies" frequencies="@freqs"/>
 
     <parameter id="kappa" value="2.0"/>
@@ -303,8 +303,8 @@
 
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
                     <distr id="Normal.subst" spec="beast.base.inference.distribution.Normal">
-                        <parameter name="mean" spec="parameter.RealParameter" value="0.0" estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="1.0" estimate="false"/>
+                        <parameter name="mean" spec="parameter.RealParameter" value="-4.0" estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="2.0" estimate="false"/>
                     </distr>
                 </distribution>
 
@@ -361,19 +361,21 @@
         <!--<operator id="SubtreeSlide.t" spec="SubtreeSlide" tree="@tree" weight="3.0"/>-->
 
         <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
-            scaleFactor="0.75" weight="3.0"/>
+            scaleFactor="0.9" weight="3.0"/>
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-            scaleFactor="0.5" weight="3.0" />
+            scaleFactor="0.9" weight="3.0" />
         <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-            windowSize="0.01" weight="3.0" />
+            windowSize="0.005" weight="3.0" />
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
-            scaleFactor="0.5" weight="3.0" />
+            scaleFactor="0.9" weight="3.0" />
         <operator id="PuncARandomWalk" spec="RealRandomWalkOperator" parameter="@puncA"
-            windowSize="0.1" weight="3.0" />
+            windowSize="0.3" weight="3.0" />
+        <operator id="SubstRandomWalk" spec="RealRandomWalkOperator" parameter="@subst"
+            windowSize="0.2" weight="3.0" />
 
         <!-- UpDownOperator: Group 1 (up): diffusion, linearGrowthRate
              Group 2 (down): curveMaxY, beta, subst, curveYBaseValue -->
-        <operator id="UpDownGroups" spec="UpDownOperator" scaleFactor="0.75" weight="10.0">
+        <operator id="UpDownGroups" spec="UpDownOperator" scaleFactor="0.9" weight="5.0">
             <up idref="diffusion"/>
             <up idref="linearGrowthRate"/>
             <down idref="curveMaxY"/>

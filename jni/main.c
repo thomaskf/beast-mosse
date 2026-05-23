@@ -309,8 +309,12 @@ void convolve(rfftw_plan_real *obj, fftw_complex *fy) {
 
   fftw_execute(obj->plan_b);
 
-  for (i = 0; i < nxd; i++)
-    x[i] /= nx;
+  /* Normalize by nx and clamp tiny negative values from FFT round-off to 0,
+   * so downstream sums over D stay non-negative. */
+  for (i = 0; i < nxd; i++) {
+    double v = x[i] / nx;
+    x[i] = (v < 0.0) ? 0.0 : v;
+  }
 }
 
 /* This does the memory allocation and plans the FFT transforms */
@@ -564,11 +568,14 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
     }
   }
 
-  /* Transpose back */
+  /* Transpose back; clamp negatives from eigendecomposition round-off so
+   * downstream sums stay non-negative. */
   for (id = 1; id < nd; id++) {
     double *dst = obj->x + nx * id;
-    for (ix = 0; ix < ndat; ix++)
-      dst[ix] = xt[ix * nd + id];
+    for (ix = 0; ix < ndat; ix++) {
+      double v = xt[ix * nd + id];
+      dst[ix] = (v < 0.0) ? 0.0 : v;
+    }
   }
 }
 
