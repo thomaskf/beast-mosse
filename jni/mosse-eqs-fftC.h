@@ -46,6 +46,17 @@ typedef struct {
   double *eQ_cache;     /* length nx*16 */
   int    eQ_cache_valid; /* 0 = recompute per step (a > 0 or GSL path), 1 = use cache */
 
+  /* Generation counter for eigendata (eVal/eVec/iEvec/eQ_cache). Java passes
+   * a monotonically-increasing generation that bumps whenever the substitution
+   * model's eigendecomposition or eQCache is rebuilt (i.e. whenever
+   * transitionMatricesDirty fires). When the passed-in generation matches
+   * obj->eigen_generation, the four per-call array copies are skipped — these
+   * arrays are constant across all branch calls within a single likelihood eval,
+   * so ~4 (eVal/eVec/iEvec) + ~520 KB (eQ_cache) of memcpy/safepoint cost per
+   * branch is avoided after the first call from each thread. Initialised to -1
+   * in make_mosse_fft so the very first call (Java gen 0 or 1) always copies. */
+  long eigen_generation;
+
   /* Drift and diffusion parameters */
   double drift;
   double diffusion;

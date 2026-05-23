@@ -207,6 +207,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	// recomputing flatTransitionMatrices_{h,l} in traverseFull().
 	protected boolean transitionMatricesDirty = true;
 
+	// Monotonically-increasing counter that bumps every time the eigendata
+	// (eVal/eVec/iEvec) or eQCache_{h,l} are rebuilt (i.e. whenever
+	// transitionMatricesDirty triggers in traverseFull). Passed to the JNI
+	// integrator so per-thread native plans can skip the eigendata copy when
+	// the cached generation already matches — these arrays are constant for
+	// every branch call within one likelihood evaluation, and the eQCache copy
+	// alone is ~520 KB at high resolution.
+	protected long eigenGeneration = 0L;
+
 	// Computed once per computeLambdaMus() call; valid until pad params change.
 	protected double[] cached_x_h;
 	protected double[] cached_x_l;
@@ -950,14 +959,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, eigenGeneration, lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationL(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
-					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, lowResolution, threadID);
+					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, eigenGeneration, lowResolution, threadID);
 		} else {
 			// combination of high and low resolutions along the branch
 			// high resolutions between child.getHight() and t_mid
@@ -970,7 +979,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			lowResolution = false;
 			logCompen[0] += normalizationH(partialsIn);
 			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
-					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, lowResolution, threadID);
+					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, eigenGeneration, lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
 			partialsOut = reduceSize(partialsOut);
 			// then low resolution between t_mid and node.getHeight()
@@ -979,7 +988,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (branchTime > 0.0) {
 				logCompen[0] += normalizationL(partialsOut);
 				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
-						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, lowResolution, threadID);
+						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, eigenGeneration, lowResolution, threadID);
 			}
 		}
 		// normalization (log compensation) on the output partials
@@ -1025,6 +1034,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					eQCache_h = null;
 					eQCache_l = null;
 				}
+				// Bump eigendata generation so JNI plans know to re-copy on next call.
+				eigenGeneration++;
 				transitionMatricesDirty = false;
 			}
 			// compute the partials for all leaves

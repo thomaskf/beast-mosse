@@ -58,7 +58,7 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     jdoubleArray r, jdouble a,
     jdouble drift, jdouble diffusion, jdoubleArray Q,
     jdoubleArray eVal, jdoubleArray eVec, jdoubleArray iEvec, jboolean useEigen,
-    jdoubleArray eQCache,
+    jdoubleArray eQCache, jlong eigenGeneration,
     jint nt, jdouble dt, jint pad_left, jint pad_right) {
 
   mosse_fft *obj = (mosse_fft *)(mosse_ptr);
@@ -116,25 +116,40 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   obj->a  = (double)a;
   obj->dt = c_dt;
 
-  /* Copy eigendecomposition arrays */
-  if (useEigen && eVal != NULL && eVec != NULL && iEvec != NULL) {
-    jdouble *src;
-    src = (*env)->GetDoubleArrayElements(env, eVal, 0);
-    memcpy(obj->eVal, src, 4 * sizeof(double));
-    (*env)->ReleaseDoubleArrayElements(env, eVal, src, 0);
-
-    src = (*env)->GetDoubleArrayElements(env, eVec, 0);
-    memcpy(obj->eVec, src, 16 * sizeof(double));
-    (*env)->ReleaseDoubleArrayElements(env, eVec, src, 0);
-
-    src = (*env)->GetDoubleArrayElements(env, iEvec, 0);
-    memcpy(obj->iEvec, src, 16 * sizeof(double));
-    (*env)->ReleaseDoubleArrayElements(env, iEvec, src, 0);
-
-    obj->useEigen = 1;
-  } else {
-    obj->useEigen = 0;
+  /* Eigendata + eQ_cache copy, gated by Java's generation counter.
+   * These arrays (eVal/eVec/iEvec/eQCache) are constant across all branch
+   * calls within one likelihood eval. Java bumps `eigenGeneration` whenever
+   * buildEigenDecomp / buildEQCache rebuilds them (transitionMatricesDirty
+   * path in MosseTreeLikelihood.traverseFull). On cache hit, the four
+   * GetDoubleArrayRegion copies (plus their safepoint cost) are skipped —
+   * the eQCache copy alone is ~520 KB at high resolution, so this saves
+   * gigabytes of JNI memcpy per MCMC step at 200-thread concurrency.
+   *
+   * obj->eigen_generation starts at -1 (see make_mosse_fft) so the first
+   * call from each thread always copies. Switched from Get*Elements + memcpy
+   * to GetDoubleArrayRegion for the same single-trip bulk-copy gain we
+   * already use for lambda/mu/r/vars.
+   */
+  if (eigenGeneration != obj->eigen_generation) {
+    if (useEigen && eVal != NULL && eVec != NULL && iEvec != NULL) {
+      (*env)->GetDoubleArrayRegion(env, eVal,  0,  4, obj->eVal);
+      (*env)->GetDoubleArrayRegion(env, eVec,  0, 16, obj->eVec);
+      (*env)->GetDoubleArrayRegion(env, iEvec, 0, 16, obj->iEvec);
+      obj->useEigen = 1;
+    } else {
+      obj->useEigen = 0;
+    }
+    if (eQCache != NULL) {
+      jsize n_cache = (*env)->GetArrayLength(env, eQCache);
+      (*env)->GetDoubleArrayRegion(env, eQCache, 0, n_cache, obj->eQ_cache);
+      obj->eQ_cache_valid = 1;
+    } else {
+      obj->eQ_cache_valid = 0;
+    }
+    obj->eigen_generation = eigenGeneration;
   }
+  /* else: cache hit — obj->useEigen, obj->eVal/eVec/iEvec, obj->eQ_cache /
+   * eQ_cache_valid already current for this generation. */
 
   {
     const double *cl = obj->lambda_buf, *cm = obj->mu_buf;
@@ -142,21 +157,6 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
       obj->z[i]  = exp(c_dt * (cl[i] - cm[i]));
       obj->zz[i] = exp(c_dt * (cl[i] + cm[i]));
     }
-  }
-
-  /* a == 0 : the per-bin eQ = exp(Q * r[ix] * dt) cache is built
-   * once per likelihood call in Java (since it does not depend on which
-   * branch) and passed in here as eQCache. When non-null
-   * we copy it onto obj->eQ_cache and set the valid flag; propagate_t_mosse
-   * then reads from it without rebuilding. When null (a > 0 or hasEigen
-   * was false), we leave eQ_cache_valid at 0 and the per-step path runs. */
-  obj->eQ_cache_valid = 0;
-  if (eQCache != NULL) {
-    jsize n_cache = (*env)->GetArrayLength(env, eQCache);
-    jdouble *src = (*env)->GetDoubleArrayElements(env, eQCache, 0);
-    memcpy(obj->eQ_cache, src, n_cache * sizeof(double));
-    (*env)->ReleaseDoubleArrayElements(env, eQCache, src, 0);
-    obj->eQ_cache_valid = 1;
   }
 
   qf_setup_kern_mosse(obj, c_drift, c_diffusion, c_dt, nkl, nkr);
@@ -360,6 +360,10 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->kern_dt        = 0.0;
   obj->kern_nkl       = 0;
   obj->kern_nkr       = 0;
+
+  /* Eigendata generation starts at -1 so the first call from each thread
+   * (whatever generation Java passes in, including 0) always copies. */
+  obj->eigen_generation = -1L;
 
   return obj;
 }

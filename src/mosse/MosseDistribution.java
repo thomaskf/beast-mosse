@@ -148,7 +148,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			double drift, double diffusion,
 			double[] q,
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
-			double[] eQCache,
+			double[] eQCache, long eigenGeneration,
 			int nt, double dt, int pad_left, int pad_right);
 
 	@Override
@@ -281,7 +281,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu,
 			double[] r, double[] q,
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
-			double[] eQCache,
+			double[] eQCache, long eigenGeneration,
 			boolean lowResolution, int threadID) {
 		int nt = (int) Math.ceil(branchTime / dt);
 		// JNI doIntegrateMosse already returns a freshly-allocated jdoubleArray of
@@ -291,11 +291,11 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		// of pure allocator pressure at 200-thread concurrency).
 		if (lowResolution) {
 			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCache, drift, diffusion,
+					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
 					nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
 			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCache, drift, diffusion,
+					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
 					nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 	}
@@ -319,7 +319,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	public double[] doIntegration(double[] vars, double[] lambda, double[] mu,
 			double[] r, double[] q,
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
-			double[] eQCache,
+			double[] eQCache, long eigenGeneration,
 			double drift, double diffusion,
 			int nt, double dt_max, int pad_left, int pad_right,
 			boolean lowResolution, int threadID) {
@@ -338,7 +338,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 				drift, diffusion,
 				q,                          // single 4x4 instead of per-bin P stack
 				eVal, eVec, iEvec, useEigen, // eigendecomposition
-				eQCache,                    // per-likelihood-call eQ cache (a==0)
+				eQCache, eigenGeneration,   // per-likelihood-call eQ cache (a==0) + gen
 				nt, dt_max, pad_left, pad_right);
 
 		return result; // return non logged results
