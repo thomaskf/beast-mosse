@@ -60,18 +60,15 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     jdoubleArray eVal, jdoubleArray eVec, jdoubleArray iEvec, jboolean useEigen,
     jdoubleArray eQCache,
     jint nt, jdouble dt, jint pad_left, jint pad_right) {
-  
+
   mosse_fft *obj = (mosse_fft *)(mosse_ptr);
   assert(obj);
 
   int nkl = pad_left;
   int nkr = pad_right;
-  // int ndat = LENGTH(lambda);
   int ndat = (int)((*env)->GetArrayLength(env, lambda));
   double c_dt = dt;
   int c_nt = nt;
-  // double *c_lambda = REAL(lambda);
-  // double *c_mu = REAL(mu);
   double c_drift = drift;
   double c_diffusion = diffusion;
   int i, idx, nd;
@@ -79,44 +76,27 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
   int len_vars = (int)((*env)->GetArrayLength(env, vars));
   nd = len_vars / obj->nx;
 
-  // setup c lambda array
-  jsize n_lambda = (int)((*env)->GetArrayLength(env, lambda));
-  jdouble *const_array_body_lambda = (*env)->GetDoubleArrayElements(env, lambda, 0);
-  double *c_lambda = malloc(sizeof(double) * n_lambda);
-  assert(c_lambda);
-  memcpy(c_lambda, const_array_body_lambda, sizeof(double) * n_lambda);
-  (*env)->ReleaseDoubleArrayElements(env, lambda, const_array_body_lambda, 0);
+  /* Fill reusable per-plan buffers with a single GetDoubleArrayRegion each.
+   * No malloc/free, no GetArrayElements/Release pinning, no double-copy:
+   * GetDoubleArrayRegion does one bulk JVM->C copy directly into our buffer.
+   */
+  jsize n_lambda = (jsize)ndat;
+  jsize n_mu     = (jsize)((*env)->GetArrayLength(env, mu));
+  jsize n_r      = (jsize)((*env)->GetArrayLength(env, r));
+  jsize n_vars   = (jsize)len_vars;
+  jsize n_Q      = (jsize)((*env)->GetArrayLength(env, Q));
 
-  // setup c mu array
-  jsize n_mu = (int)((*env)->GetArrayLength(env, mu));
-  jdouble *const_array_body_mu = (*env)->GetDoubleArrayElements(env, mu, 0);
-  double *c_mu = malloc(sizeof(double) * n_mu);
-  assert(c_mu);
-  memcpy(c_mu, const_array_body_mu, sizeof(double) * n_mu);
-  (*env)->ReleaseDoubleArrayElements(env, mu, const_array_body_mu, 0);
+  (*env)->GetDoubleArrayRegion(env, lambda, 0, n_lambda, obj->lambda_buf);
+  (*env)->GetDoubleArrayRegion(env, mu,     0, n_mu,     obj->mu_buf);
+  (*env)->GetDoubleArrayRegion(env, r,      0, n_r,      obj->r_buf);
+  (*env)->GetDoubleArrayRegion(env, vars,   0, n_vars,   obj->vars_buf);
 
-  // setup c vars array
-  jsize n_vars = (int)((*env)->GetArrayLength(env, vars));
-  jdouble *const_array_body_vars = (*env)->GetDoubleArrayElements(env, vars, 0);
-  double *c_vars = malloc(sizeof(double) * n_vars);
-  assert(c_vars);
-  memcpy(c_vars, const_array_body_vars, sizeof(double) * n_vars);
-  (*env)->ReleaseDoubleArrayElements(env, vars, const_array_body_vars, 0);
-
-  // setup Q c array
-  jsize n_Q = (int)((*env)->GetArrayLength(env, Q));
-  jdouble *const_array_body_Q = (*env)->GetDoubleArrayElements(env, Q, 0);
-  double *c_Q = malloc(sizeof(double) * n_Q);
-  assert(c_Q);
-  memcpy(c_Q, const_array_body_Q, sizeof(double) * n_Q);
-  (*env)->ReleaseDoubleArrayElements(env, Q, const_array_body_Q, 0);
-
-  jsize n_r = (int)((*env)->GetArrayLength(env, r));
-  jdouble *const_array_body_r = (*env)->GetDoubleArrayElements(env, r, 0);
-  double *c_r = malloc(sizeof(double) * n_r);
-  assert(c_r);
-  memcpy(c_r, const_array_body_r, sizeof(double) * n_r);
-  (*env)->ReleaseDoubleArrayElements(env, r, const_array_body_r, 0);
+  /* Q is just 16 doubles — copy into a local stack-resident view via
+   * gsl_matrix_view_array. Use a small stack buffer to avoid touching the
+   * per-plan allocator. */
+  double c_Q[16];
+  assert(n_Q == 16);
+  (*env)->GetDoubleArrayRegion(env, Q, 0, n_Q, c_Q);
 
   idx = lookup(nd, obj->nd, obj->n_fft);
   if (idx < 0) {
@@ -124,15 +104,15 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     abort();
   }
 
-  qf_copy_x_mosse(obj, c_vars, nd, 1);
+  qf_copy_x_mosse(obj, obj->vars_buf, nd, 1);
 
-  obj->lambda = c_lambda;
-  obj->mu = c_mu;
+  obj->lambda = obj->lambda_buf;
+  obj->mu     = obj->mu_buf;
   {
     gsl_matrix_view Q_view = gsl_matrix_view_array(c_Q, 4, 4);
     gsl_matrix_memcpy(obj->Q, &Q_view.matrix);
   }
-  obj->r  = c_r;
+  obj->r  = obj->r_buf;
   obj->a  = (double)a;
   obj->dt = c_dt;
 
@@ -156,9 +136,12 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
     obj->useEigen = 0;
   }
 
-  for (i = 0; i < ndat; i++) {
-    obj->z[i]  = exp(c_dt * (c_lambda[i] - c_mu[i]));
-    obj->zz[i] = exp(c_dt * (c_lambda[i] + c_mu[i]));
+  {
+    const double *cl = obj->lambda_buf, *cm = obj->mu_buf;
+    for (i = 0; i < ndat; i++) {
+      obj->z[i]  = exp(c_dt * (cl[i] - cm[i]));
+      obj->zz[i] = exp(c_dt * (cl[i] + cm[i]));
+    }
   }
 
   /* a == 0 : the per-bin eQ = exp(Q * r[ix] * dt) cache is built
@@ -180,26 +163,17 @@ JNIEXPORT jdoubleArray JNICALL Java_mosse_MosseDistribution_doIntegrateMosse(
 
   do_integrate_mosse(obj, c_nt, idx);
 
-  obj->lambda = NULL;
-  obj->mu = NULL;
+  /* obj->lambda/mu/r point at the persistent lambda_buf/mu_buf/r_buf
+   * and will be overwritten on the next call; no NULL reset needed. */
 
-  // PROTECT(ret = allocMatrix(REALSXP, obj->nx, nd));
   int size = obj->nx * nd;
-  // double *result = (double*)malloc(sizeof(double) * size); 
-  // qf_copy_x_mosse(obj, result, nd, 0); // copy obj to result
 
   // copy to java array
   jdoubleArray j_result = (*env)->NewDoubleArray(env, size);
-  // (*env)->SetDoubleArrayRegion(env, j_result, 0, size, result);
   (*env)->SetDoubleArrayRegion(env, j_result, 0, size, obj->x);
 
-  // free memory
-  free(c_lambda);
-  free(c_mu);
-  free(c_vars);
-  free(c_Q);
-  free(c_r);
-
+  /* lambda_buf, mu_buf, r_buf, vars_buf are persistent per-plan buffers
+   * owned by the mosse_fft object; they are freed in mosseFinalize, not here. */
   return j_result;
 }
 
@@ -370,6 +344,23 @@ mosse_fft *make_mosse_fft(int n_fft, int nx, double dx, int *nd, int flags) {
   obj->kernel =
       make_rfftw_plan_real(1, nx, DIR_COLS, obj->kern_x, obj->kern_y, flags);
 
+  /* Pre-allocated reusable buffers for JNI array copy-in. These let
+   * doIntegrateMosse fill them via a single GetDoubleArrayRegion call per
+   * argument instead of malloc/Get*Elements/memcpy/Release every branch. */
+  obj->lambda_buf = (double *)calloc(nx,          sizeof(double));
+  obj->mu_buf     = (double *)calloc(nx,          sizeof(double));
+  obj->r_buf      = (double *)calloc(nx,          sizeof(double));
+  obj->vars_buf   = (double *)calloc(nx * max_nd, sizeof(double));
+
+  /* Kernel-setup cache starts invalid; first qf_setup_kern_mosse call
+   * will populate the cache and the FFT. */
+  obj->kern_valid     = 0;
+  obj->kern_drift     = 0.0;
+  obj->kern_diffusion = 0.0;
+  obj->kern_dt        = 0.0;
+  obj->kern_nkl       = 0;
+  obj->kern_nkr       = 0;
+
   return obj;
 }
 
@@ -403,6 +394,11 @@ JNIEXPORT void JNICALL Java_mosse_MosseDistribution_mosseFinalize(JNIEnv *env, j
   free(obj->iEvec);
   free(obj->eQ_cache);
 
+  free(obj->lambda_buf);
+  free(obj->mu_buf);
+  free(obj->r_buf);
+  free(obj->vars_buf);
+
   fftw_destroy_plan(obj->kernel->plan_f);
   fftw_destroy_plan(obj->kernel->plan_b);
 
@@ -428,6 +424,20 @@ void qf_copy_x_mosse(mosse_fft *obj, double *x, int nd, int copy_in) {
 
 void qf_setup_kern_mosse(mosse_fft *obj, double drift, double diffusion,
                          double dt, int nkl, int nkr) {
+  /* Short-circuit: if the inputs match what we last used to build the kernel,
+   * skip the kernel buffer reconstruction and FFT entirely. drift/diffusion/dt
+   * and the pad widths are constant across all branch calls within one
+   * likelihood evaluation, so this saves an O(nx) loop + an FFT per branch. */
+  if (obj->kern_valid
+      && obj->kern_drift     == drift
+      && obj->kern_diffusion == diffusion
+      && obj->kern_dt        == dt
+      && obj->kern_nkl       == nkl
+      && obj->kern_nkr       == nkr) {
+    /* obj->nkl/nkr/npad/ndat/drift/diffusion already reflect cached state */
+    return;
+  }
+
   const int nx = obj->nx;
   int i;
   double x, *kern_x = obj->kern_x, tot = 0, dx = obj->dx;
@@ -457,6 +467,14 @@ void qf_setup_kern_mosse(mosse_fft *obj, double drift, double diffusion,
     kern_x[i] /= tot;
 
   fftw_execute(obj->kernel->plan_f);
+
+  /* Mark cache as valid for the inputs we just used. */
+  obj->kern_valid     = 1;
+  obj->kern_drift     = drift;
+  obj->kern_diffusion = diffusion;
+  obj->kern_dt        = dt;
+  obj->kern_nkl       = nkl;
+  obj->kern_nkr       = nkr;
 }
 
 void do_integrate_mosse(mosse_fft *obj, int nt, int idx) {

@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.RecursiveAction;
 import java.util.stream.IntStream;
 
 import org.jblas.DoubleMatrix;
@@ -152,6 +154,54 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	// pool for threads
     protected ForkJoinPool pool;
+
+	/**
+	 * Run {@code job} inside {@link #pool}, joining the result. When the
+	 * current thread is already a worker of {@code pool} we execute inline
+	 * — submitting and blocking on {@code Future.get()} from a pool worker
+	 * would consume one of the pool's threads and can deadlock once the pool
+	 * is fully occupied by tree-level tasks. {@link IntStream#parallel()}
+	 * called inside the job picks up the surrounding pool automatically,
+	 * so nested parallelism still works.
+	 */
+	protected void runInPool(Runnable job) {
+		if (pool == null) { job.run(); return; }
+		Thread t = Thread.currentThread();
+		if (t instanceof ForkJoinWorkerThread
+				&& ((ForkJoinWorkerThread) t).getPool() == pool) {
+			job.run();
+			return;
+		}
+		try {
+			pool.submit(job).get();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			throw new RuntimeException(e);
+		} catch (ExecutionException e) {
+			throw new RuntimeException(e.getCause());
+		}
+	}
+
+	/**
+	 * Post-order tree task: fork the right subtree, recurse left in the
+	 * current thread, join, then compute the node's partials. Independent
+	 * sibling subtrees execute in parallel, which lifts the threads-idle
+	 * problem at near-leaf nodes where the per-node subpattern count is small.
+	 */
+	private final class TraverseTask extends RecursiveAction {
+		private static final long serialVersionUID = 1L;
+		private final Node node;
+		TraverseTask(Node node) { this.node = node; }
+		@Override
+		protected void compute() {
+			if (node.isLeaf()) return;
+			TraverseTask right = new TraverseTask(node.getRight());
+			right.fork();
+			new TraverseTask(node.getLeft()).compute();
+			right.join();
+			computePartialLikelihood(node);
+		}
+	}
 
 	// Set to true when substitution model parameters or dx_h change; reset after
 	// recomputing flatTransitionMatrices_{h,l} in traverseFull().
@@ -559,18 +609,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 			} else {
 				// multiple threads
-		        Runnable job = () -> IntStream.range(0, leaves.size()).parallel().forEach(sid -> {
+		        runInPool(() -> IntStream.range(0, leaves.size()).parallel().forEach(sid -> {
 	            	int threadID = threadIndexInPool();
 					setLeafPartials(leaves.get(sid), patterncount, threadID);
-		        });
-	            try {
-	                pool.submit(job).get();
-	            } catch (InterruptedException e) {
-	                Thread.currentThread().interrupt();
-	                throw new RuntimeException(e);
-	            } catch (ExecutionException e) {
-	                throw new RuntimeException(e.getCause());
-	            }
+		        }));
 			}
 		}
 	}
@@ -957,7 +999,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			// nothing to do
 			return;
 		}
-		
+
 		if (node.isRoot()) {
 			// root node
 			// compute lambdas_h, lambdas_l, mus_h, and mus_l
@@ -987,6 +1029,25 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			// compute the partials for all leaves
 			setPartials(node, patterns); // all site patterns
+
+			if (pool != null) {
+				// Tree-level parallelism: descend into both subtrees in parallel.
+				// Per-node parallelism inside computePartialLikelihood still works
+				// because IntStream.parallel() picks up the surrounding pool.
+				final Node rootNode = node;
+				pool.invoke(new RecursiveAction() {
+					private static final long serialVersionUID = 1L;
+					@Override
+					protected void compute() {
+						TraverseTask right = new TraverseTask(rootNode.getRight());
+						right.fork();
+						new TraverseTask(rootNode.getLeft()).compute();
+						right.join();
+					}
+				});
+				computePartialLikelihood(node);
+				return;
+			}
 		}
 
 		traverseFull(node.getLeft());
@@ -1219,21 +1280,13 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 		} else {
 			// multiple threads
-	        Runnable job = () -> IntStream.range(0, subpatns).parallel().forEach(sid -> {
+	        runInPool(() -> IntStream.range(0, subpatns).parallel().forEach(sid -> {
 	            int patternIndex = rep[sid];
 	            if (patternIndex >= 0) {
 	            	int threadID = threadIndexInPool();
 	            	compensatesAllPatterns[sid] = computePartialLikelihoodPattern(patternIndex, node, patternPartialsLeft, patternPartialsRight, partialsAllPatterns, patternCompensatesLeft, patternCompensatesRight, 0, threadID);
 	            }
-	        });
-            try {
-                pool.submit(job).get();
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e.getCause());
-            }
+	        }));
 		}
 
         mosseLikelihoodCore.setNodeMossePartials(node.getNr(), partialsAllPatterns);
@@ -1262,7 +1315,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	        	}
 	        } else {
 	        	// multi-threaded
-	            Runnable rootJob = () -> IntStream.range(0, patterns).parallel().forEach(p -> {
+	            runInPool(() -> IntStream.range(0, patterns).parallel().forEach(p -> {
 	        		if (compensatesAllPatterns[p] == Double.NEGATIVE_INFINITY || Double.isNaN(compensatesAllPatterns[p])) {
 	        			patternLogLikelihoods[p] = Double.NEGATIVE_INFINITY;
 	        		} else {
@@ -1272,10 +1325,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		                patternLogLikelihoods[p] = makeRootFuncMosse(nx_root, dx_root, resolution, partials, conditionSurv)
 		                		+ compensatesAllPatterns[p];
 	        		}
-	            });
-	            try { pool.submit(rootJob).get(); }
-	            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new RuntimeException(e); }
-	            catch (ExecutionException e) { throw new RuntimeException(e.getCause()); }
+	            }));
 	        }
         }
 	}

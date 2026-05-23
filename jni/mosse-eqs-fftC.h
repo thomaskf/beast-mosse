@@ -76,6 +76,29 @@ typedef struct {
   double  *kern_x;
   fftw_complex *kern_y;
   rfftw_plan_real *kernel;
+
+  /* Per-plan reusable buffers for arrays marshalled from Java each call.
+   * Pre-allocated once in make_mosse_fft and reused for every
+   * doIntegrateMosse to avoid per-call malloc/free/memcpy churn.
+   * Sized to fit the maximum payload that can arrive for this plan:
+   *   - lambda_buf, mu_buf, r_buf:  length nx  (numEntries <= nx)
+   *   - vars_buf:                   length nx * max_nd
+   */
+  double *lambda_buf;
+  double *mu_buf;
+  double *r_buf;
+  double *vars_buf;
+
+  /* Cached kernel-setup inputs. qf_setup_kern_mosse becomes a no-op when
+   * (drift, diffusion, dt, nkl, nkr) match the cached values, which saves
+   * an FFT and an O(nx) loop on every branch call where these are constant
+   * for the entire likelihood evaluation. */
+  int    kern_valid;        /* 0 = must (re)build kernel, 1 = cached values match */
+  double kern_drift;
+  double kern_diffusion;
+  double kern_dt;
+  int    kern_nkl;
+  int    kern_nkr;
 } mosse_fft;
 
 mosse_fft* make_mosse_fft(int n_fft, int nx, double dx, int *nd, 
