@@ -363,19 +363,19 @@
         <operator id="KappaScaler" spec="ScaleOperator" parameter="@kappa"
             scaleFactor="0.9" weight="3.0"/>
         <operator id="EpsilonScaler" spec="ScaleOperator" parameter="@epsilon"
-            scaleFactor="0.9" weight="3.0" />
+            scaleFactor="0.85" weight="3.0" />
         <operator id="DriftRandomWalk" spec="RealRandomWalkOperator" parameter="@drift"
-            windowSize="0.005" weight="3.0" />
+            windowSize="0.01" weight="3.0" />
         <operator id="YVScaler" spec="ScaleOperator" parameter="@yV"
-            scaleFactor="0.9" weight="3.0" />
+            scaleFactor="0.85" weight="3.0" />
         <operator id="PuncARandomWalk" spec="RealRandomWalkOperator" parameter="@puncA"
-            windowSize="0.3" weight="3.0" />
+            windowSize="0.8" weight="3.0" />
         <operator id="SubstRandomWalk" spec="RealRandomWalkOperator" parameter="@subst"
-            windowSize="0.2" weight="3.0" />
+            windowSize="0.02" weight="3.0" />
 
         <!-- UpDownOperator: Group 1 (up): diffusion, linearGrowthRate
              Group 2 (down): curveMaxY, beta, subst, curveYBaseValue -->
-        <operator id="UpDownGroups" spec="UpDownOperator" scaleFactor="0.9" weight="5.0">
+        <operator id="UpDownGroups" spec="UpDownOperator" scaleFactor="0.95" weight="5.0">
             <up idref="diffusion"/>
             <up idref="linearGrowthRate"/>
             <down idref="curveMaxY"/>
