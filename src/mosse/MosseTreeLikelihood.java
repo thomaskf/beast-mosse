@@ -1549,6 +1549,32 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 //			}
 //		}
 
+		// Punctuational matrix sanity: P = I + a*Q must have non-negative diagonals.
+		//   P[i,i] = 1 + a*Q[i,i] = 1 - a*|Q[i,i]|
+		// where |Q[i,i]| = sum_{j!=i} Q[i,j] (off-diagonals of a valid rate matrix
+		// are non-negative). If a * max_i |Q[i,i]| > 1, the diagonal of P goes
+		// negative, the substitution "probabilities" become invalid, and the
+		// likelihood is undefined — reject the proposal with -inf.
+		// Compute Q via (P(tau) - I) / tau for small tau (the same trick as
+		// buildQFlat), so we don't assume a particular substitution model.
+		if (treeModel.a > 0.0) {
+			final double tau = 1e-4;
+			int sq = stateCount * stateCount;
+			double[] Pt = new double[sq];
+			substitutionModel.getTransitionProbabilities(tree.getRoot(), tau, 0, 1.0, Pt);
+			double maxDiagMag = 0.0;
+			for (int i = 0; i < stateCount; i++) {
+				double sumOffDiag = 0.0;
+				for (int j = 0; j < stateCount; j++) {
+					if (i == j) continue;
+					double q_ij = Pt[i * stateCount + j] / tau;
+					if (q_ij > 0) sumOffDiag += q_ij;
+				}
+				if (sumOffDiag > maxDiagMag) maxDiagMag = sumOffDiag;
+			}
+			if (treeModel.a * maxDiagMag > 1.0) return true;
+		}
+
 		return false;
 	}
 	

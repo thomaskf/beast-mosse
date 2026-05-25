@@ -346,9 +346,17 @@
                     </distr>
                 </distribution>
 
+                <!--
+                  Half-normal(sigma = 0.05) prior on puncA.
+                  BEAST 2.7 has no native HalfNormal; we use Normal(mean=0, sigma=0.05)
+                  combined with the parameter's lower="0.0" bound. The proper
+                  half-normal normalising factor of 2 is a constant and cancels
+                  in Metropolis-Hastings ratios, so the posterior is correct.
+                -->
                 <distribution id="puncAPrior" spec="beast.base.inference.distribution.Prior" x="@puncA">
-                    <distr id="Exponential.puncA" spec="beast.base.inference.distribution.Exponential">
-                        <parameter name="mean" spec="parameter.RealParameter" value="1.0" estimate="false"/>
+                    <distr id="HalfNormal.puncA" spec="beast.base.inference.distribution.Normal">
+                        <parameter name="mean"  spec="parameter.RealParameter" value="0.0"  estimate="false"/>
+                        <parameter name="sigma" spec="parameter.RealParameter" value="0.05" estimate="false"/>
                     </distr>
                 </distribution>
 

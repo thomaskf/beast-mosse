@@ -74,6 +74,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	// for storing during mcmc
 	protected double storedrift;
 	protected double storedDiffusion;
+	protected double storedA;
 	protected int storedPadLeft_h;
 	protected int storedPadLeft_l;
 	protected int storedPadRight_h;
@@ -377,6 +378,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.store();
 		storedrift = drift;
 		storedDiffusion = diffusion;
+		storedA = a;
 		storedPadLeft_h = padLeft_h;
 		storedPadLeft_l = padLeft_l;
 		storedPadRight_h = padRight_h;
@@ -391,6 +393,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		super.restore();
 		drift = storedrift;
 		diffusion = storedDiffusion;
+		a = storedA;
 		padLeft_h = storedPadLeft_h;
 		padLeft_l = storedPadLeft_l;
 		padRight_h = storedPadRight_h;
@@ -406,8 +409,14 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	
 	@Override
 	protected boolean requiresRecalculation() {
-		drift = driftInput.get().getValue();
+		drift     = driftInput.get().getValue();
 		diffusion = diffusionInput.get().getValue();
+		// FIX: previously `a` was set only in initAndValidate, leaving treeModel.a
+		// stuck at its initial XML value (typically 0). That silently disabled the
+		// punctuational machinery — the puncA parameter still moved in the MCMC
+		// (operator + prior) but had no effect on the likelihood. Sync it now so
+		// puncA actually feeds into P = I + a*Q.
+		a         = aInput.get().getValue();
 	    return true;
 	}
 }
