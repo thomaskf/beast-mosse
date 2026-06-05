@@ -30,6 +30,7 @@ import beast.base.evolution.substitutionmodel.SubstitutionModel;
 import beast.base.evolution.tree.Node;
 import beast.base.evolution.tree.TraitSet;
 import beast.base.evolution.tree.TreeInterface;
+import beast.base.inference.parameter.BooleanParameter;
 import beast.base.inference.parameter.IntegerParameter;
 import beast.base.inference.parameter.RealParameter;
 
@@ -49,6 +50,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			Input.Validate.REQUIRED);
 	final public Input<MosseDistribution> treeModelInput = new Input<>("treeModel", "species diversification model",
 			Input.Validate.REQUIRED);
+
+	// PUNC: per-branch indicators e in {0,1} for P = I + e*a*Q. Indexed by node
+	// number (root entry unused); omit to punctuate every branch (all e = 1).
+	final public Input<BooleanParameter> eInput = new Input<>("e",
+			"per-branch binary punctuation indicators (e in {0,1}); dimension = number of tree nodes, "
+			+ "indexed by node number. e=0 disables all effects of a on that branch; "
+			+ "omit to punctuate on every branch (all e=1)",
+			Input.Validate.OPTIONAL);
 
 	// lambda and mu functions
 	final public Input<LinkFn> lambdaFuncInput = new Input<>("lambdaFunc", "function for birth rate lambda",
@@ -96,6 +105,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected List<TraitSet> traits;
 	protected MosseTipLikelihood tipModel;
 	protected MosseDistribution treeModel;
+	protected BooleanParameter puncIndicator; // PUNC: per-branch e (null => punctuate every branch)
 	protected double tc; // time < tc for high resolution, while time >= tc for low resolution
 
 	// Resolution mode constants and active mode
@@ -254,6 +264,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		traits = traitListInput.get();
 		tipModel = tipModelInput.get();
 		treeModel = treeModelInput.get();
+
+		// PUNC: e is indexed by node number, so its dimension must match the node count.
+		puncIndicator = eInput.get();
+		if (puncIndicator != null && puncIndicator.getDimension() != nodeCount) {
+			throw new IllegalArgumentException("punctuation indicator 'e' has dimension "
+					+ puncIndicator.getDimension() + " but the tree has " + nodeCount
+					+ " nodes; e must have one entry per node (indexed by node number)");
+		}
+
 		resolution = treeModel.resolution;
 		deltaT = treeModel.dtInput.get().getValue(); // 0.001; // dt
 		logScale = tipModel.logScale;
@@ -953,19 +972,21 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] partialsOut;
 
 		logCompen[0] = 0.0;
+		// PUNC: amplitude effective for this branch (child's indicator e); 0 turns punc off.
+		double aEff = branchPuncA(child);
 		if (!isLowResolution(node)) {
 			// if node has high resolution, then high resolution for the whole branch
 			lowResolution = false;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationH(partialsIn);
-			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
+			partialsOut = treeModel.calculateBranchLogP(branchTime, aEff, partialsIn, lambdas_h, mus_h,
 					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, eigenGeneration, lowResolution, threadID);
 		} else if (isLowResolution(child)) {
 			// if child has low resolution, then low resolution for the whole branch
 			lowResolution = true;
 			double branchTime = (node.getHeight() - child.getHeight());
 			logCompen[0] += normalizationL(partialsIn);
-			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_l, mus_l,
+			partialsOut = treeModel.calculateBranchLogP(branchTime, aEff, partialsIn, lambdas_l, mus_l,
 					rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, eigenGeneration, lowResolution, threadID);
 		} else {
 			// combination of high and low resolutions along the branch
@@ -978,7 +999,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			branchTime = (t_mid - child.getHeight());
 			lowResolution = false;
 			logCompen[0] += normalizationH(partialsIn);
-			partialsOut = treeModel.calculateBranchLogP(branchTime, partialsIn, lambdas_h, mus_h,
+			partialsOut = treeModel.calculateBranchLogP(branchTime, aEff, partialsIn, lambdas_h, mus_h,
 					rates_h, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_h, eigenGeneration, lowResolution, threadID);
 			// reduce the size of partials to "numPlan * numRateBins_l"
 			partialsOut = reduceSize(partialsOut);
@@ -987,7 +1008,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			branchTime = (node.getHeight() - t_mid);
 			if (branchTime > 0.0) {
 				logCompen[0] += normalizationL(partialsOut);
-				partialsOut = treeModel.calculateBranchLogP(branchTime, partialsOut, lambdas_l, mus_l,
+				partialsOut = treeModel.calculateBranchLogP(branchTime, aEff, partialsOut, lambdas_l, mus_l,
 						rates_l, qFlat, eVal, eVec, iEvec, hasEigen, eQCache_l, eigenGeneration, lowResolution, threadID);
 			}
 		}
@@ -1172,9 +1193,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		k += numRateBins_curr;
 
 		// D_parent[s][r] = λ(r) × (P·D_left)[s][r] × (P·D_right)[s][r]
-		// where P = I + a·Q (punctuational substitution at speciation)
+		// where P = I + e·a·Q (punctuational substitution at speciation, e per-branch)
 		int nEntries = Math.min(numRateBins_curr, numEntries_curr);
-		double puncA = treeModel.a;
+		double puncAL = branchPuncA(node.getLeft());
+		double puncAR = branchPuncA(node.getRight());
 		for (int j = 0; j < nEntries; j++) {
 			double[] dL = new double[stateCount];
 			double[] dR = new double[stateCount];
@@ -1182,8 +1204,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				dL[s] = partialsLeft[(s + 1) * numRateBins_curr + j];
 				dR[s] = partialsRight[(s + 1) * numRateBins_curr + j];
 			}
-			applyPuncMatrix(dL, puncA);
-			applyPuncMatrix(dR, puncA);
+			applyPuncMatrix(dL, puncAL);
+			applyPuncMatrix(dR, puncAR);
 			double lambdaX = lambdas_curr[j];
 			for (int i = 0; i < stateCount; i++)
 				patnPartials[(i + 1) * numRateBins_curr + j] = dL[i] * dR[i] * lambdaX;
@@ -1460,6 +1482,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	/**
+	 * PUNC: amplitude effective for the branch above {@code node}: treeModel.a when
+	 * e == 1 (or no e configured), else 0.
+	 */
+	private double branchPuncA(Node node) {
+		if (puncIndicator == null)
+			return treeModel.a;
+		return puncIndicator.getValue(node.getNr()) ? treeModel.a : 0.0;
+	}
+
+	/**
 	 * Apply P = I + a*Q to a state vector d (in place).
 	 * When a == 0 this is a no-op (P = I).
 	 */
@@ -1701,7 +1733,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		System.arraycopy(partialsLeft, 0, patnPartials, 0, numRateBins_curr); // E from left
 
 		int nEntries = Math.min(numRateBins_curr, numEntries_curr);
-		double puncA = treeModel.a;
+		double puncAL = branchPuncA(node.getLeft());
+		double puncAR = branchPuncA(node.getRight());
 		for (int j = 0; j < nEntries; j++) {
 			double[] dL = new double[stateCount];
 			double[] dR = new double[stateCount];
@@ -1709,8 +1742,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				dL[s] = partialsLeft[(s + 1) * numRateBins_curr + j];
 				dR[s] = partialsRight[(s + 1) * numRateBins_curr + j];
 			}
-			applyPuncMatrix(dL, puncA);
-			applyPuncMatrix(dR, puncA);
+			applyPuncMatrix(dL, puncAL);
+			applyPuncMatrix(dR, puncAR);
 			double lambdaX = lambdas_curr[j];
 			for (int i = 0; i < stateCount; i++)
 				patnPartials[(i + 1) * numRateBins_curr + j] = dL[i] * dR[i] * lambdaX;

@@ -279,7 +279,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 *   - q:  single 4x4 substitution-rate matrix flattened to length 16,
 	 *         instead of the old per-bin precomputed P stack.
 	 */
-	public double[] calculateBranchLogP(double branchTime, double[] vars, double[] lambda, double[] mu,
+	public double[] calculateBranchLogP(double branchTime, double aEff, double[] vars, double[] lambda, double[] mu,
 			double[] r, double[] q,
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			double[] eQCache, long eigenGeneration,
@@ -290,12 +290,13 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		// the previous defensive new double[vars.length] + System.arraycopy added
 		// ~vars.length doubles of young-gen garbage per branch call (≈ 200 GB/step
 		// of pure allocator pressure at 200-thread concurrency).
+		// PUNC: aEff is this branch's effective amplitude e*a (0 when e == 0).
 		if (lowResolution) {
-			return doIntegration(vars, lambda, mu, r, q,
+			return doIntegration(vars, aEff, lambda, mu, r, q,
 					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
 					nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
-			return doIntegration(vars, lambda, mu, r, q,
+			return doIntegration(vars, aEff, lambda, mu, r, q,
 					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
 					nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
@@ -317,7 +318,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 	 * @param pad_right padding size right of the kernel (zero padding)
 	 * @return partial probabilities
 	 */
-	public double[] doIntegration(double[] vars, double[] lambda, double[] mu,
+	public double[] doIntegration(double[] vars, double aEff, double[] lambda, double[] mu,
 			double[] r, double[] q,
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			double[] eQCache, long eigenGeneration,
@@ -335,7 +336,7 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			ptr = ptr_h_pool.get(threadID).longValue();
 
 		double[] result = doIntegrateMosse(ptr, vars, lambda, mu,
-				r, a,                       // rate vector + scalar amplitude
+				r, aEff,                    // rate vector + per-branch scalar amplitude (e*a)
 				drift, diffusion,
 				q,                          // single 4x4 instead of per-bin P stack
 				eVal, eVec, iEvec, useEigen, // eigendecomposition
