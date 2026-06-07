@@ -143,10 +143,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] iEvec; // inverses of eigenvectors
 	protected boolean hasEigen;
 
-	// per-bin eQ = exp(Q * r[ix] * dt) cache, built once per likelihood
-	// call (alongside qFlat / eVal / eVec / iEvec) and passed to every JNI
-	// branch call. Valid only when hasEigen && treeModel.a == 0 — otherwise
-	// null and the C kernel falls back to per-step build (a > 0) or GSL.
+	// per-bin eQ = exp(Q * r[ix] * dt) cache, built once per likelihood call and
+	// passed to every JNI branch call; the C kernel uses it on branches with
+	// effective amplitude e*a == 0. Null on the GSL path (hasEigen false).
 	protected double[] eQCache_h;
 	protected double[] eQCache_l;
 
@@ -1044,11 +1043,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				rates_l = buildRateVector(numRateBins_l, dx_l, treeModel.padLeft_l, rmin);
 				qFlat   = buildQFlat(node);
 				buildEigenDecomp(node, qFlat);
-				// build per-bin eQ cache once per likelihood call. Only
-				// valid for the a == 0 path; for a > 0 the C kernel must rebuild
-				// eQ per step because tmp1 depends on dd[ix]. Caches are null
-				// when hasEigen is false (GSL path) — the JNI bridge accepts null.
-				if (hasEigen && treeModel.a == 0.0) {
+				// build the eQ cache whenever eigen is available, so e == 0 branches
+				// get the cached fast path (used per-branch in the kernel) even when a > 0.
+				if (hasEigen) {
 					eQCache_h = buildEQCache(rates_h, deltaT);
 					eQCache_l = buildEQCache(rates_l, deltaT);
 				} else {

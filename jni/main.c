@@ -553,7 +553,8 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       const double *eQ_src;
       double eQ_loc[16];
 
-      if (obj->eQ_cache_valid) {
+      /* cache holds the a==0 value; use it only where this branch's e*a (obj->a) is 0 */
+      if (obj->eQ_cache_valid && obj->a == 0.0) {
         eQ_src = &obj->eQ_cache[ix * 16];
       } else {
         double eL[4];
