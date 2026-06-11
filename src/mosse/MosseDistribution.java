@@ -285,6 +285,15 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			double[] eQCache, long eigenGeneration,
 			boolean lowResolution, int threadID) {
 		int nt = (int) Math.ceil(branchTime / dt);
+		double stepDt = dt;
+		double[] eQCacheArg = eQCache;
+		long genArg = eigenGeneration;
+		if (branchTime < dt) { // sub-dt branch: one step of its true length, not a full dt step
+			nt = 1;
+			stepDt = branchTime;
+			eQCacheArg = null;       // force native to rebuild exp(Q*r*stepDt) for this branch
+			genArg = Long.MIN_VALUE; // distinct generation so the eQ-cache gate re-enters (valid=0)
+		}
 		// JNI doIntegrateMosse already returns a freshly-allocated jdoubleArray of
 		// exactly the right length (obj->nx * nd == vars.length). Return it directly;
 		// the previous defensive new double[vars.length] + System.arraycopy added
@@ -292,12 +301,12 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		// of pure allocator pressure at 200-thread concurrency).
 		if (lowResolution) {
 			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
-					nt, dt, padLeft_l, padRight_l, lowResolution, threadID);
+					eVal, eVec, iEvec, useEigen, eQCacheArg, genArg, drift, diffusion,
+					nt, stepDt, padLeft_l, padRight_l, lowResolution, threadID);
 		} else {
 			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
-					nt, dt, padLeft_h, padRight_h, lowResolution, threadID);
+					eVal, eVec, iEvec, useEigen, eQCacheArg, genArg, drift, diffusion,
+					nt, stepDt, padLeft_h, padRight_h, lowResolution, threadID);
 		}
 	}
 
