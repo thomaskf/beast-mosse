@@ -490,6 +490,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	}
 
 	protected void setLeafPartials(Node node, int patterncount, int threadID) {
+		System.out.println("setLeafPartials node's nr = " + node.getNr());
 		// for leaf only
 
 		int taxonIndex = data.getTaxonIndex(node.getID());
@@ -612,6 +613,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			
 			if (pool == null) {
 				// single thread
+				System.out.println("Single thread");
 				for (int sid = 0; sid < leaves.size(); sid++) {
 	            	int threadID = 0;
 					setLeafPartials(leaves.get(sid), patterncount, threadID);
@@ -952,6 +954,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		boolean lowResolution;
 		double[] partialsOut;
 
+		System.out.println("node's nr = " + node.getNr() + " -> child's nr = " + child.getNr());
 		logCompen[0] = 0.0;
 		if (!isLowResolution(node)) {
 			// if node has high resolution, then high resolution for the whole branch
@@ -993,6 +996,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 		// normalization (log compensation) on the output partials
 		logCompen[0] += normalization(lowResolution, partialsOut);
+		System.out.println("logCompen[0] = " + logCompen[0]);
 
 		return partialsOut;
 	}
@@ -1234,7 +1238,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		System.arraycopy(patnPartialsResult, 0, partialsAllPatterns, st, singlePartialSizeParent);
 		
 		double compensate = logp_patn[0] + leftCompensate + rightCompensate;
-		// System.out.println("node: " + node.getNr() + "; patternIndex = " + patternIndex + " has compensate = " + compensate);
+		System.out.println("node: " + node.getNr() + "; patternIndex = " + patternIndex + " has compensate = " + compensate);
 		return compensate;
 	 }
 	
@@ -1385,6 +1389,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 		// root.p is computed on the projected (scalar) d.root
 		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries);
+		/*
+		for (int i = 0; i < rootP.length; i++) {
+			System.out.println("rootP[" + i + "] = " + rootP[i]);
+		}*/
 
 		// Jacobian correction: rootP is density on λ, bins are in log(λ) space
 		if (logScale) {
@@ -1604,6 +1612,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 	@Override
 	protected void calcLogP() {
+		printParams();
 		logP = 0.0;
 		if (useAscertainedSitePatterns) {
 			final double ascertainmentCorrection = data.getAscertainmentCorrection(patternLogLikelihoods);
@@ -1624,6 +1633,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 
 			double logL_flat = computeFlatTreeLogLikelihood();
+			System.out.println("logL_flat = " + logL_flat);
 			if (!Double.isFinite(logL_flat)) { logP = Double.NEGATIVE_INFINITY; return; }
 
 			for (int i = 0; i < patterns; i++) {
@@ -1635,6 +1645,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 			if (anyPositiveValue) logP = Double.NEGATIVE_INFINITY;
 		}
+		System.out.println("# logP = " + df.format(logP));
+		System.out.println();
 	}
 
 	/**
