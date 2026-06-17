@@ -1643,7 +1643,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			}
 			logP -= (totalSites - 1) * logL_flat;
 
-			if (anyPositiveValue) logP = Double.NEGATIVE_INFINITY;
+			if (anyPositiveValue || logP > 0.0) logP = Double.NEGATIVE_INFINITY;
 		}
 		System.out.println("# logP = " + df.format(logP));
 		System.out.println();
