@@ -1402,7 +1402,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				if (surv < min_value) {
 					return Double.NEGATIVE_INFINITY;
 				}
-				denom += rootP[i] * lambdas[i] * surv * surv;
+				// uniform (data-independent) root weight: keeps the survival conditioning identical
+				// across patterns and the flat pass so it cancels in the per-site normalization
+				denom += (1.0 / numEntries) * lambdas[i] * surv * surv;
 			}
 			// denom *= dx;
 			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
@@ -1499,6 +1501,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// check whether beta is out of the range
 		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
+		// reject sub-dt branches: below the integrator resolution (dt) the diffusion
+		// likelihood is ill-conditioned and lets the chain diverge by collapsing a branch
+		for (beast.base.evolution.tree.Node brNode : tree.getNodesAsArray())
+			if (!brNode.isRoot() && brNode.getLength() < deltaT)
+				return Double.NEGATIVE_INFINITY;
 
 		traverseFull(tree.getRoot());
 		calcLogP();
@@ -1628,6 +1635,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 			for (int i = 0; i < patterns; i++) {
 				if (!Double.isFinite(patternLogLikelihoods[i])) { logP = Double.NEGATIVE_INFINITY; return; }
+				// invariant guard: a per-site logL above the flat reference is impossible (1e-6 tol for FP noise)
+				if (patternLogLikelihoods[i] > logL_flat + 1e-6) { logP = Double.NEGATIVE_INFINITY; return; }
 				if (patternLogLikelihoods[i] > 0.0) anyPositiveValue = true;
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
