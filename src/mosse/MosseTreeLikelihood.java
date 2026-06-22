@@ -92,6 +92,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] sharedRootP = null;
 	protected boolean captureRootP = false;
 	protected double lastFlatLogP = 0.0;
+	protected double survDenom = 1.0;
 
 	protected LinkFn rootFunc;
 	protected LinkFn lambdaFunc;
@@ -1397,23 +1398,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			if (captureRootP) sharedRootP = rootP;
 		}
 
-		if (conditionSurv) {
-			// In R: d.root <- d.root / sum(root.p * lambda * (1 - e.root)^2)
+		// survival conditioning is identical for every site + flat: compute once, apply once in calcLogP
+		if (conditionSurv && captureRootP) {
 			double denom = 0.0;
 			for (int i = 0; i < numEntries; i++) {
-				double eRootI = result[i]; // E column (column 0)
-				double surv = 1.0 - eRootI;
-				final double min_value = 1e-30;
-				if (surv < min_value) {
-					return Double.NEGATIVE_INFINITY;
-				}
+				double surv = 1.0 - result[i]; // E column
+				if (surv < 1e-30) return Double.NEGATIVE_INFINITY;
 				denom += rootP[i] * lambdas[i] * surv * surv;
 			}
-			// denom *= dx;
 			if (denom <= 0.0) return Double.NEGATIVE_INFINITY;
-			for (int i = 0; i < numEntries; i++) {
-				dProj[i] /= denom;
-			}
+			survDenom = denom;
 		}
 
 		// compute product sum: sum_i rootP[i] * dProj[i]
@@ -1635,13 +1629,15 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 			double logL_flat = lastFlatLogP;
 			if (!Double.isFinite(logL_flat)) { logP = Double.NEGATIVE_INFINITY; return; }
+			double logSurvDenom = Math.log(survDenom);
 
 			for (int i = 0; i < patterns; i++) {
 				if (!Double.isFinite(patternLogLikelihoods[i])) { logP = Double.NEGATIVE_INFINITY; return; }
-				if (patternLogLikelihoods[i] > logL_flat + 1e-6 || patternLogLikelihoods[i] > 0.0) { logP = Double.NEGATIVE_INFINITY; return; }
+				if (patternLogLikelihoods[i] > logL_flat + 1e-6 || patternLogLikelihoods[i] - logSurvDenom > 0.0) { logP = Double.NEGATIVE_INFINITY; return; }
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
 			logP -= (totalSites - 1) * logL_flat;
+			logP -= logSurvDenom;
 
 			if (logP > 0.0) logP = Double.NEGATIVE_INFINITY;
 		}
