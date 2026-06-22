@@ -284,30 +284,24 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 			double[] eVal, double[] eVec, double[] iEvec, boolean useEigen,
 			double[] eQCache, long eigenGeneration,
 			boolean lowResolution, int threadID) {
-		int nt = (int) Math.ceil(branchTime / dt);
-		double stepDt = dt;
-		double[] eQCacheArg = eQCache;
-		long genArg = eigenGeneration;
-		if (branchTime < dt) { // sub-dt branch: one step of its true length, not a full dt step
-			nt = 1;
-			stepDt = branchTime;
-			eQCacheArg = null;       // force native to rebuild exp(Q*r*stepDt) for this branch
-			genArg = Long.MIN_VALUE; // distinct generation so the eQ-cache gate re-enters (valid=0)
+		// integrate exactly branchTime: nt full dt steps + a remainder step
+		int nt = (int) Math.floor(branchTime / dt);
+		double remaining_dt = branchTime - nt * dt;
+		int padLeft  = lowResolution ? padLeft_l  : padLeft_h;
+		int padRight = lowResolution ? padRight_l : padRight_h;
+		double[] result = vars;
+		if (nt > 0) {
+			result = doIntegration(result, lambda, mu, r, q,
+					eVal, eVec, iEvec, useEigen, eQCache, eigenGeneration, drift, diffusion,
+					nt, dt, padLeft, padRight, lowResolution, threadID);
 		}
-		// JNI doIntegrateMosse already returns a freshly-allocated jdoubleArray of
-		// exactly the right length (obj->nx * nd == vars.length). Return it directly;
-		// the previous defensive new double[vars.length] + System.arraycopy added
-		// ~vars.length doubles of young-gen garbage per branch call (≈ 200 GB/step
-		// of pure allocator pressure at 200-thread concurrency).
-		if (lowResolution) {
-			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCacheArg, genArg, drift, diffusion,
-					nt, stepDt, padLeft_l, padRight_l, lowResolution, threadID);
-		} else {
-			return doIntegration(vars, lambda, mu, r, q,
-					eVal, eVec, iEvec, useEigen, eQCacheArg, genArg, drift, diffusion,
-					nt, stepDt, padLeft_h, padRight_h, lowResolution, threadID);
+		if (remaining_dt > 1e-12) {
+			// partial last step: own kernel + eQ (forced rebuild)
+			result = doIntegration(result, lambda, mu, r, q,
+					eVal, eVec, iEvec, useEigen, null, Long.MIN_VALUE, drift, diffusion,
+					1, remaining_dt, padLeft, padRight, lowResolution, threadID);
 		}
+		return result;
 	}
 
 	/**
