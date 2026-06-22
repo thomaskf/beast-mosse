@@ -1611,7 +1611,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				logP += (patternLogLikelihoods[i] - ascertainmentCorrection) * data.getPatternWeight(i);
 			}
 		} else {
-			boolean anyPositiveValue = false;
 			// Each patternLogLikelihoods[i] = log p(tree AND site_i AND tip traits).
 			// Correct for the tree-and-traits probability being counted N times:
 			// logL = sum_i w_i * logL_i - (N-1) * logL_flat
@@ -1628,12 +1627,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 
 			for (int i = 0; i < patterns; i++) {
 				if (!Double.isFinite(patternLogLikelihoods[i])) { logP = Double.NEGATIVE_INFINITY; return; }
-				if (patternLogLikelihoods[i] > 0.0) anyPositiveValue = true;
+				if (patternLogLikelihoods[i] > logL_flat + 1e-6 || patternLogLikelihoods[i] > 0.0) { logP = Double.NEGATIVE_INFINITY; return; }
 				logP += patternLogLikelihoods[i] * data.getPatternWeight(i);
 			}
 			logP -= (totalSites - 1) * logL_flat;
 
-			if (anyPositiveValue || logP > 0.0) logP = Double.NEGATIVE_INFINITY;
+			if (logP > 0.0) logP = Double.NEGATIVE_INFINITY;
 		}
 	}
 
