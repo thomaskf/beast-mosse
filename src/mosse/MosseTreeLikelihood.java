@@ -89,6 +89,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int numPlan;
 
 	protected int rootOption = 2; // default to ROOT_OBS
+	protected double[] sharedRootP = null;
+	protected boolean captureRootP = false;
+	protected double lastFlatLogP = 0.0;
 
 	protected LinkFn rootFunc;
 	protected LinkFn lambdaFunc;
@@ -1384,12 +1387,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		}
 
 		// root.p is computed on the projected (scalar) d.root
-		double[] rootP = getRootProbFlatProjected(dProj, x, numEntries);
+		double[] rootP = (sharedRootP != null && !captureRootP) ? sharedRootP : getRootProbFlatProjected(dProj, x, numEntries);
 
 		// Jacobian correction: rootP is density on λ, bins are in log(λ) space
-		if (logScale) {
-			for (int i = 0; i < numEntries; i++)
-				rootP[i] *= Math.exp(x[i]);
+		if (sharedRootP == null || captureRootP) {
+			if (logScale)
+				for (int i = 0; i < numEntries; i++)
+					rootP[i] *= Math.exp(x[i]);
+			if (captureRootP) sharedRootP = rootP;
 		}
 
 		if (conditionSurv) {
@@ -1500,8 +1505,14 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		if (paramsOutOfRange())
 			return Double.NEGATIVE_INFINITY;
 
+		// reuse the flat-pass rootP for every per-site root (first pass also inits native plans)
+		traverseFull(tree.getRoot());
+		captureRootP = true;
+		lastFlatLogP = computeFlatTreeLogLikelihood();
+		captureRootP = false;
 		traverseFull(tree.getRoot());
 		calcLogP();
+		sharedRootP = null;
 		return logP;
 	}
 	
@@ -1622,7 +1633,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				totalSites += data.getPatternWeight(i);
 			}
 
-			double logL_flat = computeFlatTreeLogLikelihood();
+			double logL_flat = lastFlatLogP;
 			if (!Double.isFinite(logL_flat)) { logP = Double.NEGATIVE_INFINITY; return; }
 
 			for (int i = 0; i < patterns; i++) {
@@ -1646,7 +1657,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] flatPartials = new double[N][];
 		double[] compensates = new double[N];
 		Node root = tree.getRoot();
-		if (pool != null) {
+		if (pool != null && !captureRootP) {
 			// Empirically (jstack), the serial doFlatTraversal on the main thread was
 			// the dominant Amdahl bottleneck: while ~200 pool workers slept,
 			// the main thread did the same per-branch JNI work serially. Mirror the
