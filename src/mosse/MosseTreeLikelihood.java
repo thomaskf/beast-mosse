@@ -274,6 +274,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		numRateBins_l = treeModel.numRateBins_l;
 		dx_l = dx_h * resolution;
 		startSubsRate_l = rmin;
+
+		// default initial epsilon to 2*dx (low-res) when not set (value <= 0)
+		if (tipModel.epsilon.getValue() <= 0)
+			tipModel.epsilon.setValue(0, 2 * dx_l);
 				
 		// maximum value of numRateBins (always numRateBins_h)
 		numRateBins_max = numRateBins_h;
