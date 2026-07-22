@@ -1514,8 +1514,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// check whether beta is out of the range
 		if (tipModel.betaOutOfRange(beta_lowbound, beta_upbound))
 			return true;
-		// check whether epsilon is too small
-		if (tipModel.epsilon.getValue().doubleValue() < epsilon_lowbound)
+		// epsilon must be >= grid spacing dx
+		double dxTip = RESOLUTION_MODE_LOW.equals(resolutionMode) ? dx_l : dx_h;
+		if (tipModel.epsilon.getValue().doubleValue() < dxTip)
 			return true;
 		// check whether diffusion is too small
 		if (treeModel.diffusion < diffusion_lowbound)
