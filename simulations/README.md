@@ -29,6 +29,8 @@ simulations/
   scripts/               pipeline (python + R)
     generate_strict_clock_xml.py  extract_strict_clock.py
     compute_bd.R  generate_mosse_log_xml.py  summarize_dataset.py  generate_xml.py
+  xml_files/             the 10 ready-to-run mosse MCMC XMLs (nx=1024, 1M, data-driven inits)
+  mcmc_results/          (added once the runs finish) logs, MCC trees, result summaries
 ```
 
 ## The stages
