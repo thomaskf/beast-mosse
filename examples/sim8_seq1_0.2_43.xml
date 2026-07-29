@@ -1,6 +1,6 @@
 <beast version='2.0' namespace='beast.base.evolution.alignment:beast.pkgmgmt:beast.base.core:beast.base.inference:beast.base.evolution.tree.coalescent:beast.pkgmgmt:beast.base.core:beast.base.inference.util:beast.evolution.nuc:beast.base.evolution.operator:beast.base.inference.operator:beast.base.evolution.sitemodel:beast.base.evolution.substitutionmodel:beast.base.evolution.likelihood:beast.base.core'>
 
-    <!-- ntax=20 nchar=2000 -->
+    <!-- sim6 log-scale, ntax=20 nchar=2000 -->
     <data id="alignment" dataType="nucleotide">
         <sequence taxon="sp1">
             tttgtgttttctgttgtttggggctgtttttcctggggttgtttgattggtggttcgtgtgggtgtgccctggggttttgtggtttgtatgtgttggtcgcttcgtgttttttctgtgtgggtgttttttgtggtctcgccctgcgtttctgtgtcggctttcgtcttgttgttgtctttgttgtctggcggttcgcttttttgtggcgctgtgcttgcttatttttctggtttggcggttttttctcgtgttccgtttttttgtttgttgtcgggtcgcgttgtgcgcttttgcttgttttgggtggttgtcgttttttttcgttttttggttttgtgttgttctttttcctgtttggtggtcgtcgctgtcttcctttcgcgcggcggtgctctgtttgctggatgtttttttgtggctggttggttcttgttggttttgttgcttttgttgtcttttcctgtttgtgcggtttgttattgcttgtccttttgctttcttgttcttcttgtcttcgggtggtgttgtggtctggtcgttgtcttgtttgcttggccttgtcgtgtgggtgtttgggttttggtgttggtccggtcttcgggtgggggtgggcttttgtgtggtgtcgtgttcttgtggatttcttttgctctttgttctgtggctgcgttttcttttttggcgtggttgtgttgttgtttcttgtgttttgttctttgctgctctgtcggcctttggcgtgtgggttgctgctttgtgtttgggtcttttttttctggggttttggctgtttgttcttttggtggtgctggtttttgttttcgtgttgttggttgtttctctttgtgttgttttgtttgtttttttgctgtttgttgggggtcttttgggtttcattttgtctttgggtggtcgtttgtttgtgtcgggctttggcctttgtgtcgggttgggggttgctcttgtgctttgtgctgctgtttttgtgcctggttccctgtttcttttttgggggtccccgttgtctttgtgtttgcttttgggtcgtggttttttgggtggttgtgcgttttctcggctggtttgtttcccctgctttcttctcggggtgttttgttgggttgttgtgtttttttttgtctgtgtggtttgggcttttgttctgcttctgttgggtgttggtcgtttcgcgcgcgtcgggttgggttcgctttgtcgttctcgtcctgttcgcctcggggggtgttgtttgtcgcgtgcggggtttctgggtttttcttgcgttttgtgttggcgttgctgttcgtggggggtttgcttatgtggtgttgtcgtgggtgtctctgtttggttttctgctttttttcgctccgtggctgtgcgttgtgtttgtcttggtctttgctttttctgtttttgtgttgggtggcggttgctccctgttggctttcttggtttttgcgtgtttgtgctttttcgtttgtttttgttccgttccgctttggtttttttttttttggttcctttgttgtttcctgggctttgtttgttcgtgttttccttcgttctcgcttttgctgtgtgtggtgtttgttgtggggggcggtttgttgggttttcctcttgttgggtgtgttctttgttgtcttgttgtggtttttggctgtgcgttttttgttgcgggtgtcttttgtggttttttcgtttcgtgtttcttttggcttggtttcctggctcttttgccttccgcggctgggcgggtttccgtgtggtttttggtggttttgcgttttgccttgtgtgttggggtctgcttttcgttctcggggtggttgtctctgtggtgtttctcgtttttgcttgggtttgtttgcctgtgtggcggtggtgttgtgtctggttttgtgtttttgtgtggtggcccttttgtttgccgtctttggttttgtttccgtgctctgggtgttgggcgtttggagtgggggtgttggttcttttg
@@ -87,39 +87,39 @@
         <taxon id="sp20" spec="Taxon" />
     </taxonset>
 
-    <!-- Topology fixed to the simulated tree; internal heights perturbed (Uniform(0.5,1.5)) and renormalised so root height = true value. -->
+    <!-- Initial tree = strict-clock posterior representative tree (any branch < 0.003 floored). -->
     <tree id='tree' spec='beast.base.evolution.tree.TreeParser' IsLabelledNewick='true'
-        newick='((((sp1:0.8833922373504908,(sp3:0.7483214268317336,sp4:0.7483214268317336)21:0.13507081051875713)22:0.08628240191500525,((sp5:0.857901130520589,sp6:0.857901130520589)23:0.004154248281361683,((sp10:0.4382082916381515,(sp18:0.022536024227252555,(sp19:0.004657347786402764,sp20:0.004657347786402764)24:0.01787867644084979)25:0.41567226741089897)26:0.05951039689671761,(sp11:0.31910457813605086,(sp12:0.2944199325679532,sp13:0.2944199325679532)27:0.024684645568097685)28:0.17861411039881825)29:0.3643366902670816)30:0.10761926046354531)31:0.1270672245052895,((sp9:0.3051432356882669,(sp14:0.059505602022789365,sp15:0.059505602022789365)32:0.24563763366547753)33:0.6274534490097394,(sp16:0.005931098470870587,sp17:0.005931098470870587)34:0.9266655862271357)35:0.16414517907277926)36:0.008362883829214685,(sp2:0.6556249670746972,(sp7:0.3857261469305127,sp8:0.3857261469305127)37:0.2698988201441845)38:0.449479780525303)39:0.0'
+        newick='((((sp1:0.8833922374,(sp3:0.7483214268,sp4:0.7483214268)21:0.1350708105)22:0.0862824019,((sp5:0.8579011305,sp6:0.8579011305)23:0.0041542483,((sp10:0.4382082916,(sp18:0.0225360242,(sp19:0.0046573478,sp20:0.0046573478)24:0.0178786764)25:0.4156722674)26:0.0595103969,(sp11:0.3191045781,(sp12:0.2944199326,sp13:0.2944199326)27:0.0246846456)28:0.1786141104)29:0.3643366903)30:0.1076192605)31:0.1270672245,((sp9:0.3051432357,(sp14:0.0595056020,sp15:0.0595056020)32:0.2456376337)33:0.6274534490,(sp16:0.0059310985,sp17:0.0059310985)34:0.9266655862)35:0.1641451791)36:0.0083628838,(sp2:0.6556249671,(sp7:0.3857261469,sp8:0.3857261469)37:0.2698988201)38:0.4494797805)39'
         taxa='@alignment' />
 
     <MosseTipLikelihood id="mossetiplikelihood" spec="mosse.MosseTipLikelihood" logscale="true">
-        <epsilon id="epsilon" spec="parameter.RealParameter">0.2</epsilon>
-        <subst   id="subst"   spec="parameter.RealParameter">-3.9</subst>
-        <beta    id="beta"    spec="parameter.RealParameter">1.0</beta>
+        <epsilon id="epsilon" spec="parameter.RealParameter">0.1</epsilon>
+        <subst   id="subst"   spec="parameter.RealParameter">-3.0662199944</subst>
+        <beta    id="beta"    spec="parameter.RealParameter">0.0</beta>
     </MosseTipLikelihood>
 
     <!-- Base frequencies fixed to observed values from the alignment. -->
     <parameter id="freqs" dimension="4" estimate="false" value="0.003775 0.144350 0.328925 0.522950"/>
     <frequencies id="estimatedFreqs" spec="Frequencies" frequencies="@freqs"/>
 
-    <parameter id="kappa" lower="0.0" value="2.0"/>
+    <parameter id="kappa" lower="0.0" value="5.658270"/>
     <substModel id="hky" spec="HKY" kappa="@kappa" frequencies="@estimatedFreqs"/>
     <SiteModel id="sitemodel" spec="beast.base.evolution.sitemodel.SiteModel" mutationRate="1.0" substModel="@hky" />
 
     <MosseDistribution id="treemodel" spec="mosse.MosseDistribution" tree="@tree"
-        nx="1024" dt="0.003" width="5" resolution="4" threads="16">
-        <drift     id="drift"     spec="parameter.RealParameter">-0.2</drift>
-        <diffusion id="diffusion" spec="parameter.RealParameter" lower="0.0">0.2</diffusion>
+        nx="1024" dt="0.003" width="5" resolution="4" threads="24">
+        <drift     id="drift"     spec="parameter.RealParameter">0.0</drift>
+        <diffusion id="diffusion" spec="parameter.RealParameter" lower="0.0">0.005</diffusion>
     </MosseDistribution>
 
-    <parameter id="curveYBaseValue"   spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.00001</parameter>
-    <parameter id="curveMaxY"         spec="beast.base.inference.parameter.RealParameter" lower="0.0">1.0</parameter>
-    <parameter id="linearGrowthRate"  spec="beast.base.inference.parameter.RealParameter" lower="0.0">10.0</parameter>
-    <parameter id="yV"                spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.01</parameter>
+    <parameter id="curveYBaseValue"  spec="beast.base.inference.parameter.RealParameter" lower="0.0">1.8938000000</parameter>
+    <parameter id="curveMaxY"        spec="beast.base.inference.parameter.RealParameter" lower="0.0">2.8407000000</parameter>
+    <parameter id="linearGrowthRate"  spec="beast.base.inference.parameter.RealParameter" lower="0.0">1.0</parameter>
+    <parameter id="yV"               spec="beast.base.inference.parameter.RealParameter" lower="0.0">0.0010000000</parameter>
 
-    <LinearFunction    id="linearfunc" spec="mosse.LinearFunction"
+    <LinearFunction id="linearfunc" spec="mosse.LinearFunction"
         curveYBaseValue="@curveYBaseValue" curveMaxY="@curveMaxY" linearGrowthRate="@linearGrowthRate" />
-    <ConstantLinkFn    id="constfunc"  spec="mosse.ConstantLinkFn" yV="@yV" />
+    <ConstantLinkFn id="constfunc"  spec="mosse.ConstantLinkFn" yV="@yV" />
 
     <RPNcalculator id="curveYDiff" spec="beast.base.inference.util.RPNcalculator"
         expression="curveMaxY curveYBaseValue -">
@@ -143,7 +143,6 @@
         </state>
 
         <distribution id="posterior" spec="beast.base.inference.CompoundDistribution">
-
             <distribution id="likelihood" spec="beast.base.inference.CompoundDistribution">
                 <distribution id="mossetreelikelihood" spec="mosse.MosseTreeLikelihoodMT"
                     data="@alignment" tree="@tree" siteModel="@sitemodel"
@@ -156,173 +155,163 @@
             </distribution>
 
             <distribution id="prior" spec="beast.base.inference.CompoundDistribution">
-
-                <distribution id="rootHeightPrior" spec="beast.base.evolution.tree.MRCAPrior"
-                    tree="@tree" monophyletic="true">
-                    <taxonset idref="taxonset"/>
-                    <distr id="Normal.rootHeight" spec="beast.base.inference.distribution.Normal">
-                        <parameter name="mean"  spec="parameter.RealParameter" value="1.1051047476" estimate="false"/>
-                        <parameter name="sigma" spec="parameter.RealParameter" value="1e-3" estimate="false"/>
-                    </distr>
+                <distribution id="height.36" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.36" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp1"/>
+                        <taxon idref="sp3"/>
+                        <taxon idref="sp4"/>
+                        <taxon idref="sp5"/>
+                        <taxon idref="sp6"/>
+                        <taxon idref="sp10"/>
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                        <taxon idref="sp11"/>
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                        <taxon idref="sp9"/>
+                        <taxon idref="sp14"/>
+                        <taxon idref="sp15"/>
+                        <taxon idref="sp16"/>
+                        <taxon idref="sp17"/>
+                    </taxonset>
                 </distribution>
-
-                <distribution id="height.nd2" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd2" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp7"/>
-                        <taxon idref="sp8"/>
+                <distribution id="height.31" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.31" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp1"/>
+                        <taxon idref="sp3"/>
+                        <taxon idref="sp4"/>
+                        <taxon idref="sp5"/>
+                        <taxon idref="sp6"/>
+                        <taxon idref="sp10"/>
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                        <taxon idref="sp11"/>
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.22" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.22" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp1"/>
+                        <taxon idref="sp3"/>
+                        <taxon idref="sp4"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.21" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.21" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp3"/>
+                        <taxon idref="sp4"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.30" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.30" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp5"/>
+                        <taxon idref="sp6"/>
+                        <taxon idref="sp10"/>
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                        <taxon idref="sp11"/>
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.23" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.23" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp5"/>
+                        <taxon idref="sp6"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.29" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.29" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp10"/>
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                        <taxon idref="sp11"/>
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.26" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.26" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp10"/>
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.25" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.25" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp18"/>
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.24" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.24" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp19"/>
+                        <taxon idref="sp20"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.28" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.28" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp11"/>
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.27" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.27" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp12"/>
+                        <taxon idref="sp13"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.35" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.35" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp9"/>
+                        <taxon idref="sp14"/>
+                        <taxon idref="sp15"/>
+                        <taxon idref="sp16"/>
+                        <taxon idref="sp17"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.33" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.33" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp9"/>
+                        <taxon idref="sp14"/>
+                        <taxon idref="sp15"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.32" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.32" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp14"/>
+                        <taxon idref="sp15"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.34" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.34" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp16"/>
+                        <taxon idref="sp17"/>
+                    </taxonset>
+                </distribution>
+                <distribution id="height.38" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.38" spec="beast.base.evolution.alignment.TaxonSet">
                         <taxon idref="sp2"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd11" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd11" spec="beast.base.evolution.alignment.TaxonSet">
                         <taxon idref="sp7"/>
                         <taxon idref="sp8"/>
                     </taxonset>
                 </distribution>
-                <distribution id="height.nd3" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd3" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp10"/>
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                        <taxon idref="sp11"/>
-                        <taxon idref="sp5"/>
-                        <taxon idref="sp6"/>
-                        <taxon idref="sp3"/>
-                        <taxon idref="sp4"/>
-                        <taxon idref="sp1"/>
-                        <taxon idref="sp16"/>
-                        <taxon idref="sp17"/>
-                        <taxon idref="sp9"/>
-                        <taxon idref="sp14"/>
-                        <taxon idref="sp15"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd4" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd4" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp10"/>
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                        <taxon idref="sp11"/>
-                        <taxon idref="sp5"/>
-                        <taxon idref="sp6"/>
-                        <taxon idref="sp3"/>
-                        <taxon idref="sp4"/>
-                        <taxon idref="sp1"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd8" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd8" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp10"/>
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                        <taxon idref="sp11"/>
-                        <taxon idref="sp5"/>
-                        <taxon idref="sp6"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd12" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd12" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp10"/>
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                        <taxon idref="sp11"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd15" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd15" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp10"/>
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd17" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd17" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                        <taxon idref="sp18"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd19" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd19" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp19"/>
-                        <taxon idref="sp20"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd16" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd16" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                        <taxon idref="sp11"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd18" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd18" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp12"/>
-                        <taxon idref="sp13"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd13" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd13" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp5"/>
-                        <taxon idref="sp6"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd9" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd9" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp3"/>
-                        <taxon idref="sp4"/>
-                        <taxon idref="sp1"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd10" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd10" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp3"/>
-                        <taxon idref="sp4"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd5" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd5" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp16"/>
-                        <taxon idref="sp17"/>
-                        <taxon idref="sp9"/>
-                        <taxon idref="sp14"/>
-                        <taxon idref="sp15"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd6" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd6" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp16"/>
-                        <taxon idref="sp17"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd7" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd7" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp9"/>
-                        <taxon idref="sp14"/>
-                        <taxon idref="sp15"/>
-                    </taxonset>
-                </distribution>
-                <distribution id="height.nd14" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
-                    <taxonset id="taxonset.nd14" spec="beast.base.evolution.alignment.TaxonSet">
-                        <taxon idref="sp14"/>
-                        <taxon idref="sp15"/>
+                <distribution id="height.37" spec="beast.base.evolution.tree.MRCAPrior" tree="@tree" monophyletic="true">
+                    <taxonset id="taxonset.37" spec="beast.base.evolution.alignment.TaxonSet">
+                        <taxon idref="sp7"/>
+                        <taxon idref="sp8"/>
                     </taxonset>
                 </distribution>
 
-                <!-- ===== parameter priors ===== -->
+                <!-- parameter priors -->
                 <distribution id="kappaPrior" spec="beast.base.inference.distribution.Prior" x="@kappa">
                     <distr id="LogNormal.kappa" spec="beast.base.inference.distribution.LogNormalDistributionModel">
                         <parameter name="M" spec="parameter.RealParameter" value="1.0"  estimate="false"/>
@@ -343,6 +332,7 @@
                     </distr>
                 </distribution>
 
+                <!-- subst is log-rate (logscale=true); prior centred on log(0.02)=-3.91 -->
                 <distribution id="substPrior" spec="beast.base.inference.distribution.Prior" x="@subst">
                     <distr id="Normal.subst" spec="beast.base.inference.distribution.Normal">
                         <parameter name="mean"  spec="parameter.RealParameter" value="-3.0" estimate="false"/>
@@ -390,23 +380,46 @@
             </distribution>  <!-- prior -->
         </distribution>  <!-- posterior -->
 
-        <operator id="Uniform.t"        spec="Uniform"                tree="@tree"        weight="3.0"/>
+        <operator id="UniformSelective.t" spec="beastlabs.evolution.operators.UniformSelective" tree="@tree" weight="3.0">
+            <restricted idref="height.36"/>
+            <restricted idref="height.31"/>
+            <restricted idref="height.22"/>
+            <restricted idref="height.21"/>
+            <restricted idref="height.30"/>
+            <restricted idref="height.23"/>
+            <restricted idref="height.29"/>
+            <restricted idref="height.26"/>
+            <restricted idref="height.25"/>
+            <restricted idref="height.24"/>
+            <restricted idref="height.28"/>
+            <restricted idref="height.27"/>
+            <restricted idref="height.35"/>
+            <restricted idref="height.33"/>
+            <restricted idref="height.32"/>
+            <restricted idref="height.34"/>
+            <restricted idref="height.38"/>
+            <restricted idref="height.37"/>
+        </operator>
         <operator id="KappaScaler"      spec="ScaleOperator"          parameter="@kappa"  scaleFactor="0.75" weight="3.0"/>
         <operator id="EpsilonScaler"    spec="ScaleOperator"          parameter="@epsilon" scaleFactor="0.5" weight="3.0"/>
         <operator id="DriftRandomWalk"  spec="RealRandomWalkOperator" parameter="@drift"   windowSize="0.05" weight="3.0"/>
         <operator id="YVScaler"         spec="ScaleOperator"          parameter="@yV"     scaleFactor="0.5" weight="3.0"/>
 
+        <!-- Individual random-walk mover for beta (so it can leave 0). -->
+        <operator id="BetaRandomWalk"   spec="RealRandomWalkOperator" parameter="@beta"             windowSize="0.1"  weight="3.0"/>
+
+        <!-- Individual movers for diffusion, curve params, linearGrowthRate and subst. -->
         <operator id="DiffusionScaler"    spec="ScaleOperator"          parameter="@diffusion"        scaleFactor="0.75" weight="3.0"/>
-        <operator id="LinearGrowthScaler" spec="ScaleOperator"          parameter="@linearGrowthRate" scaleFactor="0.75" weight="3.0"/>
-        <operator id="CurveMaxYScaler"    spec="ScaleOperator"          parameter="@curveMaxY"        scaleFactor="0.75" weight="3.0"/>
         <operator id="CurveYBaseScaler"   spec="ScaleOperator"          parameter="@curveYBaseValue"  scaleFactor="0.75" weight="3.0"/>
+        <operator id="CurveMaxYScaler"    spec="ScaleOperator"          parameter="@curveMaxY"        scaleFactor="0.75" weight="3.0"/>
+        <operator id="LinearGrowthScaler" spec="ScaleOperator"          parameter="@linearGrowthRate" scaleFactor="0.75" weight="3.0"/>
         <operator id="SubstRandomWalk"    spec="RealRandomWalkOperator" parameter="@subst"            windowSize="0.1"   weight="3.0"/>
-        <operator id="BetaRandomWalk"     spec="RealRandomWalkOperator" parameter="@beta"             windowSize="0.1"   weight="3.0"/>
+
+        <!-- Joint correlation moves: LGR<->diffusion ridge + full 6-param up/down. -->
         <operator id="LGRDiffusionUp"     spec="UpDownOperator"         scaleFactor="0.75" weight="5.0">
             <up idref="linearGrowthRate"/>
             <up idref="diffusion"/>
         </operator>
-
         <operator id="UpDownGroups" spec="UpDownOperator" scaleFactor="0.75" weight="3.0">
             <up   idref="diffusion"/>
             <up   idref="linearGrowthRate"/>
@@ -415,7 +428,6 @@
             <down idref="subst"/>
             <down idref="curveYBaseValue"/>
         </operator>
-
         <logger id="tracelog" logEvery="500" fileName="$(filebase).log">
             <log idref="posterior" />
             <log idref="likelihood" />
@@ -430,25 +442,24 @@
             <log idref="curveMaxY" />
             <log idref="linearGrowthRate" />
             <log idref="yV" />
-            <log idref="rootHeightPrior" />
-            <log idref="height.nd2" />
-            <log idref="height.nd11" />
-            <log idref="height.nd3" />
-            <log idref="height.nd4" />
-            <log idref="height.nd8" />
-            <log idref="height.nd12" />
-            <log idref="height.nd15" />
-            <log idref="height.nd17" />
-            <log idref="height.nd19" />
-            <log idref="height.nd16" />
-            <log idref="height.nd18" />
-            <log idref="height.nd13" />
-            <log idref="height.nd9" />
-            <log idref="height.nd10" />
-            <log idref="height.nd5" />
-            <log idref="height.nd6" />
-            <log idref="height.nd7" />
-            <log idref="height.nd14" />
+            <log idref="height.36" />
+            <log idref="height.31" />
+            <log idref="height.22" />
+            <log idref="height.21" />
+            <log idref="height.30" />
+            <log idref="height.23" />
+            <log idref="height.29" />
+            <log idref="height.26" />
+            <log idref="height.25" />
+            <log idref="height.24" />
+            <log idref="height.28" />
+            <log idref="height.27" />
+            <log idref="height.35" />
+            <log idref="height.33" />
+            <log idref="height.32" />
+            <log idref="height.34" />
+            <log idref="height.38" />
+            <log idref="height.37" />
             <log idref="kappaPrior" />
             <log idref="epsilonPrior" />
             <log idref="betaPrior" />
