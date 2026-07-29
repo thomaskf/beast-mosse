@@ -82,7 +82,17 @@ The mosse runs need the `beast-mosse` package plus its native library on the loa
 `RESUME="-resume"` in the PBS to accumulate more states.
 
 ## Dependencies
-- **R:** diversitree, phangorn, ape, LaplacesDemon (simulation); jsonlite (BD fit).
+- **R packages** — install once:
+  ```r
+  # diversitree: use the MoSSE FORK, not the CRAN version — this is the environment
+  # the experiment was built and verified against.
+  remotes::install_github("thomaskf/diversitree-mosse")
+  install.packages(c("phangorn", "LaplacesDemon", "ape", "jsonlite"))
+  ```
+  The simulation itself calls only diversitree's QuaSSE primitives (`make.brownian.with.drift`,
+  `constant.x`, `me.to.ape.quasse`), which also exist in stock CRAN diversitree — so it may run on
+  CRAN too. But `thomaskf/diversitree-mosse` (github.com/thomaskf/diversitree-mosse) is the
+  verified build, so use it for reproducibility.
 - **Python 3:** standard library only.
 - **BEAST 2.7:** plain BEAST for the strict-clock runs (stage 3); the `beast-mosse`
   package + FFTW/GSL native lib for the mosse runs (stage 7).
