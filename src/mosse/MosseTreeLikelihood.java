@@ -278,6 +278,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		// default initial epsilon to 2*dx (low-res) when not set (value <= 0)
 		if (tipModel.epsilon.getValue() <= 0)
 			tipModel.epsilon.setValue(0, 2 * dx_l);
+
+		// raise initial diffusion above the sd/dx=0.2 floor when it starts below (analogous to epsilon)
+		double diffFloorInit = 0.04 * dx_l * dx_l / deltaT; // sd/dx=0.2 => diffusion=(0.2*dx)^2/dt
+		if (treeModel.diffusionInput.get().getValue() < diffFloorInit)
+			treeModel.diffusionInput.get().setValue(0, 2 * diffFloorInit);
 				
 		// maximum value of numRateBins (always numRateBins_h)
 		numRateBins_max = numRateBins_h;
@@ -1522,8 +1527,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double dxTip = RESOLUTION_MODE_LOW.equals(resolutionMode) ? dx_l : dx_h;
 		if (tipModel.epsilon.getValue().doubleValue() < dxTip)
 			return true;
-		// check whether diffusion is too small
-		if (treeModel.diffusion < diffusion_lowbound)
+		// diffusion kernel width sd = sqrt(dt*diffusion) must be >= 0.2*dx (calibrated),
+		// else the FFT convolution is sub-grid / ill-conditioned (non-reproducible logP)
+		if (Math.sqrt(treeModel.diffusion * deltaT) < 0.2 * dxTip)
 			return true;
 
 		// Check that tip substitution-rate distributions stay within the FFT grid.
