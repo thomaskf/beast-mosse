@@ -1,0 +1,29 @@
+#!/bin/bash
+# PBS array template for the MoSSE MCMC runs on Gadi (NCI).
+# Edit RUNDIR / SEEDS / TAG, copy the generated XMLs into RUNDIR, then: qsub submit_mcmc.pbs
+#PBS -P dx61
+#PBS -q normal
+#PBS -l ncpus=24
+#PBS -l mem=48GB
+#PBS -l walltime=48:00:00
+#PBS -l storage=scratch/hu35+scratch/dx61
+#PBS -l wd
+#PBS -J 1-10
+#PBS -N mosse_mcmc
+#PBS -j oe
+#PBS -r y
+
+# ---- config ----
+RUNDIR=/scratch/hu35/txw813/mcmc_260728          # dir holding the sim8_seq1_<TAG>_<seed>.xml
+TAG=0.2
+SEEDS=(10 30 35 38 43 44 67 70 82 83)
+RESUME=""                                        # set to "-resume" to continue a prior chain
+# ----------------
+
+module load beast/2.7.6 fftw3/3.3.10 gsl/2.7.1
+export LD_LIBRARY_PATH=$HOME/.beast/2.7/beast-mosse/lib:$LD_LIBRARY_PATH
+
+S=${SEEDS[$((PBS_ARRAY_INDEX-1))]}
+cd "$RUNDIR"
+echo "seed=$S  compute=dx61  storage=hu35  $RESUME"
+beast -seed "$S" -threads "$PBS_NCPUS" -overwrite $RESUME "sim8_seq1_${TAG}_${S}.xml"
