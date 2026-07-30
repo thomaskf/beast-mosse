@@ -1519,18 +1519,33 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return logP;
 	}
 	
+	// count out-of-range guard hits per reason; warnGuard logs only the first 10 of each
+	private final java.util.Map<String, Integer> guardWarnCount = new java.util.HashMap<>();
+	private boolean warnGuard(String key) {
+		return guardWarnCount.merge(key, 1, Integer::sum) <= 10;
+	}
+
 	public boolean paramsOutOfRange() {
 		// check whether beta is out of the range
-		if (tipModel.betaOutOfRange(beta_lowbound, beta_upbound))
+		if (tipModel.betaOutOfRange(beta_lowbound, beta_upbound)) {
+			if (warnGuard("beta")) System.err.println("paramsOutOfRange: beta outside [" + beta_lowbound + ", " + beta_upbound + "]");
 			return true;
+		}
 		// epsilon must be >= grid spacing dx
 		double dxTip = RESOLUTION_MODE_LOW.equals(resolutionMode) ? dx_l : dx_h;
-		if (tipModel.epsilon.getValue().doubleValue() < dxTip)
+		if (tipModel.epsilon.getValue().doubleValue() < dxTip) {
+			if (warnGuard("epsilon")) System.err.println("paramsOutOfRange: epsilon (" + tipModel.epsilon.getValue()
+				+ ") < grid spacing dx (" + dxTip + ")");
 			return true;
+		}
 		// diffusion kernel width sd = sqrt(dt*diffusion) must be >= 0.2*dx (calibrated),
 		// else the FFT convolution is sub-grid / ill-conditioned (non-reproducible logP)
-		if (Math.sqrt(treeModel.diffusion * deltaT) < 0.2 * dxTip)
+		if (Math.sqrt(treeModel.diffusion * deltaT) < 0.2 * dxTip) {
+			if (warnGuard("diffusion")) System.err.println("paramsOutOfRange: diffusion kernel sd=sqrt(dt*diffusion)="
+				+ Math.sqrt(treeModel.diffusion * deltaT) + " < 0.2*dx=" + (0.2 * dxTip)
+				+ " (diffusion=" + treeModel.diffusion + ")");
 			return true;
+		}
 
 		// Check that tip substitution-rate distributions stay within the FFT grid.
 		// If subst+epsilon shifts the distribution outside [rmin, rmax], the
@@ -1545,8 +1560,16 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			minEffect += Math.min(b * traitmax_global, b * traitmin_global);
 		}
 		// require 3-sigma coverage within the grid
-		if (substV + maxEffect + 3.0 * epsilonV > rmax) return true;
-		if (substV + minEffect - 3.0 * epsilonV < rmin) return true;
+		if (substV + maxEffect + 3.0 * epsilonV > rmax) {
+			if (warnGuard("gridHi")) System.err.println("paramsOutOfRange: tip rate distribution above grid: subst+maxEffect+3*epsilon="
+				+ (substV + maxEffect + 3.0 * epsilonV) + " > rmax=" + rmax);
+			return true;
+		}
+		if (substV + minEffect - 3.0 * epsilonV < rmin) {
+			if (warnGuard("gridLo")) System.err.println("paramsOutOfRange: tip rate distribution below grid: subst+minEffect-3*epsilon="
+				+ (substV + minEffect - 3.0 * epsilonV) + " < rmin=" + rmin);
+			return true;
+		}
 
 		// Prevent LinearFunction degeneracy: when linearGrowthRate is so high that
 		// the ramp saturates for all tip rate distributions, r becomes non-identifiable.
@@ -1588,7 +1611,11 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 				}
 				if (sumOffDiag > maxDiagMag) maxDiagMag = sumOffDiag;
 			}
-			if (treeModel.a * maxDiagMag > 1.0) return true;
+			if (treeModel.a * maxDiagMag > 1.0) {
+				if (warnGuard("punc")) System.err.println("paramsOutOfRange: punctuation a*max|Q_ii|=" + (treeModel.a * maxDiagMag)
+					+ " > 1 (P=I+a*Q has negative diagonal)");
+				return true;
+			}
 		}
 
 		return false;
