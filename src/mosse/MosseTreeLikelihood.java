@@ -275,9 +275,9 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		dx_l = dx_h * resolution;
 		startSubsRate_l = rmin;
 
-		// default initial epsilon to 2*dx (low-res) when not set (value <= 0)
-		if (tipModel.epsilon.getValue() <= 0)
-			tipModel.epsilon.setValue(0, 2 * dx_l);
+		// floor initial epsilon at the grid spacing dx (parallels the diffusion floor)
+		if (tipModel.epsilon.getValue() < dx_l)
+			tipModel.epsilon.setValue(0, 1.5 * dx_l);
 
 		// raise initial diffusion above the sd/dx=0.2 floor when it starts below (analogous to epsilon)
 		double diffFloorInit = 0.04 * dx_l * dx_l / deltaT; // sd/dx=0.2 => diffusion=(0.2*dx)^2/dt
