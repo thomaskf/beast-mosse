@@ -12,5 +12,8 @@
         <provider classname="mosse.MosseTipLikelihood"/>
         <provider classname="mosse.MosseTreeLikelihood"/>
         <provider classname="mosse.MosseTreeLikelihoodMT"/>
+        <provider classname="mosse.MosseProcessLikelihood"/>
+        <provider classname="mosseapprox.ApproxTreeLikelihood"/>
+        <provider classname="mosseapprox.MosseRbarClockModel"/>
     </service>
 </package>
