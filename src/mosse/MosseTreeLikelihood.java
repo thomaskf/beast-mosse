@@ -1050,11 +1050,12 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		int nx = low ? numRateBins_l : numRateBins_h;
 		int nE = low ? treeModel.numEntries_l : treeModel.numEntries_h;
 		double[] x = low ? cached_x_l : cached_x_h;
+		int pad = low ? treeModel.padLeft_l : treeModel.padLeft_h;
 		double[] freqs = substitutionModel.getFrequencies();
 		double num = 0.0, den = 0.0;
 		for (int i = 0; i < nE; i++) {
-			double dp = 0.0;
-			for (int s = 0; s < stateCount; s++) dp += result[(s + 1) * nx + i] * freqs[s];
+			double dp = 0.0;                              // density at valid entry i sits at bin pad+i
+			for (int s = 0; s < stateCount; s++) dp += result[(s + 1) * nx + pad + i] * freqs[s];
 			double rate = logScale ? Math.exp(x[i]) : x[i];
 			num += rate * dp;
 			den += dp;
@@ -1539,7 +1540,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		return res;
 	}
 
-	private double[] getTraits(Node node) {
+	protected double[] getTraits(Node node) {
 		String taxonName = node.getID();
 		double[] traitValues = new double[traits.size()];
 		for (int i = 0; i < traits.size(); i++) {
