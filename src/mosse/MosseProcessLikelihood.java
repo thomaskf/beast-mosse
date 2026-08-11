@@ -6,6 +6,8 @@ import beast.base.core.Description;
 import beast.base.evolution.tree.Node;
 import java.util.function.DoubleUnaryOperator;
 import java.util.function.DoubleBinaryOperator;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveTask;
 
 // method A process likelihood: Mosse_like(t|M) from the sequence-free flat pass (ROOT_OBS +
 // (1-E)^2 survival). Exposes a per-branch rate whose product with the branch time is the exact
@@ -47,22 +49,41 @@ public class MosseProcessLikelihood extends MosseTreeLikelihood implements RbarP
 
     // Scalar process-density downpass on the low-resolution log-rate grid. Returns the node's
     // normalised F(r); for each non-root node solves the parent branch for E[N_b].
-    private double[] computeEN(Node node) {
-        final int nE = treeModel.numEntries_l;
-        final double[] xg = cached_x_l;
-        double[] F;
-        if (node.isLeaf()) {
-            double start = startSubsRate_l + treeModel.padLeft_l * dx_l;
-            F = tipModel.getTipLikelihoods(getTraits(node), nE, start, dx_l).clone();
-        } else {
-            double[] fL = computeEN(node.getChild(0));
-            double[] fR = computeEN(node.getChild(1));
-            F = new double[nE];
-            for (int i = 0; i < nE; i++) F[i] = lambdas_l[i] * fL[i] * fR[i]; // speciation combine
-        }
-        normalise(F);
-        if (node.isRoot()) return F;
+    // Sibling subtrees are independent, so the traversal fork-joins across them; the
+    // per-branch CN solves and tip densities are pure (locals only), so this is safe.
+    private static final ForkJoinPool EN_POOL = new ForkJoinPool(Math.max(1,
+            Integer.getInteger("mosse.enThreads", Runtime.getRuntime().availableProcessors())));
 
+    private double[] computeEN(Node node) {
+        return EN_POOL.invoke(new ENTask(node));
+    }
+
+    private class ENTask extends RecursiveTask<double[]> {
+        final Node node;
+        ENTask(Node node) { this.node = node; }
+        @Override
+        protected double[] compute() {
+            final int nE = treeModel.numEntries_l;
+            double[] F;
+            if (node.isLeaf()) {
+                double start = startSubsRate_l + treeModel.padLeft_l * dx_l;
+                F = tipModel.getTipLikelihoods(getTraits(node), nE, start, dx_l).clone();
+            } else {
+                ENTask left = new ENTask(node.getChild(0));
+                left.fork();
+                double[] fR = new ENTask(node.getChild(1)).compute();
+                double[] fL = left.join();
+                F = new double[nE];
+                for (int i = 0; i < nE; i++) F[i] = lambdas_l[i] * fL[i] * fR[i]; // speciation combine
+            }
+            normalise(F);
+            if (node.isRoot()) return F;
+            return solveBranchEN(node, F, nE);
+        }
+    }
+
+    private double[] solveBranchEN(Node node, double[] F, int nE) {
+        final double[] xg = cached_x_l;
         final double t = node.getLength();
         if (t <= 0.0) { enBar[node.getNr()] = 0.0; return F; }
 
