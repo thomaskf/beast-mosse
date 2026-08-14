@@ -91,6 +91,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected int rootOption = 2; // default to ROOT_OBS
 	protected double[] sharedRootP = null;
 	protected boolean captureRootP = false;
+	// subclasses that also capture the root projection may opt in to the pooled flat pass
+	protected boolean poolFlatWithCapture = false;
 	protected double lastFlatLogP = 0.0;
 	protected double survDenom = 1.0;
 
@@ -1739,7 +1741,7 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[][] flatPartials = new double[N][];
 		double[] compensates = new double[N];
 		Node root = tree.getRoot();
-		if (pool != null && !captureRootP) {
+		if (pool != null && (!captureRootP || poolFlatWithCapture)) {
 			// Empirically (jstack), the serial doFlatTraversal on the main thread was
 			// the dominant Amdahl bottleneck: while ~200 pool workers slept,
 			// the main thread did the same per-branch JNI work serially. Mirror the

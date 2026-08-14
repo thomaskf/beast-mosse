@@ -19,6 +19,24 @@ public class MosseProcessLikelihood extends MosseTreeLikelihood implements RbarP
     protected double[] enBar; // per node: E[N_b]/t_b (rate*t = E[N_b])
 
     @Override
+    public void initAndValidate() {
+        super.initAndValidate();
+        // run the flat pass on the same pool as the E[N] downpass (per-worker native plans)
+        if (EN_POOL.getParallelism() > 1) {
+            pool = EN_POOL;
+            poolFlatWithCapture = true;
+        }
+    }
+
+    @Override
+    protected int threadIndexInPool() {
+        Thread t = Thread.currentThread();
+        if (t instanceof java.util.concurrent.ForkJoinWorkerThread)
+            return ((java.util.concurrent.ForkJoinWorkerThread) t).getPoolIndex();
+        return 0;
+    }
+
+    @Override
     public double calculateLogP() {
         if (paramsOutOfRange()) {
             logP = Double.NEGATIVE_INFINITY;
