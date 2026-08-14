@@ -191,16 +191,22 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		mosseFinalize(ptr);
 	}
 
+	// FFTW plan CREATION is not thread-safe process-wide (fftw_mkapiplan SIGSEGV when
+	// multiple MC3 chain instances initialize concurrently) — serialize it globally.
+	private static final Object FFTW_PLAN_LOCK = new Object();
+
 	public void initFFTPtrs(double dx_h) {
 		int[] nd = { 5 };
 		int flags = FLAG_FFTW3_DEFAULT;
 		ptr_l_pool = new ArrayList<Long>();
 		ptr_h_pool = new ArrayList<Long>();
-		for (int i = 0; i < numThreads; i++) {
-			long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
-			long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
-			ptr_l_pool.add(ptr_l);
-			ptr_h_pool.add(ptr_h);
+		synchronized (FFTW_PLAN_LOCK) {
+			for (int i = 0; i < numThreads; i++) {
+				long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
+				long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
+				ptr_l_pool.add(ptr_l);
+				ptr_h_pool.add(ptr_h);
+			}
 		}
 		this.dx_h = dx_h;
 
@@ -220,11 +226,13 @@ public class MosseDistribution extends TreeDistribution implements AutoCloseable
 		int flags = FLAG_FFTW3_DEFAULT;
 		if (newsize > ptr_l_pool.size()) {
 			int k = newsize - ptr_l_pool.size();
-			for (int i = 0; i < k; i++) {
-				long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
-				long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
-				ptr_l_pool.add(ptr_l);
-				ptr_h_pool.add(ptr_h);
+			synchronized (FFTW_PLAN_LOCK) {
+				for (int i = 0; i < k; i++) {
+					long ptr_l = makeMosseFFT(nx, dx_h * resolution, nd, flags);
+					long ptr_h = makeMosseFFT(nx * resolution, dx_h, nd, flags);
+					ptr_l_pool.add(ptr_l);
+					ptr_h_pool.add(ptr_h);
+				}
 			}
 		}
 	}
