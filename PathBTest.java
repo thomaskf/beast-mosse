@@ -57,6 +57,17 @@ public class PathBTest {
     }
     System.out.printf("%ntree totals: sum rbar*t = %.5f   sum E[N] = %.5f   ratio = %.4f  (pre-fix ~1.076)%n%n", sR, sE, sR / sE);
 
+    // per-branch l = E[N] keyed by clade, so the vector can be matched to a newick outside
+    System.out.println("CLADE_BL_START");
+    for (Node n : tree.getNodesAsArray()) {
+      if (n.isRoot()) continue;
+      java.util.List<String> tips = new java.util.ArrayList<>();
+      collectTips(n, tips);
+      java.util.Collections.sort(tips);
+      System.out.printf("BL\t%.10g\t%s%n", en[n.getNr()] * n.getLength(), String.join(",", tips));
+    }
+    System.out.println("CLADE_BL_END");
+
     double alB = seq.calculateLogP();
     System.out.printf("AL(l = E[N])        [Path B, wired]  = %.4f%n", alB);
     double[] save = en.clone();
@@ -74,5 +85,10 @@ public class PathBTest {
     double sumE = 0; for (Node n : tree.getNodesAsArray()) if (!n.isRoot()) sumE += en2[n.getNr()] * n.getLength();
     System.out.printf("BENCH: %.3f s/proc-eval (avg %d), logP=%.6f, sumEN=%.12f, enThreads=%s%n",
         per, K, acc / K, sumE, System.getProperty("mosse.enThreads", "auto"));
+  }
+
+  static void collectTips(Node n, java.util.List<String> out) {
+    if (n.isLeaf()) { out.add(n.getID()); return; }
+    for (Node c : n.getChildren()) collectTips(c, out);
   }
 }

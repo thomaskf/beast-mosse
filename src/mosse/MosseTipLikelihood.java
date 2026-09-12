@@ -73,7 +73,7 @@ public class MosseTipLikelihood extends CalculationNode {
 		double[] tipLikelihoods = new double[numBins];
 		for (int i = 0; i < numBins; i++) {
 			double x = startSubsRate + i * subsInterval;
-			tipLikelihoods[i] = getTipLikelihood(x, x + subsInterval, normalDist);
+			tipLikelihoods[i] = getTipLikelihood(x - 0.5 * subsInterval, x + 0.5 * subsInterval, normalDist);
 		}
 
 		return tipLikelihoods;
