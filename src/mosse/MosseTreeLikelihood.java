@@ -587,15 +587,10 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 								patnPartials[k++] = tipLikelihoods[i];
 							}
 						} else {
-							// padLeft leading zeros before the tip likelihoods
-							for (int i = 0; i < padLeft_leaf; i++) {
-								patnPartials[k++] = 0.0;
-							}
 							for (int i = 0; i < numEntries_leaf; i++) {
 								patnPartials[k++] = tipLikelihoods[i];
 							}
-							// set to zeros for the rest (padRight + 1)
-							for (int i = padLeft_leaf + numEntries_leaf; i < numRateBins_leaf; i++) {
+							for (int i = numEntries_leaf; i < numRateBins_leaf; i++) {
 								patnPartials[k++] = 0.0;
 							}
 						}
@@ -1890,9 +1885,8 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 					patnPartials[k++] = tipLikelihoods[i];
 				}
 			} else {
-				for (int i = 0; i < padLeft_leaf; i++) { patnPartials[k++] = 0.0; }
 				for (int i = 0; i < numEntries_leaf; i++) { patnPartials[k++] = tipLikelihoods[i]; }
-				for (int i = padLeft_leaf + numEntries_leaf; i < numRateBins_leaf; i++) { patnPartials[k++] = 0.0; }
+				for (int i = numEntries_leaf; i < numRateBins_leaf; i++) { patnPartials[k++] = 0.0; }
 			}
 		}
 
