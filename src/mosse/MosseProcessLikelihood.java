@@ -43,11 +43,9 @@ public class MosseProcessLikelihood extends MosseTreeLikelihood implements RbarP
             return logP;
         }
         prepareProcessGrid(tree.getRoot());
-        computeRbar = true;
         captureRootP = true;                         // makeRootFuncMosse fills survDenom, the (1-E)^2 term
         double lp = computeFlatTreeLogLikelihood();
         captureRootP = false;
-        computeRbar = false;
         sharedRootP = null;
         if (Double.isInfinite(lp)) {
             logP = lp;
@@ -57,6 +55,7 @@ public class MosseProcessLikelihood extends MosseTreeLikelihood implements RbarP
         if (enBar == null || enBar.length != tree.getNodeCount())
             enBar = new double[tree.getNodeCount()];
         computeEN(tree.getRoot());                    // fill enBar via the moment downpass
+        for (double v : enBar) if (!Double.isFinite(v)) { logP = Double.NEGATIVE_INFINITY; break; }
         return logP;
     }
 
@@ -120,7 +119,7 @@ public class MosseProcessLikelihood extends MosseTreeLikelihood implements RbarP
             if (fi > 0.0 && Double.isFinite(mi)) { num += mi * fi; den += fi; } // avoid NaN*0 in tails
         }
         double en = (den > 0.0) ? num / den : Double.NaN; // E[N_b], density-weighted
-        enBar[node.getNr()] = Double.isFinite(en) ? en / t : rbar[node.getNr()]; // fall back to r-bar
+        enBar[node.getNr()] = en / t;
         double[] up = res.fCurve.clone();
         normalise(up);
         return up;

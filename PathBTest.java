@@ -43,19 +43,18 @@ public class PathBTest {
 
     double lpProc = proc.calculateLogP();
     Field fEn = proc.getClass().getDeclaredField("enBar"); fEn.setAccessible(true);
-    Field fR  = proc.getClass().getSuperclass().getDeclaredField("rbar"); fR.setAccessible(true);
-    double[] en = (double[]) fEn.get(proc), rbar = (double[]) fR.get(proc);
+    double[] en = (double[]) fEn.get(proc);
 
     System.out.printf("proc logP (Mosse_like(t|M)) = %.4f%n%n", lpProc);
-    System.out.println("node    t         rbar(fixed)  E[N]/t(B)   ratio");
-    double sR = 0, sE = 0;
+    System.out.println("node    t         E[N]/t(B)");
+    double sE = 0;
     for (Node n : tree.getNodesAsArray()) {
       if (n.isRoot()) continue;
       int i = n.getNr(); double t = n.getLength();
-      System.out.printf("%4d  %8.4f   %.6f     %.6f    %.4f%n", i, t, rbar[i], en[i], rbar[i] / en[i]);
-      sR += rbar[i] * t; sE += en[i] * t;
+      System.out.printf("%4d  %8.4f   %.6f%n", i, t, en[i]);
+      sE += en[i] * t;
     }
-    System.out.printf("%ntree totals: sum rbar*t = %.5f   sum E[N] = %.5f   ratio = %.4f  (pre-fix ~1.076)%n%n", sR, sE, sR / sE);
+    System.out.printf("%ntree totals: sum E[N] = %.5f%n%n", sE);
 
     // per-branch l = E[N] keyed by clade, so the vector can be matched to a newick outside
     System.out.println("CLADE_BL_START");
@@ -70,11 +69,6 @@ public class PathBTest {
 
     double alB = seq.calculateLogP();
     System.out.printf("AL(l = E[N])        [Path B, wired]  = %.4f%n", alB);
-    double[] save = en.clone();
-    System.arraycopy(rbar, 0, en, 0, en.length);
-    double alR = seq.calculateLogP();
-    System.arraycopy(save, 0, en, 0, en.length);
-    System.out.printf("AL(l = rbar_fixed*t)                 = %.4f   (B - rbar = %.4f)%n", alR, alB - alR);
     // timing + determinism check: repeated full proc evaluations
     int K = Integer.getInteger("bench.K", 5);
     long t0 = System.nanoTime();

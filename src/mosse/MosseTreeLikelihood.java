@@ -226,10 +226,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 	protected double[] cached_x_h;
 	protected double[] cached_x_l;
 
-	// method A: per-branch downpass mean rate, filled in the flat pass only when computeRbar is set.
-	protected double[] rbar;
-	protected boolean computeRbar = false;
-
 	// Three arrays per thread: [0]=partialsLeft, [1]=partialsRight, [2]=patnPartials,
 	// each of length numPlan * numRateBins_h (maximum possible partial size).
 	protected ThreadLocal<double[][]> threadLocalScratch;
@@ -1035,29 +1031,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			eigenGeneration++;
 			transitionMatricesDirty = false;
 		}
-		if (rbar == null || rbar.length != tree.getNodeCount())
-			rbar = new double[tree.getNodeCount()];
-	}
-
-	// method A: density-weighted mean rate of the downpass result (mirrors makeRootFuncMosse's
-	// projection; bin i is rate exp(cached_x[i]) when logScale). result is at the parent-branch
-	// resolution (it was propagated up to node.getParent()), so key the grid off the parent.
-	protected void fillRbar(Node node, double[] result) {
-		boolean low = isLowResolution(node.getParent());
-		int nx = low ? numRateBins_l : numRateBins_h;
-		int nE = low ? treeModel.numEntries_l : treeModel.numEntries_h;
-		double[] x = low ? cached_x_l : cached_x_h;
-		int pad = low ? treeModel.padLeft_l : treeModel.padLeft_h;
-		double[] freqs = substitutionModel.getFrequencies();
-		double num = 0.0, den = 0.0;
-		for (int i = 0; i < nE; i++) {
-			double dp = 0.0;                              // density at valid entry i sits at bin pad+i
-			for (int s = 0; s < stateCount; s++) dp += result[(s + 1) * nx + pad + i] * freqs[s];
-			double rate = logScale ? Math.exp(x[i]) : x[i];
-			num += rate * dp;
-			den += dp;
-		}
-		rbar[node.getNr()] = (den > 0.0) ? num / den : Double.NaN;
 	}
 
 	private void traverseFull(Node node) {
@@ -1817,7 +1790,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 			double[] logp = new double[1];
 			double[] result = computeSingleBranchLikelihood(node.getParent(), node, patnPartials, logp, 0, threadIndexInPool());
 			flatPartials[node.getNr()] = result;
-			if (computeRbar) fillRbar(node, result);
 			logCompensate = logp[0];
 		}
 
@@ -1893,7 +1865,6 @@ public class MosseTreeLikelihood extends TreeLikelihood {
 		double[] logp = new double[1];
 		double[] result = computeSingleBranchLikelihood(leaf.getParent(), leaf, patnPartials, logp, 0, threadIndexInPool());
 		compensates[leaf.getNr()] = logp[0];
-		if (computeRbar) fillRbar(leaf, result);
 		return result;
 	}
 
