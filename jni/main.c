@@ -569,11 +569,11 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
         eQ_src = eQ_loc;
       }
 
-      /* Apply eQ^T to F */
+      /* Apply eQ to F: eQ is row-major P[i][j] */
       for (id = 0; id < nk; id++) {
         double sum = 0.0;
         for (ik = 0; ik < nk; ik++)
-          sum += eQ_src[ik * 4 + id] * F_loc[ik];
+          sum += eQ_src[id * 4 + ik] * F_loc[ik];
         out[id] = sum;
       }
     } else {
@@ -584,7 +584,7 @@ void propagate_t_mosse(mosse_fft *obj, int idx) {
       for (id = 0; id < nk; id++) {
         double sum = 0.0;
         for (ik = 0; ik < nk; ik++)
-          sum += gsl_matrix_get(obj->eQ, ik, id) * F_loc[ik];
+          sum += gsl_matrix_get(obj->eQ, id, ik) * F_loc[ik];
         out[id] = sum;
       }
     }
